@@ -947,9 +947,10 @@ export default function CalculatorClient() {
   const [saveError,     setSaveError]     = useState('')
   const [saveFeedback,  setSaveFeedback]  = useState(false)
   const [dupModal, setDupModal] = useState<{
-    existingId: number; existingSavedAt: string; existingName: string
+    existingId: string; existingName: string
     payload: Record<string, unknown>
   } | null>(null)
+  const [dealsIndex, setDealsIndex] = useState<{ id: string; name: string; savedAt: string; updatedAt?: string }[]>([])
 
   // UI toggles
   const [showBreakdown,      setShowBreakdown]      = useState(false)
@@ -986,6 +987,7 @@ export default function CalculatorClient() {
   const [depositPct,   setDepositPct]   = useState(25)
   const [interestRate, setInterestRate] = useState(4.0)
   const [termYears,    setTermYears]    = useState(25)
+  const [mortgageType, setMortgageType] = useState<'repayment' | 'interest-only'>('repayment')
 
   // ── URL params ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1005,6 +1007,13 @@ export default function CalculatorClient() {
     const pt = s.get('propertyType')
     if (pt === 'offplan' || pt === 'secondary') setPropertyType(pt)
     const hv = gn('handoverValue'); if (hv !== null && hv > 0) setHandoverValue(hv)
+
+    const mo = s.get('mortgageOn'); if (mo === 'true') setMortgageOn(true)
+    const dep  = gn('depositPct');   if (dep  !== null) setDepositPct(dep)
+    const ir   = gn('interestRate'); if (ir   !== null) setInterestRate(ir)
+    const ty   = gn('termYears');    if (ty   !== null) setTermYears(ty)
+    const mt = s.get('mortgageType')
+    if (mt === 'repayment' || mt === 'interest-only') setMortgageType(mt)
 
     const proj = s.get('project');    if (proj)    setProject(proj)
     const u    = s.get('unit');       if (u)       setUnit(u)
@@ -1035,6 +1044,13 @@ export default function CalculatorClient() {
     }
   }, [searchParams])
 
+  useEffect(() => {
+    fetch('/api/user/deals')
+      .then(r => r.json())
+      .then(setDealsIndex)
+      .catch(() => {})
+  }, [])
+
   // ── Share URL ─────────────────────────────────────────────────────────────
   function buildDealParams(): Record<string, unknown> {
     const p: Record<string, unknown> = {}
@@ -1058,6 +1074,13 @@ export default function CalculatorClient() {
       p.paymentPlan = JSON.stringify(
         paymentPlan.map(r => ({ label: r.label, date: r.date, pct: r.pct, ...(r.handover ? { handover: true } : {}) }))
       )
+    }
+    if (mortgageOn) {
+      p.mortgageOn   = true
+      p.depositPct   = depositPct
+      p.interestRate = interestRate
+      p.termYears    = termYears
+      if (mortgageType !== 'repayment') p.mortgageType = mortgageType
     }
     return p
   }
@@ -1259,6 +1282,7 @@ export default function CalculatorClient() {
         paymentPlan: JSON.stringify(
           paymentPlan.map(r => ({ label: r.label, date: r.date, pct: r.pct, ...(r.handover ? { handover: true } : {}) }))
         ),
+        mortgageOn, depositPct, interestRate, termYears, mortgageType,
       },
       calculatedMetrics: {
         grossYield, netYield,
@@ -1273,63 +1297,61 @@ export default function CalculatorClient() {
     }
   }
 
-  function persistDeal(deal: Record<string, unknown>, overwriteId?: number) {
-    try {
-      const stored: Record<string, unknown>[] = JSON.parse(localStorage.getItem('truereturn_deals') || '[]')
-      if (overwriteId !== undefined) {
-        const idx = stored.findIndex(d => d.id === overwriteId)
-        if (idx >= 0) stored[idx] = deal; else stored.unshift(deal)
-      } else {
-        stored.unshift(deal)
-      }
-      localStorage.setItem('truereturn_deals', JSON.stringify(stored))
-    } catch { /* storage unavailable */ }
-  }
-
   function showFeedback() {
     setSaveFeedback(true)
     setTimeout(() => setSaveFeedback(false), 2000)
   }
 
-  function confirmSaveDeal() {
+  async function confirmSaveDeal() {
     const name = saveName.trim() || 'Untitled deal'
     const payload = buildDealPayload(name)
-
-    let stored: { id: number; savedAt: string; name: string }[] = []
-    try { stored = JSON.parse(localStorage.getItem('truereturn_deals') || '[]') } catch {}
-    const match = stored.find(d => d.name.toLowerCase() === name.toLowerCase())
+    const match = dealsIndex.find(d => d.name.toLowerCase() === name.toLowerCase())
 
     if (match) {
-      // Duplicate found — close name modal, open dup confirmation
       setSaveModalOpen(false)
-      setDupModal({
-        existingId:      match.id,
-        existingSavedAt: match.savedAt,
-        existingName:    match.name,
-        payload,
-      })
+      setDupModal({ existingId: match.id, existingName: match.name, payload })
       return
     }
 
-    // No duplicate — save normally
-    persistDeal({ id: Date.now(), savedAt: new Date().toISOString(), ...payload })
+    const res = await fetch('/api/user/deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const { id } = await res.json()
+    const savedAt = new Date().toISOString()
+    setDealsIndex(prev => [{ id, name, savedAt }, ...prev])
     setSaveModalOpen(false)
     showFeedback()
   }
 
-  function handleDupOverwrite() {
+  async function handleDupOverwrite() {
     if (!dupModal) return
-    persistDeal(
-      { id: dupModal.existingId, savedAt: dupModal.existingSavedAt, updatedAt: new Date().toISOString(), ...dupModal.payload },
-      dupModal.existingId
-    )
+    await fetch(`/api/user/deals/${dupModal.existingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dupModal.payload),
+    })
+    const updatedAt = new Date().toISOString()
+    const name = (dupModal.payload as { name: string }).name
+    setDealsIndex(prev => prev.map(d =>
+      d.id === dupModal.existingId ? { ...d, name, updatedAt } : d
+    ))
     setDupModal(null)
     showFeedback()
   }
 
-  function handleDupSaveAsNew() {
+  async function handleDupSaveAsNew() {
     if (!dupModal) return
-    persistDeal({ id: Date.now(), savedAt: new Date().toISOString(), ...dupModal.payload })
+    const res = await fetch('/api/user/deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dupModal.payload),
+    })
+    const { id } = await res.json()
+    const savedAt = new Date().toISOString()
+    const name = (dupModal.payload as { name: string }).name
+    setDealsIndex(prev => [{ id, name, savedAt }, ...prev])
     setDupModal(null)
     showFeedback()
   }

@@ -10,6 +10,8 @@ type DealParams = {
   serviceCharge?: number; dld?: number; agencyFee?: number; adminFee?: number
   propertyType?: string; handoverValue?: number
   paymentPlan?: string
+  mortgageOn?: boolean; depositPct?: number; interestRate?: number
+  termYears?: number; mortgageType?: string
 }
 
 function buildCalcUrl(p: DealParams): string {
@@ -33,6 +35,11 @@ function buildCalcUrl(p: DealParams): string {
   if (p.paymentPlan && p.paymentPlan !== '[]') {
     q.set('paymentPlan', encodeURIComponent(p.paymentPlan))
   }
+  if (p.mortgageOn)                              q.set('mortgageOn',   'true')
+  if (p.depositPct !== undefined)                q.set('depositPct',   String(p.depositPct))
+  if (p.interestRate !== undefined)              q.set('interestRate', String(p.interestRate))
+  if (p.termYears !== undefined)                 q.set('termYears',    String(p.termYears))
+  if (p.mortgageType && p.mortgageType !== 'repayment') q.set('mortgageType', p.mortgageType)
   return `/calculators/investment?${q.toString()}`
 }
 

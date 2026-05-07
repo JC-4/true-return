@@ -13,6 +13,8 @@ type DealParams = {
   serviceCharge?: number; dld?: number; agencyFee?: number; adminFee?: number
   propertyType?: string; handoverValue?: number
   paymentPlan?: string
+  mortgageOn?: boolean; depositPct?: number; interestRate?: number
+  termYears?: number; mortgageType?: string
 }
 
 type DealMetrics = {
@@ -23,9 +25,10 @@ type DealMetrics = {
 }
 
 type Deal = {
-  id: number
+  id: string
   name: string
   savedAt: string
+  updatedAt?: string
   params: DealParams
   calculatedMetrics: DealMetrics
 }
@@ -58,6 +61,11 @@ function buildCalcUrl(params: DealParams): string {
   if (params.paymentPlan && params.paymentPlan !== '[]') {
     p.set('paymentPlan', encodeURIComponent(params.paymentPlan))
   }
+  if (params.mortgageOn)                                          p.set('mortgageOn',   'true')
+  if (params.depositPct !== undefined)                            p.set('depositPct',   String(params.depositPct))
+  if (params.interestRate !== undefined)                          p.set('interestRate', String(params.interestRate))
+  if (params.termYears !== undefined)                             p.set('termYears',    String(params.termYears))
+  if (params.mortgageType && params.mortgageType !== 'repayment') p.set('mortgageType', params.mortgageType)
   return `/calculators/investment?${p.toString()}`
 }
 
@@ -74,7 +82,7 @@ const gradeColor: Record<string, string> = {
 
 // ─── Deal card ────────────────────────────────────────────────────────────────
 
-function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: number) => void }) {
+function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: string) => void }) {
   const router = useRouter()
   const m = deal.calculatedMetrics
   const p = deal.params
@@ -168,19 +176,19 @@ export default function DealsPage() {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('truereturn_deals')
-      if (raw) setDeals(JSON.parse(raw))
-    } catch { /* storage unavailable */ }
-    setLoaded(true)
+    fetch('/api/user/deals')
+      .then(r => r.json())
+      .then((index: { id: string }[]) =>
+        Promise.all(index.map(e => fetch(`/api/user/deals/${e.id}`).then(r => r.json())))
+      )
+      .then(setDeals)
+      .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [])
 
-  function deleteDeal(id: number) {
-    const updated = deals.filter(d => d.id !== id)
-    setDeals(updated)
-    try {
-      localStorage.setItem('truereturn_deals', JSON.stringify(updated))
-    } catch { /* storage unavailable */ }
+  async function deleteDeal(id: string) {
+    await fetch(`/api/user/deals/${id}`, { method: 'DELETE' })
+    setDeals(prev => prev.filter(d => d.id !== id))
   }
 
   return (
