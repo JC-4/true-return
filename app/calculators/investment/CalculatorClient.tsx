@@ -1036,49 +1036,53 @@ export default function CalculatorClient() {
   }, [searchParams])
 
   // ── Share URL ─────────────────────────────────────────────────────────────
-  function buildShareUrl() {
-    const params = new URLSearchParams()
-    if (propertyType !== 'offplan') params.set('propertyType', propertyType)
-    if (handoverValue > 0)          params.set('handoverValue', String(handoverValue))
-    if (price > 0)        params.set('price',         String(price))
-    if (rent > 0)         params.set('rent',          String(rent))
-    if (growth !== 5)     params.set('growth',        String(growth))
-    if (internalSqft > 0) params.set('internalSqft',  String(internalSqft))
-    if (balconySqft > 0)  params.set('balconySqft',   String(balconySqft))
-    if (project)          params.set('project',       project)
-    if (unit)             params.set('unit',          unit)
-    if (view)             params.set('view',          view)
-    if (completion)       params.set('completion',    completion)
-    if (developer)        params.set('developer',     developer)
-    if (scRate > 0)           params.set('serviceCharge', String(scRate))
-    if (dldPct !== 4)         params.set('dld',           String(dldPct))
-    if (agencyFeePct !== 0)   params.set('agencyFee',     String(agencyFeePct))
-    if (adminFee > 0)         params.set('adminFee',      String(adminFee))
+  function buildDealParams(): Record<string, unknown> {
+    const p: Record<string, unknown> = {}
+    if (propertyType !== 'offplan') p.propertyType = propertyType
+    if (handoverValue > 0)          p.handoverValue = handoverValue
+    if (price > 0)        p.price        = price
+    if (rent > 0)         p.rent         = rent
+    if (growth !== 5)     p.growth       = growth
+    if (internalSqft > 0) p.internalSqft = internalSqft
+    if (balconySqft > 0)  p.balconySqft  = balconySqft
+    if (project)          p.project      = project
+    if (unit)             p.unit         = unit
+    if (view)             p.view         = view
+    if (completion)       p.completion   = completion
+    if (developer)        p.developer    = developer
+    if (scRate > 0)         p.serviceCharge = scRate
+    if (dldPct !== 4)       p.dld           = dldPct
+    if (agencyFeePct !== 0) p.agencyFee     = agencyFeePct
+    if (adminFee > 0)       p.adminFee      = adminFee
     if (paymentPlan.length > 0) {
-      params.set('paymentPlan', encodeURIComponent(
-        JSON.stringify(paymentPlan.map(r => ({ label: r.label, date: r.date, pct: r.pct, ...(r.handover ? { handover: true } : {}) })))
-      ))
+      p.paymentPlan = JSON.stringify(
+        paymentPlan.map(r => ({ label: r.label, date: r.date, pct: r.pct, ...(r.handover ? { handover: true } : {}) }))
+      )
     }
-    const base = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${base}/calculators/investment?${params.toString()}`
+    return p
   }
 
   async function handleShare() {
+    const params = buildDealParams()
+    const res = await fetch('/api/deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+    const { id } = await res.json()
+    const url = `${window.location.origin}/deals/${id}`
     try {
-      await navigator.clipboard.writeText(buildShareUrl())
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(url)
     } catch {
-      const url = buildShareUrl()
       const el = document.createElement('input')
       el.value = url
       document.body.appendChild(el)
       el.select()
       document.execCommand('copy')
       document.body.removeChild(el)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   // ── Calculations ──────────────────────────────────────────────────────────
