@@ -159,19 +159,46 @@ function solveIRR(cashFlows: number[]): number | null {
 //   If handoverValue provided, exit basis is handoverValue grown at growth% for 5 yrs post-completion.
 function buildAndSolveIRR({
   price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+  mortgageOn = false, annualMortgageCost = 0, upfrontCash = 0,
+  loanAmount = 0, monthlyPayment = 0, monthlyRate = 0,
 }: {
   price: number; netIncome: number; growth: number
   paymentPlan: PlanRow[]; completion: string
   handoverValue: number; propertyType: 'offplan' | 'secondary'
+  mortgageOn?: boolean
+  annualMortgageCost?: number
+  upfrontCash?: number
+  loanAmount?: number
+  monthlyPayment?: number
+  monthlyRate?: number
 }): number | null {
   if (price <= 0 || netIncome <= 0) return null
+
+  const annualCashflow = mortgageOn ? netIncome - annualMortgageCost : netIncome
+
+  const balanceAt = (years: number): number => {
+    if (!mortgageOn || loanAmount <= 0) return 0
+    const months = years * 12
+    if (monthlyRate > 0) {
+      return Math.max(0, loanAmount * Math.pow(1 + monthlyRate, months)
+        - monthlyPayment * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
+    }
+    return Math.max(0, loanAmount - monthlyPayment * months)
+  }
 
   if (propertyType === 'secondary') {
     const exitYear = 5
     const flows: number[] = new Array(exitYear + 1).fill(0)
-    flows[0] -= price
-    for (let y = 1; y < exitYear; y++) flows[y] += netIncome
-    flows[exitYear] += netIncome + price * Math.pow(1 + growth / 100, exitYear)
+    if (mortgageOn) {
+      flows[0] -= upfrontCash
+      for (let y = 1; y < exitYear; y++) flows[y] += annualCashflow
+      const exitValue = price * Math.pow(1 + growth / 100, exitYear)
+      flows[exitYear] += annualCashflow + exitValue - balanceAt(exitYear)
+    } else {
+      flows[0] -= price
+      for (let y = 1; y < exitYear; y++) flows[y] += netIncome
+      flows[exitYear] += netIncome + price * Math.pow(1 + growth / 100, exitYear)
+    }
     return solveIRR(flows)
   }
 
@@ -181,25 +208,38 @@ function buildAndSolveIRR({
   const exitYear = safeCompletionYears + 5
   const flows: number[] = new Array(exitYear + 1).fill(0)
 
-  // Outflows from payment plan, or single price at t=0
+  // Outflows from payment plan, or single price (or upfrontCash if mortgaged) at t=0
   if (paymentPlan.length > 0) {
+    if (mortgageOn && loanAmount > 0) {
+      // Acquisition costs are paid upfront (they sit outside the payment plan)
+      const acqCosts = upfrontCash - (price - loanAmount)   // upfrontCash − depositAmount
+      flows[0] -= acqCosts
+      // Mortgage is disbursed at handover — add it as an inflow at that year
+      const handoverRow = paymentPlan.find(r => r.handover)
+      const handoverYr = handoverRow
+        ? Math.min(Math.max(0, Math.round(parseDateToYear(handoverRow.date, safeCompletionYears))), exitYear)
+        : safeCompletionYears
+      flows[handoverYr] += loanAmount
+    }
     for (const row of paymentPlan) {
       const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, safeCompletionYears))), exitYear)
       flows[yr] -= price * row.pct / 100
     }
   } else {
-    flows[0] -= price
+    flows[0] -= mortgageOn ? upfrontCash : price
   }
 
-  // Net rental income for 5 years starting at completion (not in exit year)
+  // Annual cashflow (after mortgage if applicable) for 5 years post-completion
   for (let y = safeCompletionYears; y < exitYear; y++) {
-    flows[y] += netIncome
+    flows[y] += annualCashflow
   }
 
   // Exit value: if handoverValue provided, grow from that for 5 yrs post-completion
   const exitBase = handoverValue > 0 ? handoverValue : price
   const exitGrowthYears = handoverValue > 0 ? 5 : exitYear
-  flows[exitYear] += exitBase * Math.pow(1 + growth / 100, exitGrowthYears)
+  const exitValue = exitBase * Math.pow(1 + growth / 100, exitGrowthYears)
+  // annualCashflow always included for exit year (= netIncome when no mortgage)
+  flows[exitYear] += annualCashflow + exitValue - (mortgageOn ? balanceAt(exitYear) : 0)
 
   return solveIRR(flows)
 }
@@ -916,6 +956,84 @@ function DeveloperDropdown({ value, onChange }: { value: string; onChange: (name
   )
 }
 
+// ─── Communities ─────────────────────────────────────────────────────────────
+
+const COMMUNITIES: Record<string, string[]> = {
+  Dubai: [
+    'Al Furjan', 'Arabian Ranches 1', 'Arabian Ranches 2', 'Arabian Ranches 3',
+    'Arjan', 'Business Bay', 'Damac Hills', 'Damac Lagoons', 'Downtown Dubai',
+    'Dubai Hills Estate', 'Dubai Marina', 'Dubai South', 'Dubailand', 'Emaar South',
+    'Emirates Hills', 'Falcon City', 'Ghaf Woods', 'Jebel Ali Village',
+    'Jumeirah Lake Towers', 'Jumeirah Village Circle (JVC)', 'Jumeirah Village Triangle (JVT)',
+    'Mohammed Bin Rashid City (MBR)', 'Palm Jumeirah', 'Ras Al Khor', 'Sobha Hartland',
+    'Sobha Hartland 2', 'The Lakes', 'The Meadows', 'The Springs', 'The Valley',
+    'Tilal Al Ghaf', 'Wasl Gate',
+  ],
+  'Abu Dhabi': [
+    'Al Jubail Island', 'Al Reem Island', 'Fahid Island', 'Hudayriyat Island',
+    'Lulu Island', 'Ramhan Island', 'Saadiyat Island', 'Yas Island',
+  ],
+}
+
+function LocationCombobox({ value, onChange, emirate }: { value: string; onChange: (v: string) => void; emirate: string }) {
+  const [query, setQuery] = useState(value)
+  const [open, setOpen]   = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const options = COMMUNITIES[emirate] ?? []
+
+  useEffect(() => { setQuery(value) }, [value])
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const trimmed    = query.trim()
+  const filtered   = options.filter(o => o.toLowerCase().includes(query.toLowerCase()))
+  const showAddOpt = trimmed.length > 0 && !options.find(o => o.toLowerCase() === trimmed.toLowerCase())
+
+  return (
+    <div ref={ref} className="relative w-48">
+      <input
+        type="text"
+        value={query}
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search or type…"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white"
+      />
+      {open && (filtered.length > 0 || showAddOpt) && (
+        <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
+          {filtered.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(opt); setQuery(opt); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
+            >
+              {opt}
+            </button>
+          ))}
+          {showAddOpt && (
+            <button
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(trimmed); setQuery(trimmed); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 font-medium hover:bg-gray-100 border-t border-gray-100"
+            >
+              + Use &ldquo;{trimmed}&rdquo;
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function CalculatorClient() {
@@ -934,6 +1052,8 @@ export default function CalculatorClient() {
   const [view,         setView]       = useState('')
   const [completion,   setCompletion] = useState('')
   const [developer,    setDeveloper]  = useState('')
+  const [emirate,      setEmirate]    = useState<'Dubai' | 'Abu Dhabi'>('Dubai')
+  const [location,     setLocation]   = useState('')
 
   // Edit mode
   const [editingDetails, setEditingDetails] = useState(false)
@@ -1020,6 +1140,8 @@ export default function CalculatorClient() {
     const vw   = s.get('view');       if (vw)      setView(vw)
     const comp = s.get('completion'); if (comp)    setCompletion(normalizeCompletionDate(comp))
     const dev  = s.get('developer');  if (dev)     setDeveloper(dev)
+    const em   = s.get('emirate');    if (em === 'Dubai' || em === 'Abu Dhabi') setEmirate(em)
+    const loc  = s.get('location');   if (loc)     setLocation(loc)
 
     const pp = s.get('paymentPlan')
     if (pp) {
@@ -1066,6 +1188,8 @@ export default function CalculatorClient() {
     if (view)             p.view         = view
     if (completion)       p.completion   = completion
     if (developer)        p.developer    = developer
+    if (emirate !== 'Dubai') p.emirate   = emirate
+    if (location)         p.location     = location
     if (scRate > 0)         p.serviceCharge = scRate
     if (dldPct !== 4)       p.dld           = dldPct
     if (agencyFeePct !== 0) p.agencyFee     = agencyFeePct
@@ -1163,7 +1287,11 @@ export default function CalculatorClient() {
 
   // IRR
   const irr = price > 0 && rent > 0
-    ? buildAndSolveIRR({ price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType })
+    ? buildAndSolveIRR({
+        price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+        mortgageOn, annualMortgageCost, upfrontCash,
+        loanAmount, monthlyPayment, monthlyRate,
+      })
     : null
 
   // Gain on paper (off-plan only)
@@ -1276,7 +1404,7 @@ export default function CalculatorClient() {
       name,
       params: {
         propertyType, price, rent, growth, internalSqft, balconySqft,
-        view, unit, project, completion, developer,
+        view, unit, project, completion, developer, emirate, location,
         serviceCharge: scRate, dld: dldPct, agencyFee: agencyFeePct, adminFee,
         handoverValue: handoverValue > 0 ? handoverValue : undefined,
         paymentPlan: JSON.stringify(
@@ -1373,6 +1501,7 @@ export default function CalculatorClient() {
                     {unit && <span className="text-gray-400 font-normal"> — Unit {unit}</span>}
                   </h1>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 items-center">
+                    {location && <span>{location}, {emirate}</span>}
                     {internalSqft > 0 && (
                       <span>{fmt(internalSqft)} sqft internal{balconySqft > 0 ? ` + ${fmt(balconySqft)} sqft balcony` : ''}</span>
                     )}
@@ -1490,6 +1619,36 @@ export default function CalculatorClient() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Emirate */}
+              <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                <span className="text-xs text-gray-400">Emirate</span>
+                {editingDetails ? (
+                  <select
+                    value={emirate}
+                    onChange={e => {
+                      const v = e.target.value as 'Dubai' | 'Abu Dhabi'
+                      setEmirate(v)
+                    }}
+                    className="border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white"
+                  >
+                    <option value="Dubai">Dubai</option>
+                    <option value="Abu Dhabi">Abu Dhabi</option>
+                  </select>
+                ) : (
+                  <span className="text-sm font-medium text-gray-800">{emirate}</span>
+                )}
+              </div>
+
+              {/* Community / Area */}
+              <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                <span className="text-xs text-gray-400">Community / Area</span>
+                {editingDetails ? (
+                  <LocationCombobox value={location} onChange={setLocation} emirate={emirate} />
+                ) : (
+                  <span className="text-sm font-medium text-gray-800">{location || '—'}</span>
+                )}
               </div>
 
               {/* Text fields: Project, Unit, View, Completion (Completion hidden for secondary) */}

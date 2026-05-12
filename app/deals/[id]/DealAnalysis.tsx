@@ -16,6 +16,7 @@ type DealParams = {
   handoverValue?: number; paymentPlan?: string
   mortgageOn?: boolean; depositPct?: number; interestRate?: number
   termYears?: number; mortgageType?: string
+  emirate?: string; location?: string
 }
 
 export type StoredDeal = {
@@ -61,6 +62,8 @@ function buildCalcUrl(p: DealParams): string {
   if (p.interestRate !== undefined) q.set('interestRate', String(p.interestRate))
   if (p.termYears !== undefined) q.set('termYears', String(p.termYears))
   if (p.mortgageType && p.mortgageType !== 'repayment') q.set('mortgageType', p.mortgageType)
+  if (p.emirate && p.emirate !== 'Dubai') q.set('emirate', p.emirate)
+  if (p.location) q.set('location', p.location)
   return `/calculators/investment?${q.toString()}`
 }
 
@@ -188,6 +191,46 @@ function RangeSlider({ label, value, min, max, step, display, onChange, prominen
   )
 }
 
+// Handover value slider with inline free-text input.
+// Separate component so it can own the raw-input state without
+// polluting the generic RangeSlider.
+function HandoverSlider({ value, min, max, step, onChange }: {
+  value: number; min: number; max: number; step: number; onChange: (v: number) => void
+}) {
+  const [raw,     setRaw]     = useState('')
+  const [editing, setEditing] = useState(false)
+
+  const commit = (text: string) => {
+    const parsed = parseInt(text.replace(/[^0-9]/g, ''), 10)
+    if (!isNaN(parsed) && parsed > 0) {
+      onChange(Math.min(max, Math.max(min, parsed)))
+    }
+    setEditing(false)
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm text-gray-500">Est. value at handover</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={editing ? raw : value > 0 ? `AED ${fmt(value)}` : ''}
+          onFocus={() => { setRaw(value > 0 ? String(value) : ''); setEditing(true) }}
+          onChange={e => setRaw(e.target.value)}
+          onBlur={() => commit(raw)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+          placeholder="AED"
+          className="w-36 border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white text-right"
+        />
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full accent-emerald-500" />
+    </div>
+  )
+}
+
 function ExplorationNote() {
   return (
     <p className="text-xs text-gray-400 mt-4 pt-4 border-t border-gray-100">
@@ -292,6 +335,7 @@ function TabOverview({ deal, m, mortgageOn, handoverValue, price }: { deal: Stor
           <CardHeader title="Property" />
           <div className="px-5 py-2">
             {[
+              { label: 'Location',      value: p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '—' },
               { label: 'Developer',     value: p.developer || '—' },
               { label: 'Project',       value: p.project   || '—' },
               { label: 'Unit',          value: p.unit      || '—' },
@@ -655,6 +699,8 @@ function TabGrowth({
     const irr           = buildAndSolveIRR({
       price, netIncome: m.netIncome, growth: s.rate,
       paymentPlan, completion, handoverValue, propertyType,
+      mortgageOn, annualMortgageCost: m.annualMortgageCost, upfrontCash: m.upfrontCash,
+      loanAmount: m.loanAmount, monthlyPayment: mp, monthlyRate,
     })
     return { ...s, exitVal, capitalGain, rentalIncome5, totalRet, rocd, irr,
       exitValPct: price > 0 ? (capitalGain / price) * 100 : 0 }
@@ -759,10 +805,13 @@ function TabGrowth({
           <RangeSlider label="Capital growth" value={growth} min={0} max={15} step={0.5}
             display={fmtPct(growth)} onChange={setGrowth} />
           {propertyType === 'offplan' && price > 0 && (
-            <RangeSlider label="Est. value at handover" value={handoverValue}
-              min={Math.round(price * 0.85 / 10000) * 10000}
-              max={Math.round(price * 1.6  / 10000) * 10000}
-              step={10000} display={`AED ${fmt(handoverValue)}`} onChange={setHandoverValue} />
+            <HandoverSlider
+              value={handoverValue}
+              min={Math.floor(price * 0.85 / 100000) * 100000}
+              max={Math.ceil(price  * 1.6  / 100000) * 100000}
+              step={50000}
+              onChange={setHandoverValue}
+            />
           )}
           <ExplorationNote />
         </div>
@@ -1037,7 +1086,7 @@ export default function DealAnalysis({ deal }: { deal: StoredDeal }) {
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">{deal.name}</h1>
             <p className="text-sm text-zinc-400 mt-0.5">
-              {[developer, p.view, (internalSqft + balconySqft) > 0 ? `${(internalSqft + balconySqft).toLocaleString()} ft²` : '', completion ? `Completion ${completion}` : ''].filter(Boolean).join(' · ')}
+              {[p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '', developer, p.view, (internalSqft + balconySqft) > 0 ? `${(internalSqft + balconySqft).toLocaleString()} ft²` : '', completion ? `Completion ${completion}` : ''].filter(Boolean).join(' · ')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">

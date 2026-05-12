@@ -154,19 +154,48 @@ export function solveIRR(cashFlows: number[]): number | null {
 
 export function buildAndSolveIRR({
   price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+  mortgageOn = false, annualMortgageCost = 0, upfrontCash = 0,
+  loanAmount = 0, monthlyPayment = 0, monthlyRate = 0,
 }: {
   price: number; netIncome: number; growth: number
   paymentPlan: PlanRow[]; completion: string
   handoverValue: number; propertyType: 'offplan' | 'secondary'
+  mortgageOn?: boolean
+  annualMortgageCost?: number
+  upfrontCash?: number
+  loanAmount?: number
+  monthlyPayment?: number
+  monthlyRate?: number
 }): number | null {
   if (price <= 0 || netIncome <= 0) return null
+
+  // Annual cash flow after mortgage (or just netIncome if no mortgage)
+  const annualCashflow = mortgageOn ? netIncome - annualMortgageCost : netIncome
+
+  // Remaining loan balance at a given year (0 when no mortgage)
+  const balanceAt = (years: number): number => {
+    if (!mortgageOn || loanAmount <= 0) return 0
+    const months = years * 12
+    if (monthlyRate > 0) {
+      return Math.max(0, loanAmount * Math.pow(1 + monthlyRate, months)
+        - monthlyPayment * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
+    }
+    return Math.max(0, loanAmount - monthlyPayment * months)
+  }
 
   if (propertyType === 'secondary') {
     const exitYear = 5
     const flows: number[] = new Array(exitYear + 1).fill(0)
-    flows[0] -= price
-    for (let y = 1; y < exitYear; y++) flows[y] += netIncome
-    flows[exitYear] += netIncome + price * Math.pow(1 + growth / 100, exitYear)
+    if (mortgageOn) {
+      flows[0] -= upfrontCash
+      for (let y = 1; y < exitYear; y++) flows[y] += annualCashflow
+      const exitValue = price * Math.pow(1 + growth / 100, exitYear)
+      flows[exitYear] += annualCashflow + exitValue - balanceAt(exitYear)
+    } else {
+      flows[0] -= price
+      for (let y = 1; y < exitYear; y++) flows[y] += netIncome
+      flows[exitYear] += netIncome + price * Math.pow(1 + growth / 100, exitYear)
+    }
     return solveIRR(flows)
   }
 
@@ -176,19 +205,33 @@ export function buildAndSolveIRR({
   const flows: number[] = new Array(exitYear + 1).fill(0)
 
   if (paymentPlan.length > 0) {
+    if (mortgageOn && loanAmount > 0) {
+      // Acquisition costs are paid upfront (they sit outside the payment plan)
+      const acqCosts = upfrontCash - (price - loanAmount)   // upfrontCash − depositAmount
+      flows[0] -= acqCosts
+      // Mortgage is disbursed at handover — add it as an inflow at that year
+      const handoverRow = paymentPlan.find(r => r.handover)
+      const handoverYr = handoverRow
+        ? Math.min(Math.max(0, Math.round(parseDateToYear(handoverRow.date, safeCompletionYears))), exitYear)
+        : safeCompletionYears
+      flows[handoverYr] += loanAmount
+    }
     for (const row of paymentPlan) {
       const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, safeCompletionYears))), exitYear)
       flows[yr] -= price * row.pct / 100
     }
   } else {
-    flows[0] -= price
+    // No payment plan: deploy upfrontCash (deposit + acq. costs) when mortgaged, else full price
+    flows[0] -= mortgageOn ? upfrontCash : price
   }
 
-  for (let y = safeCompletionYears; y < exitYear; y++) flows[y] += netIncome
+  for (let y = safeCompletionYears; y < exitYear; y++) flows[y] += annualCashflow
 
   const exitBase = handoverValue > 0 ? handoverValue : price
   const exitGrowthYears = handoverValue > 0 ? 5 : exitYear
-  flows[exitYear] += exitBase * Math.pow(1 + growth / 100, exitGrowthYears)
+  const exitValue = exitBase * Math.pow(1 + growth / 100, exitGrowthYears)
+  // annualCashflow always included for exit year (= netIncome when no mortgage)
+  flows[exitYear] += annualCashflow + exitValue - (mortgageOn ? balanceAt(exitYear) : 0)
 
   return solveIRR(flows)
 }
@@ -352,7 +395,11 @@ export function computeDealMetrics(params: {
 
   // ── IRR ───────────────────────────────────────────────────────────────────
   const irr = price > 0 && rent > 0
-    ? buildAndSolveIRR({ price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType })
+    ? buildAndSolveIRR({
+        price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+        mortgageOn, annualMortgageCost, upfrontCash,
+        loanAmount, monthlyPayment, monthlyRate,
+      })
     : null
 
   // ── Gain on paper ─────────────────────────────────────────────────────────

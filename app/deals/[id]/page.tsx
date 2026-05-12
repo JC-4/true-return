@@ -16,6 +16,7 @@ type ShareParams = {
   paymentPlan?: string
   mortgageOn?: boolean; depositPct?: number; interestRate?: number
   termYears?: number; mortgageType?: string
+  emirate?: string; location?: string
 }
 
 function buildCalcUrl(p: ShareParams): string {
@@ -44,6 +45,8 @@ function buildCalcUrl(p: ShareParams): string {
   if (p.interestRate !== undefined)              q.set('interestRate', String(p.interestRate))
   if (p.termYears !== undefined)                 q.set('termYears',    String(p.termYears))
   if (p.mortgageType && p.mortgageType !== 'repayment') q.set('mortgageType', p.mortgageType)
+  if (p.emirate && p.emirate !== 'Dubai') q.set('emirate', p.emirate)
+  if (p.location) q.set('location', p.location)
   return `/calculators/investment?${q.toString()}`
 }
 

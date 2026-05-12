@@ -17,6 +17,7 @@ type DealParams = {
   paymentPlan?: string
   mortgageOn?: boolean; depositPct?: number; interestRate?: number
   termYears?: number; mortgageType?: string
+  emirate?: string; location?: string
 }
 
 type DealMetrics = {
@@ -68,6 +69,8 @@ function buildCalcUrl(params: DealParams): string {
   if (params.interestRate !== undefined)                          p.set('interestRate', String(params.interestRate))
   if (params.termYears !== undefined)                             p.set('termYears',    String(params.termYears))
   if (params.mortgageType && params.mortgageType !== 'repayment') p.set('mortgageType', params.mortgageType)
+  if (params.emirate && params.emirate !== 'Dubai') p.set('emirate', params.emirate)
+  if (params.location) p.set('location', params.location)
   return `/calculators/investment?${p.toString()}`
 }
 
@@ -104,8 +107,12 @@ function DealCard({
     }
   }
 
-  const subtitle = [p.project, p.unit ? `Unit ${p.unit}` : '', p.developer]
-    .filter(Boolean).join(' · ')
+  const subtitle = [
+    p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '',
+    p.project,
+    p.unit ? `Unit ${p.unit}` : '',
+    p.developer,
+  ].filter(Boolean).join(' · ')
 
   return (
     <div
