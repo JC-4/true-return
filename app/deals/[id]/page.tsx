@@ -1,8 +1,12 @@
-import { redirect, notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { redis } from '@/lib/redis'
 import Link from 'next/link'
+import DealAnalysis, { type StoredDeal } from './DealAnalysis'
 
-type DealParams = {
+// TODO: replace with auth().userId when auth is added
+const USER_ID = 'jc'
+
+type ShareParams = {
   price?: number; rent?: number; growth?: number
   internalSqft?: number; balconySqft?: number
   view?: string; unit?: string; project?: string
@@ -14,7 +18,7 @@ type DealParams = {
   termYears?: number; mortgageType?: string
 }
 
-function buildCalcUrl(p: DealParams): string {
+function buildCalcUrl(p: ShareParams): string {
   const q = new URLSearchParams()
   if (p.price)                              q.set('price',         String(p.price))
   if (p.rent)                               q.set('rent',          String(p.rent))
@@ -43,36 +47,44 @@ function buildCalcUrl(p: DealParams): string {
   return `/calculators/investment?${q.toString()}`
 }
 
-export default async function SharedDealPage({
+export default async function DealPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const data = await redis.get<DealParams>(`deal:${id}`)
 
-  if (!data) {
-    return (
-      <div className="bg-[#F5F5F2] min-h-screen flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-5">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h1 className="text-lg font-semibold text-gray-900 mb-2">Deal not found</h1>
-          <p className="text-sm text-gray-500 mb-6">This link may have expired or the deal was never saved.</p>
-          <Link
-            href="/calculators/investment"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#1a2744] hover:bg-[#1e3a5f] transition-colors"
-          >
-            Open calculator
-          </Link>
-        </div>
-      </div>
-    )
+  // 1. Try user saved deal first → render analysis view
+  const userDeal = await redis.get<StoredDeal>(`deal:${USER_ID}:${id}`)
+  if (userDeal) {
+    return <DealAnalysis deal={userDeal} />
   }
 
-  redirect(buildCalcUrl(data))
+  // 2. Fall back to anonymous share link → redirect to calculator
+  const shareData = await redis.get<ShareParams>(`deal:${id}`)
+  if (shareData) {
+    redirect(buildCalcUrl(shareData))
+  }
+
+  // 3. Not found
+  return (
+    <div className="bg-brand-bg min-h-screen flex items-center justify-center px-4">
+      <div className="text-center">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-5">
+          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h1 className="text-lg font-semibold text-gray-900 mb-2">Deal not found</h1>
+        <p className="text-sm text-gray-500 mb-6">This link may have expired or the deal was never saved.</p>
+        <Link
+          href="/calculators/investment"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-brand-black hover:bg-brand-surface transition-colors"
+        >
+          Open calculator
+        </Link>
+      </div>
+    </div>
+  )
 }
