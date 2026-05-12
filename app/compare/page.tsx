@@ -215,10 +215,11 @@ function ComparisonTable({ entries }: { entries: DealEntry[] }) {
         <td
           colSpan={n + 1}
           style={{
-            background: '#18181b', color: '#fff',
-            fontSize: 11, fontWeight: 600,
+            background: '#f4f4f5', color: '#71717a',
+            fontSize: 11, fontWeight: 500,
             letterSpacing: '0.06em', textTransform: 'uppercase',
             padding: '8px 20px',
+            borderTop: '2px solid #e4e4e7',
           }}
         >
           {sectionLabel}
@@ -258,6 +259,7 @@ function ComparisonTable({ entries }: { entries: DealEntry[] }) {
 
   return (
     <div style={{ overflowX: 'auto' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px' }}>
       <table
         style={{
           tableLayout: 'fixed',
@@ -329,6 +331,7 @@ function ComparisonTable({ entries }: { entries: DealEntry[] }) {
           {renderSection('Costs', costsRows)}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
