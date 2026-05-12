@@ -352,7 +352,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       onClick={onToggle}
       aria-pressed={on}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-        on ? 'bg-navy-700' : 'bg-gray-300'
+        on ? 'bg-[#18181b]' : 'bg-gray-300'
       }`}
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
@@ -402,7 +402,7 @@ function EditableSliderField({ label, value, min, max, step, prefix, onChange }:
           <input
             type="text"
             inputMode="numeric"
-            className="w-36 text-right text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-navy-700 focus:bg-white"
+            className="w-36 text-right text-sm font-semibold text-gray-900 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#18181b] focus:bg-white"
             value={editing ? raw : fmt(value)}
             onFocus={() => { setRaw(String(value)); setEditing(true) }}
             onChange={e => setRaw(e.target.value)}
@@ -586,7 +586,7 @@ function GainOnPaperCard({
   return (
     <div
       ref={cardRef}
-      className={`rounded-xl p-5 border cursor-default ${isPositive ? 'bg-[#E8F5EE] border-green-200' : 'bg-amber-50 border-amber-100'}`}
+      className={`rounded-xl p-5 border cursor-default ${isPositive ? 'bg-emerald-100 border-emerald-300' : 'bg-amber-50 border-amber-100'}`}
       onMouseEnter={() => { position(); setVisible(true) }}
       onMouseLeave={() => setVisible(false)}
     >
@@ -885,7 +885,7 @@ function DeveloperDropdown({ value, onChange }: { value: string; onChange: (name
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder="Search developers…"
-        className="w-full border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-navy-700 focus:bg-white"
+        className="w-full border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white"
       />
       {open && (filtered.length > 0 || showAddOption) && (
         <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-52 overflow-y-auto">
@@ -1253,7 +1253,7 @@ export default function CalculatorClient() {
     `Total: AED ${fmt(serviceCharge)}`,
   ]
 
-  const editInputBase = 'border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-navy-700 focus:bg-white text-right'
+  const editInputBase = 'border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white text-right'
 
   // Completion date validation
   const completionValid = !completion || /^\d{1,2}\/\d{4}$/.test(completion)
@@ -1359,7 +1359,7 @@ export default function CalculatorClient() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-[#F5F5F2] min-h-screen pb-20">
+    <div className="bg-[#fafafa] min-h-screen pb-20">
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-8">
@@ -1482,7 +1482,7 @@ export default function CalculatorClient() {
                       onClick={() => setPropertyType(t)}
                       className={`px-3 py-1.5 transition-colors ${
                         propertyType === t
-                          ? 'bg-navy-700 text-white'
+                          ? 'bg-[#18181b] text-white'
                           : 'bg-white text-gray-500 hover:bg-gray-50'
                       }`}
                     >
@@ -1785,14 +1785,14 @@ export default function CalculatorClient() {
                         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${PLAN_COLORS[i % PLAN_COLORS.length]}`} />
                         <input type="text" value={row.label} placeholder="Label"
                           onChange={e => updatePlanRow(row.id, 'label', e.target.value)}
-                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-navy-700 focus:bg-white w-full" />
+                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white w-full" />
                         <input type="text" value={row.date} placeholder="Date"
                           onChange={e => updatePlanRow(row.id, 'date', e.target.value)}
-                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-navy-700 focus:bg-white w-full" />
+                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white w-full" />
                         <input type="number" value={row.pct === 0 ? '' : row.pct} placeholder="0"
                           min={0} max={100}
                           onChange={e => updatePlanRow(row.id, 'pct', parseFloat(e.target.value) || 0)}
-                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-navy-700 focus:bg-white text-center w-full" />
+                          className="border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white text-center w-full" />
                         <span className="text-xs text-gray-500 text-right tabular-nums">
                           {price > 0 ? fmt(price * row.pct / 100) : '—'}
                         </span>
@@ -1943,7 +1943,7 @@ export default function CalculatorClient() {
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   saveFeedback
                     ? 'bg-green-600 text-white'
-                    : 'bg-navy-700 hover:bg-navy-600 text-white'
+                    : 'bg-[#18181b] hover:bg-[#27272a] text-white'
                 }`}
               >
                 {saveFeedback ? '✓ Deal saved' : 'Save Deal'}
@@ -2221,7 +2221,7 @@ export default function CalculatorClient() {
                 if (e.key === 'Escape') setSaveModalOpen(false)
               }}
               autoFocus
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-navy-700 mb-4"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#18181b] mb-4"
             />
             <div className="flex gap-3">
               <button
@@ -2232,7 +2232,7 @@ export default function CalculatorClient() {
               </button>
               <button
                 onClick={confirmSaveDeal}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-navy-700 hover:bg-navy-600 transition-colors"
+                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
               >
                 Save
               </button>
@@ -2256,7 +2256,7 @@ export default function CalculatorClient() {
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleDupOverwrite}
-                className="w-full py-2 rounded-lg text-sm font-semibold text-white bg-navy-700 hover:bg-navy-600 transition-colors"
+                className="w-full py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
               >
                 Overwrite
               </button>

@@ -10,7 +10,7 @@ export default function AreasPage() {
   ]
 
   return (
-    <div className="bg-[#F5F5F2] min-h-screen">
+    <div className="bg-[#fafafa] min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="mb-12">
           <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3">Area guides</p>

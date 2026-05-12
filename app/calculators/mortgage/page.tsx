@@ -74,7 +74,7 @@ function ResidencySelector({
             i > 0 ? 'border-l border-gray-200' : ''
           } ${
             value === opt
-              ? 'bg-[#1a2744] text-white'
+              ? 'bg-[#18181b] text-white'
               : 'bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800'
           }`}
         >
@@ -171,7 +171,7 @@ function EditableSlider({
           <input
             type="text"
             inputMode="decimal"
-            className="text-sm font-semibold text-gray-900 text-right bg-gray-50 border border-gray-200 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-navy-700 focus:bg-white"
+            className="text-sm font-semibold text-gray-900 text-right bg-gray-50 border border-gray-200 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-[#18181b] focus:bg-white"
             value={editing ? raw : formatted}
             onFocus={() => {
               setRaw(decimalPlaces > 0 ? value.toFixed(decimalPlaces) : String(Math.round(value)))
@@ -287,7 +287,7 @@ export default function MortgageCalculatorPage() {
   const depositBumped = depositPct === minDeposit && minDeposit > (residency === 'national' ? 15 : residency === 'resident' ? 20 : 40)
 
   return (
-    <div className="bg-[#F5F5F2] min-h-screen">
+    <div className="bg-[#fafafa] min-h-screen">
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-8">
         <div className="max-w-3xl mx-auto">
           <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">UAE mortgage</p>

@@ -2,21 +2,21 @@ import Link from 'next/link'
 
 export default function Home() {
   return (
-    <div className="bg-[#F5F5F2] min-h-screen">
+    <div className="bg-[#fafafa] min-h-screen">
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-20">
         <div className="max-w-2xl">
           {/* PLACEHOLDER: Update tag line */}
-          <p className="text-gray-500 text-sm font-semibold uppercase tracking-widest mb-4">
+          <p className="text-[#71717a] text-sm font-semibold uppercase tracking-widest mb-4">
             Dubai Independent Buyer&apos;s Agent
           </p>
           {/* PLACEHOLDER: Update headline */}
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl font-bold text-[#18181b] leading-tight mb-6">
             Find the right property.<br />
-            <span className="text-[#1e3a5f]">Know exactly what it's worth.</span>
+            <span className="text-[#27272a]">Know exactly what it&apos;s worth.</span>
           </h1>
           {/* PLACEHOLDER: Update subheading */}
-          <p className="text-gray-600 text-lg leading-relaxed mb-10">
+          <p className="text-[#71717a] text-lg leading-relaxed mb-10">
             I help investors cut through Dubai&apos;s off-plan noise and buy property
             with clear eyes — the right unit, at the right price, with real numbers
             behind every decision.
@@ -36,7 +36,7 @@ export default function Home() {
             {/* PLACEHOLDER: Replace hello@yourdomain.com with your email */}
             <a
               href="mailto:hello@yourdomain.com"
-              className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold px-6 py-3 rounded-lg border border-gray-200 transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold px-6 py-3 rounded-lg border border-[#e4e4e7] transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -48,10 +48,10 @@ export default function Home() {
       </section>
 
       {/* What I do */}
-      <section className="border-t border-gray-200">
+      <section className="border-t border-[#e4e4e7]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
           {/* PLACEHOLDER: Update section heading */}
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-12">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-[#71717a] mb-12">
             What I do
           </h2>
           <div className="grid sm:grid-cols-3 gap-8">
@@ -70,9 +70,9 @@ export default function Home() {
                 body: 'Placeholder — describe what you handle from first look to keys: negotiation, legal, payments, handover.',
               },
             ].map(({ title, body }) => (
-              <div key={title} className="border-t border-gray-200 pt-6">
-                <h3 className="text-gray-900 font-semibold text-base mb-3">{title}</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">{body}</p>
+              <div key={title} className="border-t border-[#e4e4e7] pt-6">
+                <h3 className="text-[#18181b] font-semibold text-base mb-3">{title}</h3>
+                <p className="text-[#71717a] text-sm leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
@@ -80,23 +80,23 @@ export default function Home() {
       </section>
 
       {/* CTA band */}
-      <section className="border-t border-gray-200 bg-white">
+      <section className="border-t border-[#e4e4e7] bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             {/* PLACEHOLDER: Update CTA heading and sub-text */}
-            <h2 className="text-gray-900 font-bold text-xl mb-1">Ready to run the numbers?</h2>
-            <p className="text-gray-600 text-sm">Use the investment calculator or get in touch directly.</p>
+            <h2 className="text-[#18181b] font-bold text-xl mb-1">Ready to run the numbers?</h2>
+            <p className="text-[#71717a] text-sm">Use the investment calculator or get in touch directly.</p>
           </div>
           <div className="flex gap-3 flex-shrink-0">
             <Link
               href="/calculators/investment"
-              className="bg-[#1a2744] hover:bg-[#1e3a5f] text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              className="bg-[#18181b] hover:bg-[#27272a] text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
             >
               Open calculator
             </Link>
             <Link
               href="/work-with-me"
-              className="bg-transparent border border-gray-300 text-gray-700 font-semibold px-5 py-2.5 rounded-lg text-sm hover:bg-gray-100 transition-colors"
+              className="bg-transparent border border-[#e4e4e7] text-[#71717a] font-semibold px-5 py-2.5 rounded-lg text-sm hover:bg-[#e4e4e7] transition-colors"
             >
               Work with me
             </Link>

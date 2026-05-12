@@ -30,7 +30,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-navy-700 focus:border-transparent"
+        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#18181b] focus:border-transparent"
       />
     </div>
   )
@@ -88,11 +88,11 @@ export default function AdminGeneratePage() {
 
   if (!authed) {
     return (
-      <div className="bg-navy-950 min-h-screen flex items-center justify-center px-4">
+      <div className="bg-[#fafafa] min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <p className="text-navy-600 text-xs font-semibold uppercase tracking-widest mb-2">Admin</p>
-            <h1 className="text-2xl font-bold text-white">Generate calculator link</h1>
+            <p className="text-[#27272a] text-xs font-semibold uppercase tracking-widest mb-2">Admin</p>
+            <h1 className="text-2xl font-bold text-[#18181b]">Generate calculator link</h1>
           </div>
           <form onSubmit={handleLogin} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
             <div>
@@ -103,7 +103,7 @@ export default function AdminGeneratePage() {
                 type="password"
                 value={pw}
                 onChange={e => setPw(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-navy-700 focus:border-transparent"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#18181b] focus:border-transparent"
                 autoFocus
               />
               {pwError && (
@@ -112,7 +112,7 @@ export default function AdminGeneratePage() {
             </div>
             <button
               type="submit"
-              className="w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+              className="w-full bg-[#18181b] hover:bg-[#27272a] text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
             >
               Enter
             </button>
@@ -123,12 +123,12 @@ export default function AdminGeneratePage() {
   }
 
   return (
-    <div className="bg-navy-950 min-h-screen">
+    <div className="bg-[#fafafa] min-h-screen">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <div className="mb-8">
-          <p className="text-navy-600 text-xs font-semibold uppercase tracking-widest mb-2">Admin · Private</p>
-          <h1 className="text-2xl font-bold text-white mb-1">Generate calculator link</h1>
-          <p className="text-sm text-navy-100">
+          <p className="text-[#27272a] text-xs font-semibold uppercase tracking-widest mb-2">Admin · Private</p>
+          <h1 className="text-2xl font-bold text-[#18181b] mb-1">Generate calculator link</h1>
+          <p className="text-sm text-[#71717a]">
             Fill in property details and copy the pre-filled calculator URL to share with a client.
           </p>
         </div>
@@ -161,7 +161,7 @@ export default function AdminGeneratePage() {
               className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors ${
                 copied
                   ? 'bg-green-600 text-white'
-                  : 'bg-navy-900 hover:bg-navy-800 text-white'
+                  : 'bg-[#18181b] hover:bg-[#27272a] text-white'
               }`}
             >
               {copied ? (

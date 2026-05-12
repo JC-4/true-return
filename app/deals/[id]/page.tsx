@@ -68,7 +68,7 @@ export default async function DealPage({
 
   // 3. Not found
   return (
-    <div className="bg-brand-bg min-h-screen flex items-center justify-center px-4">
+    <div className="bg-[#fafafa] min-h-screen flex items-center justify-center px-4">
       <div className="text-center">
         <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-5">
           <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,7 +80,7 @@ export default async function DealPage({
         <p className="text-sm text-gray-500 mb-6">This link may have expired or the deal was never saved.</p>
         <Link
           href="/calculators/investment"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-brand-black hover:bg-brand-surface transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
         >
           Open calculator
         </Link>

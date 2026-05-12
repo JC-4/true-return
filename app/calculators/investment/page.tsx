@@ -5,8 +5,8 @@ export default function CalculatorPage() {
   return (
     <Suspense
       fallback={
-        <div className="bg-navy-950 min-h-screen flex items-center justify-center">
-          <p className="text-navy-100 text-sm">Loading calculator…</p>
+        <div className="bg-[#fafafa] min-h-screen flex items-center justify-center">
+          <p className="text-[#71717a] text-sm">Loading calculator…</p>
         </div>
       }
     >
