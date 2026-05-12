@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+const MAX_COMPARE = 4
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DealParams = {
@@ -82,12 +84,21 @@ const gradeColor: Record<string, string> = {
 
 // ─── Deal card ────────────────────────────────────────────────────────────────
 
-function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: string) => void }) {
+function DealCard({
+  deal, onDelete, comparing, selected, onToggle,
+}: {
+  deal: Deal
+  onDelete: (id: string) => void
+  comparing: boolean
+  selected: boolean
+  onToggle: (id: string) => void
+}) {
   const router = useRouter()
   const m = deal.calculatedMetrics
   const p = deal.params
 
-  function handleDelete() {
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation()
     if (window.confirm(`Delete "${deal.name}"? This cannot be undone.`)) {
       onDelete(deal.id)
     }
@@ -97,12 +108,32 @@ function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: string) => vo
     .filter(Boolean).join(' · ')
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+    <div
+      onClick={comparing ? () => onToggle(deal.id) : undefined}
+      className={`bg-white rounded-2xl border shadow-sm flex flex-col transition-colors ${
+        comparing ? 'cursor-pointer' : ''
+      } ${
+        selected
+          ? 'border-[#10b981] ring-1 ring-[#10b981]'
+          : 'border-gray-100'
+      }`}
+    >
       {/* Card header */}
-      <div className="p-5 border-b border-gray-50">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="text-sm font-semibold text-gray-900 leading-snug">{deal.name}</h3>
-          {m.grade && (
+      <div className="p-5 border-b border-gray-50 relative">
+        {comparing && (
+          <div className={`absolute top-4 right-4 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+            selected ? 'bg-[#10b981] border-[#10b981]' : 'bg-white border-gray-300'
+          }`}>
+            {selected && (
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        )}
+        <div className={`flex items-start gap-2 mb-1 ${comparing ? 'pr-8' : ''}`}>
+          <h3 className="text-sm font-semibold text-gray-900 leading-snug flex-1">{deal.name}</h3>
+          {!comparing && m.grade && (
             <span className={`text-lg font-bold flex-shrink-0 ${gradeColor[m.grade] ?? 'text-gray-400'}`}>
               {m.grade}
             </span>
@@ -150,27 +181,29 @@ function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: string) => vo
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="px-5 pb-5 flex gap-2">
-        <button
-          onClick={() => router.push(`/deals/${deal.id}`)}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
-        >
-          Analyse
-        </button>
-        <button
-          onClick={() => router.push(buildCalcUrl(p))}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold text-[#18181b] bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          Edit
-        </button>
-        <button
-          onClick={handleDelete}
-          className="px-3 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
-        >
-          Del
-        </button>
-      </div>
+      {/* Actions — hidden in compare mode */}
+      {!comparing && (
+        <div className="px-5 pb-5 flex gap-2">
+          <button
+            onClick={() => router.push(`/deals/${deal.id}`)}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
+          >
+            Analyse
+          </button>
+          <button
+            onClick={() => router.push(buildCalcUrl(p))}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold text-[#18181b] bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-3 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+          >
+            Del
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -178,8 +211,11 @@ function DealCard({ deal, onDelete }: { deal: Deal; onDelete: (id: string) => vo
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DealsPage() {
-  const [deals, setDeals] = useState<Deal[]>([])
-  const [loaded, setLoaded] = useState(false)
+  const router = useRouter()
+  const [deals, setDeals]       = useState<Deal[]>([])
+  const [loaded, setLoaded]     = useState(false)
+  const [comparing, setComparing] = useState(false)
+  const [selected, setSelected]   = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetch('/api/user/deals')
@@ -195,24 +231,77 @@ export default function DealsPage() {
   async function deleteDeal(id: string) {
     await fetch(`/api/user/deals/${id}`, { method: 'DELETE' })
     setDeals(prev => prev.filter(d => d.id !== id))
+    setSelected(prev => { const s = new Set(prev); s.delete(id); return s })
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) { s.delete(id) } else if (s.size < MAX_COMPARE) { s.add(id) }
+      return s
+    })
+  }
+
+  function startComparing() {
+    setSelected(new Set())
+    setComparing(true)
+  }
+
+  function cancelComparing() {
+    setSelected(new Set())
+    setComparing(false)
+  }
+
+  function goCompare() {
+    const ids = Array.from(selected).join(',')
+    router.push(`/compare?ids=${ids}`)
   }
 
   return (
-    <div className="bg-[#fafafa] min-h-screen pb-20">
+    <div className="bg-[#fafafa] min-h-screen pb-28">
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Saved Deals</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
+              {comparing ? 'Select deals to compare' : 'Saved Deals'}
+            </h1>
             <p className="text-sm text-gray-600">
-              {loaded && deals.length > 0 ? `${deals.length} deal${deals.length !== 1 ? 's' : ''} saved` : 'Your saved investment analyses'}
+              {comparing
+                ? selected.size === 0
+                  ? `Select 2–${MAX_COMPARE} deals`
+                  : `${selected.size} selected`
+                : loaded && deals.length > 0
+                  ? `${deals.length} deal${deals.length !== 1 ? 's' : ''} saved`
+                  : 'Your saved investment analyses'}
             </p>
           </div>
-          <Link
-            href="/calculators/investment"
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors"
-          >
-            + New analysis
-          </Link>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {comparing ? (
+              <button
+                onClick={cancelComparing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+            ) : (
+              <>
+                {loaded && deals.length >= 2 && (
+                  <button
+                    onClick={startComparing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Compare deals
+                  </button>
+                )}
+                <Link
+                  href="/calculators/investment"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+                >
+                  + New analysis
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -238,11 +327,35 @@ export default function DealsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {deals.map(deal => (
-              <DealCard key={deal.id} deal={deal} onDelete={deleteDeal} />
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                onDelete={deleteDeal}
+                comparing={comparing}
+                selected={selected.has(deal.id)}
+                onToggle={toggleSelect}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Fixed bottom bar — visible when ≥2 selected */}
+      {comparing && selected.size >= 2 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 sm:px-6 py-4 z-30">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            <p className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">{selected.size} deals</span> selected
+            </p>
+            <button
+              onClick={goCompare}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
+            >
+              Compare {selected.size} deals →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
