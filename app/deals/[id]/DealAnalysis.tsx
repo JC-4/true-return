@@ -68,10 +68,10 @@ function buildCalcUrl(p: DealParams): string {
 }
 
 const GRADE_VERDICT: Record<string, string> = {
-  A: 'Exceptional deal', B: 'Strong deal', C: 'Good deal', D: 'Weak deal', F: 'Poor deal',
+  'A+': 'Exceptional deal', A: 'Great deal', B: 'Good deal', C: 'Average deal', D: 'Weak deal', F: 'Poor deal',
 }
 const GRADE_COLOR: Record<string, string> = {
-  A: 'text-emerald-400', B: 'text-emerald-400', C: 'text-yellow-400',
+  'A+': 'text-emerald-300', A: 'text-emerald-400', B: 'text-emerald-400', C: 'text-yellow-400',
   D: 'text-orange-400', F: 'text-red-400',
 }
 
@@ -245,45 +245,46 @@ function ScoreBreakdownPanel({ score, grade, breakdown }: {
   score: number; grade: string; breakdown: ScoreBreakdown
 }) {
   const rows = [
-    { label: 'Net yield',      pts: breakdown.yieldPts  },
-    { label: 'Developer tier', pts: breakdown.devPts    },
-    { label: 'Capital growth', pts: breakdown.growthPts },
-    { label: 'Property type',  pts: breakdown.propPts   },
+    {
+      label: `Net yield`,
+      sub: `${breakdown.yieldPts.toFixed(1)} / 35`,
+      pts: breakdown.yieldPts,
+      max: 35,
+    },
+    {
+      label: `Unleveraged IRR${breakdown.scoringIrr !== null ? ` (${breakdown.scoringIrr.toFixed(1)}%)` : ''}`,
+      sub: `${breakdown.irrPts.toFixed(1)} / 35`,
+      pts: breakdown.irrPts,
+      max: 35,
+    },
+    {
+      label: 'Developer tier',
+      sub: `${breakdown.devPts} / 20`,
+      pts: breakdown.devPts,
+      max: 20,
+    },
+    {
+      label: breakdown.preCompletionROE !== null
+        ? `Pre-completion ROE (${breakdown.preCompletionROE.toFixed(1)}%)`
+        : 'Secondary / property type',
+      sub: `${breakdown.roePts} / 10`,
+      pts: breakdown.roePts,
+      max: 10,
+    },
   ]
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Base points</p>
+    <div className="space-y-2.5">
       {rows.map(r => (
-        <div key={r.label} className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, (r.pts / 35) * 100)}%` }} />
+        <div key={r.label}>
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-xs text-gray-500 truncate pr-2">{r.label}</span>
+            <span className="text-xs font-semibold text-gray-800 flex-shrink-0">{r.sub}</span>
           </div>
-          <span className="text-xs text-gray-500 w-28 truncate">{r.label}</span>
-          <span className="text-xs font-semibold text-gray-800 w-8 text-right">{r.pts.toFixed(1)}</span>
+          <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, (r.pts / r.max) * 100)}%` }} />
+          </div>
         </div>
       ))}
-      {breakdown.bonuses.length > 0 && (
-        <>
-          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mt-4 mb-2">Bonuses</p>
-          {breakdown.bonuses.map(b => (
-            <div key={b.label} className="flex justify-between text-xs">
-              <span className="text-gray-500">{b.label}</span>
-              <span className="font-semibold text-emerald-600">+{b.pts.toFixed(1)}</span>
-            </div>
-          ))}
-        </>
-      )}
-      {breakdown.penalties.length > 0 && (
-        <>
-          <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mt-4 mb-2">Penalties</p>
-          {breakdown.penalties.map(pen => (
-            <div key={pen.label} className="flex justify-between text-xs">
-              <span className="text-gray-500">{pen.label}</span>
-              <span className="font-semibold text-red-500">{pen.pts}</span>
-            </div>
-          ))}
-        </>
-      )}
     </div>
   )
 }

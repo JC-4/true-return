@@ -52,13 +52,18 @@ export const PLAN_COLORS = [
 export type PlanRow = { id: string; label: string; date: string; pct: number; handover?: boolean }
 
 export type ScoreBreakdown = {
-  yieldPts: number; devPts: number; growthPts: number; propPts: number
+  /** Net yield factor (35 pts max) */
+  yieldPts: number
+  /** Unleveraged IRR factor (35 pts max) */
+  irrPts: number
+  /** Developer tier factor (20 pts max) */
+  devPts: number
+  /** Pre-completion ROE / property type factor (10 pts max) */
+  roePts: number
+  /** Computed pre-completion ROE %, or null if secondary / no handover value */
   preCompletionROE: number | null
-  irrBonusPts: number
-  spread: number
-  roeValue: number
-  bonuses: Array<{ label: string; pts: number }>
-  penalties: Array<{ label: string; pts: number }>
+  /** Unleveraged IRR used for scoring (may differ from displayed leveraged IRR) */
+  scoringIrr: number | null
 }
 
 export type DealMetrics = {
@@ -238,40 +243,58 @@ export function buildAndSolveIRR({
 
 // ─── Score ────────────────────────────────────────────────────────────────────
 
+/**
+ * Investment scoring system — 4 factors, 100 pts total. No bonuses or penalties.
+ *
+ * Factor 1 — Net yield     (35 pts max): 35 × (1 − e^(−yield / 5))
+ *   Calibrated anchors: 5% ≈ 22, 5.5% ≈ 23, 5.95% ≈ 25, 6.3% ≈ 26, 7% ≈ 27
+ *
+ * Factor 2 — Unleveraged IRR (35 pts max): 35 × (1 − e^(−irr / 7.5))
+ *   Calibrated anchors: 6% ≈ 7, 8% ≈ 18, 8.9% ≈ 21, 10.5% ≈ 27, 12.5% ≈ 33
+ *   Always uses mortgageOn: false regardless of actual deal structure.
+ *
+ * Factor 3 — Developer tier (20 pts max): Tier 1 = 20, Tier 2 = 14, Tier 3/null = 6
+ *
+ * Factor 4 — Pre-completion ROE / property type (10 pts max):
+ *   Secondary: flat 10 pts
+ *   Off-plan with handoverValue: banded by ROE = (handoverValue − price) / cashDeployedPreCompletion
+ *     50%+: 10 | 35–50%: 9 | 20–35%: 8 | 10–20%: 6 | 5–10%: 3 | 0–5%: 1
+ *   Off-plan without handoverValue: 0 pts
+ *
+ * Grade thresholds: A+ ≥ 90, A ≥ 80, B ≥ 70, C ≥ 60, D ≥ 50, F < 50
+ */
 export function calculateInvestmentScore({
-  netYield, growth, developerTier, paymentPlan, propertyType, completion,
-  price, handoverValue, mortgageOn, interestRate, roeY1, irr, hasServiceCharge,
+  netYield, developerTier, paymentPlan, propertyType,
+  price, handoverValue, scoringIrr, hasServiceCharge,
   dldPct, agencyFeePct, adminFee,
 }: {
-  netYield: number; growth: number; developerTier: number | null; paymentPlan: PlanRow[]
-  propertyType: 'offplan' | 'secondary'; completion: string
-  price: number; handoverValue: number
-  mortgageOn: boolean; interestRate: number; roeY1: number; irr: number | null
+  netYield: number
+  developerTier: number | null
+  paymentPlan: PlanRow[]
+  propertyType: 'offplan' | 'secondary'
+  price: number
+  handoverValue: number
+  scoringIrr: number | null
   hasServiceCharge: boolean
-  dldPct: number; agencyFeePct: number; adminFee: number
+  dldPct: number
+  agencyFeePct: number
+  adminFee: number
 }): { score: number; grade: string; missingItems: string[]; breakdown: ScoreBreakdown } {
-  const yieldPts  = Math.min(35, 35 * (1 - Math.exp(-netYield / 3.5)))
-  let   devPts    = 8
+
+  // Factor 1: Net yield (35 pts max) — exponential curve, k = 4
+  const yieldPts = Math.min(35, 35 * (1 - Math.exp(-netYield / 4)))
+
+  // Factor 2: Unleveraged IRR (35 pts max) — exponential curve, k = 7.5
+  const irrPts = scoringIrr !== null && scoringIrr > 0
+    ? Math.min(35, 35 * (1 - Math.exp(-scoringIrr / 7.5)))
+    : 0
+
+  // Factor 3: Developer tier (20 pts max) — categorical slabs
+  let devPts = 6  // Tier 3 or unknown/null
   if      (developerTier === 1) devPts = 20
   else if (developerTier === 2) devPts = 14
-  const growthPts = Math.min(15, 15 * (1 - Math.exp(-growth / 4)))
 
-  const completionMonths = getMonthsToCompletion(completion) ?? null
-  let propPts = 0
-  if (propertyType === 'secondary') {
-    propPts = 15
-  } else {
-    if      (completionMonths === null)    propPts = 6
-    else if (completionMonths <= 12)       propPts = 15
-    else if (completionMonths <= 24)       propPts = 12
-    else if (completionMonths <= 36)       propPts = 8
-    else if (completionMonths <= 48)       propPts = 4
-    else                                   propPts = 2
-  }
-
-  let total = yieldPts + devPts + growthPts + propPts
-  const bonuses: ScoreBreakdown['bonuses'] = []
-
+  // Factor 4: Pre-completion ROE / property type (10 pts max)
   const hasPaymentPlan = paymentPlan.length > 0
   const hasHandoverRow = hasPaymentPlan && paymentPlan.some(r => r.handover)
   const preHandoverInstalments = hasHandoverRow
@@ -279,55 +302,35 @@ export function calculateInvestmentScore({
     : price
   const acquisitionCosts = (dldPct / 100 * price) + adminFee + (agencyFeePct / 100 * price)
   const cashDeployedPreCompletion = preHandoverInstalments + acquisitionCosts
+
+  let roePts = 0
   let preCompletionROE: number | null = null
-  if (propertyType === 'offplan' && handoverValue > price && price > 0 && acquisitionCosts > 0 && cashDeployedPreCompletion > 0) {
+
+  if (propertyType === 'secondary') {
+    roePts = 10
+  } else if (handoverValue > 0 && price > 0 && cashDeployedPreCompletion > 0) {
     preCompletionROE = ((handoverValue - price) / cashDeployedPreCompletion) * 100
-    const gainBonus = Math.min(20, 20 * (1 - Math.exp(-preCompletionROE / 25)))
-    if (gainBonus > 0.05) { total += gainBonus; bonuses.push({ label: `Pre-completion ROE (${preCompletionROE.toFixed(1)}%)`, pts: Math.round(gainBonus * 10) / 10 }) }
+    if      (preCompletionROE >= 50) roePts = 10
+    else if (preCompletionROE >= 35) roePts = 9
+    else if (preCompletionROE >= 20) roePts = 8
+    else if (preCompletionROE >= 10) roePts = 6
+    else if (preCompletionROE >= 5)  roePts = 3
+    else                             roePts = 1
   }
+  // else: off-plan with no handover value → 0 pts
 
-  let irrBonusPts = 0
-  if (irr !== null && irr > 0) {
-    irrBonusPts = Math.min(6, 6 * (1 - Math.exp(-irr / 8)))
-    if (irrBonusPts > 0.05) { total += irrBonusPts; bonuses.push({ label: `IRR bonus (${irr.toFixed(1)}%)`, pts: Math.round(irrBonusPts * 10) / 10 }) }
-  }
-
-  const spread = netYield - interestRate
-  let gearingBonus = 0
-  if (mortgageOn) {
-    if      (spread >= 1.5) gearingBonus = 5
-    else if (spread >= 0.5) gearingBonus = 2
-    if (gearingBonus > 0) { total += gearingBonus; bonuses.push({ label: `Positive gearing (spread ${spread.toFixed(1)}%)`, pts: gearingBonus }) }
-  }
-
-  let roeBonusPts = 0
-  if (mortgageOn && roeY1 > 0) {
-    roeBonusPts = Math.min(5, 5 * (1 - Math.exp(-roeY1 / 6)))
-    if (roeBonusPts > 0.05) { total += roeBonusPts; bonuses.push({ label: `Strong ROE (${roeY1.toFixed(1)}%)`, pts: Math.round(roeBonusPts * 10) / 10 }) }
-  }
-
-  if (propertyType === 'offplan' && developerTier === 1 && completionMonths !== null && completionMonths <= 24) {
-    total += 2; bonuses.push({ label: 'Low completion risk', pts: 2 })
-  }
-
-  const penalties: ScoreBreakdown['penalties'] = []
-  if (mortgageOn && netYield < interestRate)                                                             { total -= 5; penalties.push({ label: 'Negative gearing', pts: -5 }) }
-  if (propertyType === 'offplan' && developerTier === 3 && completionMonths !== null && completionMonths > 36) { total -= 8; penalties.push({ label: 'High-risk off-plan', pts: -8 }) }
-  if (propertyType === 'offplan' && completionMonths !== null && completionMonths > 48)                  { total -= 3; penalties.push({ label: 'Very long completion', pts: -3 }) }
-
+  const total = yieldPts + irrPts + devPts + roePts
   const score = Math.min(100, Math.max(0, Math.round(total)))
-  const grade = score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : score >= 40 ? 'D' : 'F'
+  const grade = score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : score >= 50 ? 'D' : 'F'
 
   const missingItems: string[] = []
-  if (propertyType === 'offplan' && handoverValue <= 0)     missingItems.push('No handover value entered')
-  if (propertyType === 'offplan' && !completion)             missingItems.push('No completion date entered')
-  if (propertyType === 'offplan' && !hasPaymentPlan)         missingItems.push('No payment plan entered')
-  if (!hasServiceCharge)                                     missingItems.push('No service charge entered')
-  if (propertyType === 'offplan' && developerTier === null)  missingItems.push('No developer selected')
+  if (propertyType === 'offplan' && handoverValue <= 0)    missingItems.push('No handover value entered')
+  if (!hasServiceCharge)                                   missingItems.push('No service charge entered')
+  if (propertyType === 'offplan' && developerTier === null) missingItems.push('No developer selected')
 
   return {
     score, grade, missingItems,
-    breakdown: { yieldPts, devPts, growthPts, propPts, preCompletionROE, irrBonusPts, spread, roeValue: roeY1, bonuses, penalties },
+    breakdown: { yieldPts, irrPts, devPts, roePts, preCompletionROE, scoringIrr },
   }
 }
 
@@ -402,6 +405,14 @@ export function computeDealMetrics(params: {
       })
     : null
 
+  // ── Scoring IRR (unleveraged — mortgageOn: false regardless of actual settings) ──
+  const scoringIrr = price > 0 && rent > 0
+    ? buildAndSolveIRR({
+        price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+        mortgageOn: false,
+      })
+    : null
+
   // ── Gain on paper ─────────────────────────────────────────────────────────
   const gainOnPaper    = propertyType === 'offplan' && handoverValue > 0 ? handoverValue - price : 0
   const gainOnPaperPct = price > 0 && handoverValue > 0 ? (gainOnPaper / price) * 100 : 0
@@ -434,9 +445,8 @@ export function computeDealMetrics(params: {
     : null
 
   const { score, grade, missingItems, breakdown } = calculateInvestmentScore({
-    netYield, growth, developerTier, paymentPlan, propertyType, completion,
-    price, handoverValue,
-    mortgageOn, interestRate, roeY1, irr,
+    netYield, developerTier, paymentPlan, propertyType,
+    price, handoverValue, scoringIrr,
     hasServiceCharge: scRate > 0,
     dldPct, agencyFeePct, adminFee,
   })

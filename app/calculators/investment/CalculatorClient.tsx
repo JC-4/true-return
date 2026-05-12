@@ -3,6 +3,7 @@ import { useSearchParams } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { calculateInvestmentScore, type ScoreBreakdown } from '@/lib/calculations'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -242,146 +243,6 @@ function buildAndSolveIRR({
   flows[exitYear] += annualCashflow + exitValue - (mortgageOn ? balanceAt(exitYear) : 0)
 
   return solveIRR(flows)
-}
-
-// ─── Investment score ─────────────────────────────────────────────────────────
-
-type ScoreBreakdown = {
-  yieldPts: number; devPts: number; growthPts: number; propPts: number
-  preCompletionROE: number | null    // for display label
-  irrBonusPts: number                // for display label
-  spread: number                     // for display label
-  roeValue: number                   // for display label
-  bonuses: Array<{ label: string; pts: number }>
-  penalties: Array<{ label: string; pts: number }>
-}
-
-function calculateInvestmentScore({
-  netYield, growth, developerTier, paymentPlan, propertyType, completion,
-  price, handoverValue, mortgageOn, interestRate, roeY1, irr, hasServiceCharge,
-  dldPct, agencyFeePct, adminFee,
-}: {
-  netYield: number; growth: number; developerTier: number | null; paymentPlan: PlanRow[]
-  propertyType: 'offplan' | 'secondary'; completion: string
-  price: number; handoverValue: number
-  mortgageOn: boolean; interestRate: number; roeY1: number; irr: number | null
-  hasServiceCharge: boolean
-  dldPct: number; agencyFeePct: number; adminFee: number
-}): { score: number; grade: string; missingItems: string[]; breakdown: ScoreBreakdown } {
-
-  // ── Base components (85 pts max) ─────────────────────────────────────────────
-
-  // Net yield: 35pts max — ~5%≈22, ~6%≈30, ~7%≈34, ~8%+≈35
-  const yieldPts = Math.min(35, 35 * (1 - Math.exp(-netYield / 3.5)))
-
-  // Developer tier: 20pts (categorical — slabs correct for discrete tiers)
-  let devPts = 8 // Tier 3 or none selected
-  if      (developerTier === 1) devPts = 20
-  else if (developerTier === 2) devPts = 14
-
-  // Capital growth: 15pts max — ~3%≈7, ~5%≈10, ~8%≈13, ~10%+≈15
-  const growthPts = Math.min(15, 15 * (1 - Math.exp(-growth / 4)))
-
-  // Property type: 15pts — timeline only for off-plan, 15 flat for secondary
-  const completionMonths = getMonthsToCompletion(completion) ?? null
-  let propPts = 0
-  if (propertyType === 'secondary') {
-    propPts = 15
-  } else {
-    if (completionMonths === null)       propPts = 6
-    else if (completionMonths <= 12)    propPts = 15
-    else if (completionMonths <= 24)    propPts = 12
-    else if (completionMonths <= 36)    propPts = 8
-    else if (completionMonths <= 48)    propPts = 4
-    else                                propPts = 2
-  }
-
-  let total = yieldPts + devPts + growthPts + propPts
-
-  // ── Bonus points ─────────────────────────────────────────────────────────────
-  const bonuses: ScoreBreakdown['bonuses'] = []
-
-  // Pre-completion ROE: max 20pts. Off-plan only, requires handoverValue > price and acquisitionCosts > 0.
-  const hasPaymentPlan  = paymentPlan.length > 0
-  const hasHandoverRow  = hasPaymentPlan && paymentPlan.some(r => r.handover)
-  const preHandoverInstalments = hasHandoverRow
-    ? paymentPlan.filter(r => !r.handover).reduce((sum, r) => sum + (r.pct / 100 * price), 0)
-    : price // no plan or no handover marked — assume full price deployed pre-completion
-  const acquisitionCosts = (dldPct / 100 * price) + adminFee + (agencyFeePct / 100 * price)
-  const cashDeployedPreCompletion = preHandoverInstalments + acquisitionCosts
-  const gainOnPaperAmt = handoverValue - price
-  let preCompletionROE: number | null = null
-  if (
-    propertyType === 'offplan' &&
-    handoverValue > price &&
-    price > 0 &&
-    acquisitionCosts > 0 &&
-    cashDeployedPreCompletion > 0
-  ) {
-    preCompletionROE = (gainOnPaperAmt / cashDeployedPreCompletion) * 100
-    const gainBonus = Math.min(20, 20 * (1 - Math.exp(-preCompletionROE / 25)))
-    if (gainBonus > 0.05) { total += gainBonus; bonuses.push({ label: `Pre-completion ROE (${preCompletionROE.toFixed(1)}%)`, pts: Math.round(gainBonus * 10) / 10 }) }
-  }
-
-  // IRR bonus: max 6pts. Only when IRR calculable and positive.
-  let irrBonusPts = 0
-  if (irr !== null && irr > 0) {
-    irrBonusPts = Math.min(6, 6 * (1 - Math.exp(-irr / 8)))
-    if (irrBonusPts > 0.05) { total += irrBonusPts; bonuses.push({ label: `IRR bonus (${irr.toFixed(1)}%)`, pts: Math.round(irrBonusPts * 10) / 10 }) }
-  }
-
-  // Positive gearing: max 5pts, mortgage active only. Based on spread.
-  const spread = netYield - interestRate
-  let gearingBonus = 0
-  if (mortgageOn) {
-    if      (spread >= 1.5) gearingBonus = 5
-    else if (spread >= 0.5) gearingBonus = 2
-    if (gearingBonus > 0) { total += gearingBonus; bonuses.push({ label: `Positive gearing (spread ${spread.toFixed(1)}%)`, pts: gearingBonus }) }
-  }
-
-  // Strong ROE: max 5pts, mortgage active only. Continuous curve.
-  let roeBonusPts = 0
-  if (mortgageOn && roeY1 > 0) {
-    roeBonusPts = Math.min(5, 5 * (1 - Math.exp(-roeY1 / 6)))
-    if (roeBonusPts > 0.05) { total += roeBonusPts; bonuses.push({ label: `Strong ROE (${roeY1.toFixed(1)}%)`, pts: Math.round(roeBonusPts * 10) / 10 }) }
-  }
-
-  // Low completion risk: 2pts, off-plan only, Tier 1 + completion ≤ 24 months
-  if (propertyType === 'offplan' && developerTier === 1 && completionMonths !== null && completionMonths <= 24) {
-    total += 2; bonuses.push({ label: 'Low completion risk', pts: 2 })
-  }
-
-  // ── Risk penalties ───────────────────────────────────────────────────────────
-  const penalties: ScoreBreakdown['penalties'] = []
-
-  if (mortgageOn && netYield < interestRate) {
-    total -= 5; penalties.push({ label: 'Negative gearing', pts: -5 })
-  }
-  if (propertyType === 'offplan' && developerTier === 3 && completionMonths !== null && completionMonths > 36) {
-    total -= 8; penalties.push({ label: 'High-risk off-plan', pts: -8 })
-  }
-  if (propertyType === 'offplan' && completionMonths !== null && completionMonths > 48) {
-    total -= 3; penalties.push({ label: 'Very long completion', pts: -3 })
-  }
-
-  // ── Output ───────────────────────────────────────────────────────────────────
-
-  const score = Math.min(100, Math.max(0, Math.round(total)))
-  const grade = score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 55 ? 'C' : score >= 40 ? 'D' : 'F'
-
-  // Missing data indicator — specific items only
-  const missingItems: string[] = []
-  if (propertyType === 'offplan' && handoverValue <= 0)        missingItems.push('No handover value entered')
-  if (propertyType === 'offplan' && !completion)               missingItems.push('No completion date entered')
-  if (propertyType === 'offplan' && !hasPaymentPlan)           missingItems.push('No payment plan entered (assuming full price deployed pre-completion)')
-  if (propertyType === 'offplan' && hasPaymentPlan && !hasHandoverRow) missingItems.push('No handover instalment marked in payment plan')
-  if (!hasServiceCharge)                                       missingItems.push('No service charge entered')
-  if (propertyType === 'offplan' && developerTier === null)    missingItems.push('No developer selected')
-
-  return {
-    score, grade, missingItems,
-    breakdown: { yieldPts, devPts, growthPts, propPts, preCompletionROE, irrBonusPts, spread, roeValue: roeY1, bonuses, penalties },
-  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -1285,12 +1146,20 @@ export default function CalculatorClient() {
   // Cash-on-cash: for cash purchase = net yield; for mortgage = leveraged cash-on-cash
   const displayCashOnCash = mortgageOn ? cashOnCash : netYield
 
-  // IRR
+  // IRR (leveraged — displayed on UI)
   const irr = price > 0 && rent > 0
     ? buildAndSolveIRR({
         price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
         mortgageOn, annualMortgageCost, upfrontCash,
         loanAmount, monthlyPayment, monthlyRate,
+      })
+    : null
+
+  // Scoring IRR (unleveraged — used only for the investment score, not displayed)
+  const scoringIrr = price > 0 && rent > 0
+    ? buildAndSolveIRR({
+        price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
+        mortgageOn: false,
       })
     : null
 
@@ -1353,21 +1222,20 @@ export default function CalculatorClient() {
   const hasKeyInputs = price > 0 && rent > 0
   const { score: invScore, grade: invGrade, missingItems: scoreMissing, breakdown: scoreBreakdown } = hasKeyInputs
     ? calculateInvestmentScore({
-        netYield, growth, developerTier, paymentPlan,
-        propertyType, completion,
-        price, handoverValue,
-        mortgageOn, interestRate, roeY1, irr,
+        netYield, developerTier, paymentPlan,
+        propertyType,
+        price, handoverValue, scoringIrr,
         hasServiceCharge: scRate > 0,
         dldPct, agencyFeePct, adminFee,
       })
-    : { score: 0, grade: '', missingItems: [] as string[], breakdown: { yieldPts: 0, devPts: 0, growthPts: 0, propPts: 0, preCompletionROE: null, irrBonusPts: 0, spread: 0, roeValue: 0, bonuses: [], penalties: [] } as ScoreBreakdown }
+    : { score: 0, grade: '', missingItems: [] as string[], breakdown: { yieldPts: 0, irrPts: 0, devPts: 0, roePts: 0, preCompletionROE: null, scoringIrr: null } as ScoreBreakdown }
 
   const gradeTextColor: Record<string, string> = {
-    A: 'text-green-700', B: 'text-green-600',
+    'A+': 'text-emerald-700', A: 'text-green-700', B: 'text-green-600',
     C: 'text-amber-600', D: 'text-orange-600', F: 'text-red-600',
   }
   const gradeBarColor: Record<string, string> = {
-    A: 'bg-green-500', B: 'bg-green-400',
+    'A+': 'bg-emerald-600', A: 'bg-green-500', B: 'bg-green-400',
     C: 'bg-amber-400', D: 'bg-orange-500', F: 'bg-red-500',
   }
 
@@ -2180,10 +2048,15 @@ export default function CalculatorClient() {
 
                   {showBreakdown && (
                     <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-xs text-gray-500">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Base components</p>
                       <div className="flex justify-between">
                         <span>Net yield ({netYield.toFixed(1)}%)</span>
                         <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.yieldPts.toFixed(1)} / 35</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>
+                          Unleveraged IRR ({scoreBreakdown.scoringIrr !== null ? scoreBreakdown.scoringIrr.toFixed(1) + '%' : '—'})
+                        </span>
+                        <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.irrPts.toFixed(1)} / 35</span>
                       </div>
                       <div className="flex justify-between">
                         <span>
@@ -2192,44 +2065,19 @@ export default function CalculatorClient() {
                         <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.devPts} / 20</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Capital growth ({growth}%)</span>
-                        <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.growthPts.toFixed(1)} / 15</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span>
-                          {propertyType === 'offplan'
-                            ? `Property type (Off-plan${getMonthsToCompletion(completion) !== null ? `, ${getMonthsToCompletion(completion)} mo to completion` : ''})`
-                            : 'Property type (Secondary)'}
+                          {propertyType === 'secondary'
+                            ? 'Secondary market'
+                            : scoreBreakdown.preCompletionROE !== null
+                              ? `Pre-completion ROE (${scoreBreakdown.preCompletionROE.toFixed(1)}%)`
+                              : 'No handover value'}
                         </span>
-                        <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.propPts.toFixed(1)} / 15</span>
+                        <span className="tabular-nums font-medium text-gray-700">{scoreBreakdown.roePts} / 10</span>
                       </div>
-                      {scoreBreakdown.bonuses.length > 0 && (
-                        <div className="pt-1.5 mt-1.5 border-t border-gray-100">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Bonuses applied</p>
-                          {scoreBreakdown.bonuses.map((b, i) => (
-                            <div key={i} className="flex justify-between">
-                              <span>{b.label}</span>
-                              <span className="tabular-nums font-medium text-green-700">+{typeof b.pts === 'number' ? b.pts.toFixed(1).replace(/\.0$/, '') : b.pts}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {scoreBreakdown.penalties.length > 0 && (
-                        <div className="pt-1.5 mt-1.5 border-t border-gray-100">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Penalties applied</p>
-                          {scoreBreakdown.penalties.map((p, i) => (
-                            <div key={i} className="flex justify-between">
-                              <span>{p.label}</span>
-                              <span className="tabular-nums font-medium text-red-600">{p.pts}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                       <div className="flex justify-between pt-1.5 border-t border-gray-100 font-semibold text-gray-700">
                         <span>Total</span>
                         <span className="tabular-nums">{invScore} / 100</span>
                       </div>
-                      <p className="text-[10px] text-gray-400 italic mt-1">Temporary — for calibration only.</p>
                     </div>
                   )}
                 </>
