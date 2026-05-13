@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -579,19 +580,24 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
                     <span className="w-1.5 h-1.5 rounded-full bg-[#71717a] animate-bounce" style={{ animationDelay: '300ms' }} />
                   </span>
                 ) : msg.role === 'assistant' ? (
-                  <ReactMarkdown components={{
-                    p:      ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                    h2:     ({ children }) => <p className="font-semibold text-sm mt-2 mb-0.5">{children}</p>,
-                    h3:     ({ children }) => <p className="font-semibold text-sm mt-1.5 mb-0.5">{children}</p>,
-                    ul:     ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
-                    ol:     ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
-                    li:     ({ children }) => <li className="text-sm">{children}</li>,
-                    hr:     () => <hr className="my-2 border-[#d4d4d8]" />,
-                    code:   ({ children }) => <code className="bg-[#e4e4e7] px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
-                  }}>
-                    {msg.content}
-                  </ReactMarkdown>
+                  <div className="prose">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p:      ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        h2:     ({ children }) => <p className="font-semibold text-sm mt-2 mb-0.5">{children}</p>,
+                        h3:     ({ children }) => <p className="font-semibold text-sm mt-1.5 mb-0.5">{children}</p>,
+                        ul:     ({ children }) => <ul className="list-disc list-inside space-y-0.5 my-1">{children}</ul>,
+                        ol:     ({ children }) => <ol className="list-decimal list-inside space-y-0.5 my-1">{children}</ol>,
+                        li:     ({ children }) => <li className="text-sm">{children}</li>,
+                        hr:     () => <hr className="my-2 border-[#d4d4d8]" />,
+                        code:   ({ children }) => <code className="bg-[#e4e4e7] px-1 py-0.5 rounded text-xs font-mono">{children}</code>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   msg.content
                 )}
