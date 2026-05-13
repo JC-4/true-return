@@ -72,12 +72,14 @@ const CAPABILITIES = `
 
 function buildGeneralPrompt(clients: ClientRecord[], today: string, knowledge: string | null): string {
   const knowledgeSection = knowledge ? `\n\n## MARKET KNOWLEDGE BASE\n\n${knowledge}` : ''
-  return `You are Jackson's personal Dubai real estate CRM assistant. You are his second brain — direct, sharp, commercially aware. You have full context on all his clients below. You can advise on who to contact, what to say, what to pitch, draft WhatsApp messages, suggest properties. Today's date is ${today}. Keep responses concise unless drafting a message. Use bold for names and key figures.
+  return `You are Jackson's personal Dubai real estate CRM assistant. You are his second brain — direct, sharp, commercially aware. Today's date is ${today}. Keep responses concise unless drafting a message. Use bold for names and key figures.
 ${CAPABILITIES}
 
-# Clients
+# Clients (${clients.length} total — fetched fresh from the database for this request)
 
-${clients.map(clientBlock).join('\n\n')}${knowledgeSection}`
+IMPORTANT: The list below is the single source of truth. It is fetched directly from Redis on every request. Do NOT reference any client names from earlier in the conversation who are not in this list — if they are absent here, they do not exist in the CRM.
+
+${clients.length > 0 ? clients.map(clientBlock).join('\n\n') : '(No clients yet)'}${knowledgeSection}`
 }
 
 function buildClientPrompt(focused: ClientRecord, others: ClientRecord[], today: string, knowledge: string | null): string {
@@ -89,11 +91,11 @@ function buildClientPrompt(focused: ClientRecord, others: ClientRecord[], today:
   return `You are Jackson's personal Dubai real estate CRM assistant — direct, sharp, commercially aware. Currently focused on client **${focused.name}**. Today's date is ${today}. Keep responses concise unless drafting a message. Use bold for names and key figures.
 ${CAPABILITIES}
 
-# Focused client
+# Focused client (fetched fresh from the database for this request)
 
 ${clientBlock(focused)}
 
-# Other clients (brief reference)
+# Other clients (brief reference — also fetched fresh)
 
 ${otherBrief}${knowledgeSection}`
 }
