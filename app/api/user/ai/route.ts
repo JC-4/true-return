@@ -5,6 +5,10 @@ import { authOptions } from '@/lib/auth'
 import Anthropic from '@anthropic-ai/sdk'
 import { redis } from '@/lib/redis'
 
+// Give the function up to 60 s — the default 10 s is too short for
+// a Sonnet stream + a follow-up Haiku call + Redis writes.
+export const maxDuration = 60
+
 // Delimiter written at the end of the stream to signal a system/record-update message
 const SYS_MARKER = '\x00SYS:'
 
@@ -212,7 +216,9 @@ Rules:
         }
       } else {
         // General mode: check if the conversation requested a new client to be created
+        console.log('[create] Starting client creation intent check. userId:', userId)
         try {
+          console.log('[create] Calling Haiku for intent extraction...')
           const intentCheck = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -233,8 +239,18 @@ ${conversationText}`,
           })
 
           const raw = intentCheck.content[0]?.type === 'text' ? intentCheck.content[0].text.trim() : '{}'
+          console.log('[create] Haiku raw response:', raw)
+
           const jsonStr = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
-          const intent = JSON.parse(jsonStr) as { action: string; data?: Record<string, unknown> }
+          let intent: { action: string; data?: Record<string, unknown> }
+          try {
+            intent = JSON.parse(jsonStr)
+          } catch (parseErr) {
+            console.error('[create] JSON parse failed. jsonStr was:', jsonStr, 'parseErr:', parseErr)
+            throw parseErr
+          }
+
+          console.log('[create] Parsed intent action:', intent.action, '| name:', intent.data?.name ?? '(none)')
 
           if (intent.action === 'create_client' && typeof intent.data?.name === 'string' && intent.data.name.trim()) {
             const newId = generateId()
@@ -242,6 +258,7 @@ ${conversationText}`,
             // Sanitize: ensure nextFollowUp is YYYY-MM-DD or omitted
             const d = intent.data
             if (typeof d.nextFollowUp === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(d.nextFollowUp)) {
+              console.log('[create] Clearing invalid nextFollowUp:', d.nextFollowUp)
               d.nextFollowUp = null
             }
             const clientData = {
@@ -252,14 +269,45 @@ ${conversationText}`,
               market: [] as string[],
               ...d,
             }
-            await redis.set(`client:${userId}:${newId}`, clientData)
-            const idx = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
+
+            console.log('[create] Writing client record. key:', `client:${userId}:${newId}`)
+            try {
+              await redis.set(`client:${userId}:${newId}`, clientData)
+              console.log('[create] Client record written OK')
+            } catch (redisErr) {
+              console.error('[create] redis.set client record FAILED:', redisErr)
+              throw redisErr
+            }
+
+            console.log('[create] Reading index. key:', `clients:${userId}`)
+            let idx: IndexEntry[]
+            try {
+              idx = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
+              console.log('[create] Index read OK, current length:', idx.length)
+            } catch (redisErr) {
+              console.error('[create] redis.get index FAILED:', redisErr)
+              throw redisErr
+            }
+
             idx.unshift({ id: newId, name: intent.data.name.trim(), status: (intent.data.status as string) ?? 'Active', savedAt, updatedAt: savedAt })
-            await redis.set(`clients:${userId}`, idx)
-            await writer.write(encoder.encode(`${SYS_MARKER}Client "${intent.data.name.trim()}" added to your CRM.`))
+
+            console.log('[create] Writing updated index, new length:', idx.length)
+            try {
+              await redis.set(`clients:${userId}`, idx)
+              console.log('[create] Index written OK')
+            } catch (redisErr) {
+              console.error('[create] redis.set index FAILED:', redisErr)
+              throw redisErr
+            }
+
+            const clientName = intent.data.name.trim()
+            console.log('[create] SUCCESS — client created:', clientName, 'id:', newId)
+            await writer.write(encoder.encode(`${SYS_MARKER}Client "${clientName}" added to your CRM.`))
+          } else {
+            console.log('[create] No client creation detected (action:', intent.action, ')')
           }
         } catch (err) {
-          console.error('[AI route] Client creation check error:', err)
+          console.error('[create] Client creation block error:', err)
         }
       }
     } catch (error) {
