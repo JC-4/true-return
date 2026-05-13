@@ -123,6 +123,12 @@ export async function POST(req: NextRequest) {
     index.map(e => redis.get<ClientRecord>(`client:${userId}:${e.id}`))
   ).then(results => results.filter((c): c is ClientRecord => c !== null))
 
+  // Self-heal: remove orphaned index entries (records deleted without index cleanup)
+  if (clients.length < index.length) {
+    const validIds = new Set(clients.map(c => c.id))
+    await redis.set(`clients:${userId}`, index.filter(e => validIds.has(e.id)))
+  }
+
   const focusedClient = clientId ? clients.find(c => c.id === clientId) ?? null : null
   const otherClients = focusedClient ? clients.filter(c => c.id !== clientId) : clients
 

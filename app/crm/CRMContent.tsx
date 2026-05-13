@@ -401,6 +401,7 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -426,6 +427,33 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
     `Draft a WhatsApp to ${client.name}`,
     `What properties suit ${client.name}?`,
   ] : []
+
+  const clearChat = useCallback(async () => {
+    if (clearing || streaming) return
+    setClearing(true)
+    try {
+      const res = await fetch(`/api/user/chat/${chatId}/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ today: today() }),
+      })
+      const data = await res.json() as { ok: boolean; updatesApplied: number; warning?: string }
+      setMessages([{
+        role: 'system',
+        content: data.warning
+          ? 'Chat cleared. Note: updates could not be saved automatically — check client notes manually.'
+          : 'Chat cleared. Any important updates have been saved to client notes.',
+      }])
+      onClientsMaybeChanged()
+    } catch {
+      setMessages([{
+        role: 'system',
+        content: 'Chat cleared. Note: updates could not be saved automatically — check client notes manually.',
+      }])
+    } finally {
+      setClearing(false)
+    }
+  }, [clearing, streaming, chatId, onClientsMaybeChanged])
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
@@ -522,20 +550,29 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Quick-prompt chips */}
-      <div className="flex flex-wrap gap-2 px-4 pt-3 pb-2 border-b border-[#e4e4e7] flex-shrink-0">
-        {clientChips.map(chip => (
-          <button key={chip} onClick={() => sendMessage(chip)} disabled={streaming}
-            className="px-3 py-1 rounded-full text-xs font-medium bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981]/20 disabled:opacity-50 transition-colors">
-            {chip}
-          </button>
-        ))}
-        {globalChips.map(chip => (
-          <button key={chip} onClick={() => sendMessage(chip)} disabled={streaming}
-            className="px-3 py-1 rounded-full text-xs font-medium bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7] disabled:opacity-50 transition-colors">
-            {chip}
-          </button>
-        ))}
+      {/* Quick-prompt chips + Clear chat */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-[#e4e4e7] flex-shrink-0">
+        <div className="flex flex-wrap gap-2 flex-1">
+          {clientChips.map(chip => (
+            <button key={chip} onClick={() => sendMessage(chip)} disabled={streaming || clearing}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-[#10b981]/10 text-[#10b981] hover:bg-[#10b981]/20 disabled:opacity-50 transition-colors">
+              {chip}
+            </button>
+          ))}
+          {globalChips.map(chip => (
+            <button key={chip} onClick={() => sendMessage(chip)} disabled={streaming || clearing}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7] disabled:opacity-50 transition-colors">
+              {chip}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={clearChat}
+          disabled={clearing || streaming || messages.filter(m => m.role !== 'system').length === 0}
+          className="flex-shrink-0 text-[11px] font-medium text-[#a1a1aa] hover:text-[#71717a] disabled:opacity-40 transition-colors whitespace-nowrap"
+        >
+          {clearing ? 'Saving notes…' : 'Clear chat'}
+        </button>
       </div>
 
       {/* Messages */}
