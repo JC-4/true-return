@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import Link from 'next/link'
 import DealAnalysis, { type StoredDeal } from './DealAnalysis'
-
-// TODO: replace with auth().userId when auth is added
-const USER_ID = 'jc'
 
 type ShareParams = {
   price?: number; rent?: number; growth?: number
@@ -60,10 +59,14 @@ export default async function DealPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const session = await getServerSession(authOptions)
+  if (!session) redirect('/login')
+  const userId = (session.user as { id?: string }).id!
+
   const { id } = await params
 
   // 1. Try user saved deal first → render analysis view
-  const userDeal = await redis.get<StoredDeal>(`deal:${USER_ID}:${id}`)
+  const userDeal = await redis.get<StoredDeal>(`deal:${userId}:${id}`)
   if (userDeal) {
     return <DealAnalysis deal={userDeal} />
   }
