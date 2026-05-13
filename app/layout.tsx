@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Nav from '@/components/Nav'
+import Providers from '@/components/Providers'
 
 export const metadata: Metadata = {
   /* PLACEHOLDER: Update title and description to match your brand */
@@ -16,8 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-[#fafafa] text-[#18181b] antialiased min-h-screen">
-        <Nav />
-        <main>{children}</main>
+        <Providers>
+          <Nav />
+          <main>{children}</main>
+        </Providers>
       </body>
     </html>
   )

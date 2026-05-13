@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 
 const calculatorLinks = [
   { href: '/calculators/investment', label: 'Investment Calculator' },
@@ -12,6 +13,7 @@ const otherLinks = [
   { href: '/deals',        label: 'Deals' },
   { href: '/areas',        label: 'Areas' },
   { href: '/notes',        label: 'Notes' },
+  { href: '/crm',          label: 'CRM' },
   { href: '/work-with-me', label: 'Work With Me' },
 ]
 
@@ -20,6 +22,7 @@ export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const { data: session } = useSession()
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -97,6 +100,16 @@ export default function Nav() {
                 {label}
               </Link>
             ))}
+
+            {/* Sign out */}
+            {session?.user && (
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] transition-colors"
+              >
+                {session.user.name} · Sign out
+              </button>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -150,6 +163,14 @@ export default function Nav() {
                   {label}
                 </Link>
               ))}
+              {session?.user && (
+                <button
+                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/login' }) }}
+                  className="w-full text-left px-4 py-2 text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] rounded"
+                >
+                  {session.user.name} · Sign out
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -11,14 +11,14 @@ function generateId(length = 8): string {
   return id
 }
 
-type IndexEntry = { id: string; name: string; savedAt: string; updatedAt?: string }
+type IndexEntry = { id: string; name: string; status: string; savedAt: string; updatedAt?: string }
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as { id?: string }).id!
 
-  const index = await redis.get<IndexEntry[]>(`deals:${userId}`) ?? []
+  const index = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
   return NextResponse.json(index)
 }
 
@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
   const id = generateId()
   const savedAt = new Date().toISOString()
 
-  await redis.set(`deal:${userId}:${id}`, { id, savedAt, ...body })
+  await redis.set(`client:${userId}:${id}`, { id, savedAt, ...body })
 
-  const index = await redis.get<IndexEntry[]>(`deals:${userId}`) ?? []
-  index.unshift({ id, name: body.name, savedAt })
-  await redis.set(`deals:${userId}`, index)
+  const index = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
+  index.unshift({ id, name: body.name, status: body.status ?? 'Active', savedAt })
+  await redis.set(`clients:${userId}`, index)
 
   return NextResponse.json({ id })
 }
