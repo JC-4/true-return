@@ -53,18 +53,20 @@ function clientBlock(c: ClientRecord): string {
   ].filter(Boolean).join('\n')
 }
 
-function buildGeneralPrompt(clients: ClientRecord[], today: string): string {
+function buildGeneralPrompt(clients: ClientRecord[], today: string, knowledge: string | null): string {
+  const knowledgeSection = knowledge ? `\n\n## MARKET KNOWLEDGE BASE\n\n${knowledge}` : ''
   return `You are Jackson's personal Dubai real estate CRM assistant. You are his second brain — direct, sharp, commercially aware. You have full context on all his clients below. You can advise on who to contact, what to say, what to pitch, draft WhatsApp messages, suggest properties. Today's date is ${today}. Keep responses concise unless drafting a message. Use bold for names and key figures.
 
 # Clients
 
-${clients.map(clientBlock).join('\n\n')}`
+${clients.map(clientBlock).join('\n\n')}${knowledgeSection}`
 }
 
-function buildClientPrompt(focused: ClientRecord, others: ClientRecord[], today: string): string {
+function buildClientPrompt(focused: ClientRecord, others: ClientRecord[], today: string, knowledge: string | null): string {
   const otherBrief = others.length
     ? others.map(c => `- **${c.name}**: ${c.status}, ${c.propertyType || '—'}, ${fmtAED(c.minBudgetAED)}–${fmtAED(c.maxBudgetAED)}`).join('\n')
     : 'None'
+  const knowledgeSection = knowledge ? `\n\n## MARKET KNOWLEDGE BASE\n\n${knowledge}` : ''
 
   return `You are Jackson's personal Dubai real estate CRM assistant — direct, sharp, commercially aware. Currently focused on client **${focused.name}**. Today's date is ${today}. Keep responses concise unless drafting a message. Use bold for names and key figures.
 
@@ -74,7 +76,7 @@ ${clientBlock(focused)}
 
 # Other clients (brief reference)
 
-${otherBrief}`
+${otherBrief}${knowledgeSection}`
 }
 
 export async function POST(req: NextRequest) {
@@ -90,7 +92,12 @@ export async function POST(req: NextRequest) {
 
   const todayStr = today || new Date().toISOString().split('T')[0]
 
-  const index = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
+  // Fetch clients index + knowledge base in parallel
+  const [index, knowledge] = await Promise.all([
+    redis.get<IndexEntry[]>(`clients:${userId}`).then(r => r ?? []),
+    redis.get<string>(`knowledge:${userId}`).then(r => r ?? null),
+  ])
+
   const clients = await Promise.all(
     index.map(e => redis.get<ClientRecord>(`client:${userId}:${e.id}`))
   ).then(results => results.filter((c): c is ClientRecord => c !== null))
@@ -99,8 +106,8 @@ export async function POST(req: NextRequest) {
   const otherClients = focusedClient ? clients.filter(c => c.id !== clientId) : clients
 
   const systemPrompt = focusedClient
-    ? buildClientPrompt(focusedClient, otherClients, todayStr)
-    : buildGeneralPrompt(clients, todayStr)
+    ? buildClientPrompt(focusedClient, otherClients, todayStr, knowledge)
+    : buildGeneralPrompt(clients, todayStr, knowledge)
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const encoder = new TextEncoder()
@@ -113,7 +120,13 @@ export async function POST(req: NextRequest) {
       const messageStream = anthropic.messages.stream({
         model: 'claude-sonnet-4-6',
         max_tokens: 2048,
-        system: systemPrompt,
+        system: [
+          {
+            type: 'text',
+            text: systemPrompt,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
         messages,
       })
 
