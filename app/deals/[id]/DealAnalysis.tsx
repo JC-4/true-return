@@ -8,8 +8,10 @@ import { computeDealMetrics, buildAndSolveIRR, PLAN_COLORS, type PlanRow, type D
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DealParams = {
-  propertyType?: string; price?: number; rent?: number; growth?: number
+  propertyType?: string; propertySubType?: string
+  price?: number; rent?: number; growth?: number
   internalSqft?: number; balconySqft?: number
+  buaSqft?: number; plotSqft?: number
   view?: string; unit?: string; project?: string
   completion?: string; developer?: string
   serviceCharge?: number; dld?: number; agencyFee?: number; adminFee?: number
@@ -45,6 +47,9 @@ function buildCalcUrl(p: DealParams): string {
   if (p.growth !== undefined) q.set('growth',  String(p.growth))
   if (p.internalSqft)  q.set('internalSqft',   String(p.internalSqft))
   if (p.balconySqft)   q.set('balconySqft',    String(p.balconySqft))
+  if (p.buaSqft)       q.set('buaSqft',        String(p.buaSqft))
+  if (p.plotSqft)      q.set('plotSqft',       String(p.plotSqft))
+  if (p.propertySubType && p.propertySubType !== 'apartment') q.set('propertySubType', p.propertySubType)
   if (p.view)          q.set('view',           p.view)
   if (p.unit)          q.set('unit',           p.unit)
   if (p.project)       q.set('project',        p.project)
@@ -295,6 +300,13 @@ function TabOverview({ deal, m, mortgageOn, handoverValue, price }: { deal: Stor
   const p = deal.params
   const [showBreakdown, setShowBreakdown] = useState(false)
 
+  const propertySubType = (p.propertySubType ?? 'apartment') as 'apartment' | 'townhouse' | 'villa'
+  const isApartment     = propertySubType === 'apartment'
+  const internalSqft    = p.internalSqft ?? 0
+  const balconySqft     = p.balconySqft  ?? 0
+  const buaSqft         = p.buaSqft ?? (internalSqft + balconySqft)
+  const plotSqft        = p.plotSqft ?? 0
+
   return (
     <div className="space-y-4">
 
@@ -336,16 +348,23 @@ function TabOverview({ deal, m, mortgageOn, handoverValue, price }: { deal: Stor
           <CardHeader title="Property" />
           <div className="px-5 py-2">
             {[
-              { label: 'Location',      value: p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '—' },
-              { label: 'Developer',     value: p.developer || '—' },
-              { label: 'Project',       value: p.project   || '—' },
-              { label: 'Unit',          value: p.unit      || '—' },
-              { label: 'Type',          value: p.propertyType === 'secondary' ? 'Secondary market' : 'Off-plan' },
-              { label: 'Internal sqft', value: p.internalSqft ? `${p.internalSqft.toLocaleString()} ft²` : '—' },
-              { label: 'Balcony sqft',  value: p.balconySqft  ? `${p.balconySqft.toLocaleString()} ft²` : '—' },
-              { label: 'View',          value: p.view      || '—' },
-              { label: 'Completion',    value: p.completion || '—' },
-              { label: 'Price per sqft',value: m.pricePerSqft > 0 ? `AED ${fmt(m.pricePerSqft)}` : '—' },
+              { label: 'Location',         value: p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '—' },
+              { label: 'Developer',        value: p.developer || '—' },
+              { label: 'Project',          value: p.project   || '—' },
+              { label: 'Unit',             value: p.unit      || '—' },
+              { label: 'Sale type',        value: p.propertyType === 'secondary' ? 'Secondary market' : 'Off-plan' },
+              { label: 'Property subtype', value: propertySubType.charAt(0).toUpperCase() + propertySubType.slice(1) },
+              ...(isApartment ? [
+                { label: 'Internal sqft', value: internalSqft ? `${internalSqft.toLocaleString()} ft²` : '—' },
+                { label: 'Balcony sqft',  value: balconySqft  ? `${balconySqft.toLocaleString()} ft²`  : '—' },
+                { label: 'BUA',           value: buaSqft      ? `${buaSqft.toLocaleString()} ft²`      : '—' },
+              ] : [
+                { label: 'BUA',           value: buaSqft  ? `${buaSqft.toLocaleString()} ft²`  : '—' },
+                { label: 'Plot size',     value: plotSqft ? `${plotSqft.toLocaleString()} ft²` : '—' },
+              ]),
+              { label: 'View',             value: p.view      || '—' },
+              { label: 'Completion',       value: p.completion || '—' },
+              { label: 'Price per sqft',   value: m.pricePerSqft > 0 ? `AED ${fmt(m.pricePerSqft)}` : '—' },
             ].map(r => <StatRow key={r.label} label={r.label} value={r.value} />)}
           </div>
         </Card>
@@ -1020,11 +1039,16 @@ export default function DealAnalysis({ deal }: { deal: StoredDeal }) {
   const p = deal.params
 
   // Fixed deal parameters
-  const price        = p.price        ?? 0
-  const propertyType = (p.propertyType ?? 'offplan') as 'offplan' | 'secondary'
-  const internalSqft = p.internalSqft ?? 0
-  const balconySqft  = p.balconySqft  ?? 0
-  const scRate       = p.serviceCharge ?? 0
+  const price           = p.price        ?? 0
+  const propertyType    = (p.propertyType ?? 'offplan') as 'offplan' | 'secondary'
+  const propertySubType = (p.propertySubType ?? 'apartment') as 'apartment' | 'townhouse' | 'villa'
+  const isApartment     = propertySubType === 'apartment'
+  const internalSqft    = p.internalSqft ?? 0
+  const balconySqft     = p.balconySqft  ?? 0
+  // buaSqft: explicit for townhouse/villa; falls back to internal+balcony for apartments
+  const buaSqft         = p.buaSqft ?? (internalSqft + balconySqft)
+  const plotSqft        = p.plotSqft ?? 0
+  const scRate          = p.serviceCharge ?? 0
   const dldPct       = p.dld          ?? 4
   const agencyFeePct = p.agencyFee    ?? 0
   const adminFee     = p.adminFee     ?? 0
@@ -1050,12 +1074,14 @@ export default function DealAnalysis({ deal }: { deal: StoredDeal }) {
   // All metrics recalculate whenever any variable changes
   const m = useMemo(() => computeDealMetrics({
     propertyType, price, rent, growth,
-    internalSqft, balconySqft, scRate, completion, developer,
+    internalSqft, balconySqft,
+    buaSqft: isApartment ? undefined : buaSqft,
+    scRate, completion, developer,
     handoverValue, paymentPlan, dldPct, agencyFeePct, adminFee,
     mortgageOn, depositPct, interestRate, termYears,
-  }), [propertyType, price, rent, growth, internalSqft, balconySqft, scRate,
-       completion, developer, handoverValue, paymentPlan, dldPct, agencyFeePct,
-       adminFee, mortgageOn, depositPct, interestRate, termYears])
+  }), [propertyType, price, rent, growth, internalSqft, balconySqft, buaSqft,
+       isApartment, scRate, completion, developer, handoverValue, paymentPlan,
+       dldPct, agencyFeePct, adminFee, mortgageOn, depositPct, interestRate, termYears])
 
   // Share
   const [copyLabel, setCopyLabel] = useState('Share')
@@ -1087,7 +1113,7 @@ export default function DealAnalysis({ deal }: { deal: StoredDeal }) {
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">{deal.name}</h1>
             <p className="text-sm text-zinc-400 mt-0.5">
-              {[p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '', developer, p.view, (internalSqft + balconySqft) > 0 ? `${(internalSqft + balconySqft).toLocaleString()} ft²` : '', completion ? `Completion ${completion}` : ''].filter(Boolean).join(' · ')}
+              {[p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '', developer, p.view, buaSqft > 0 ? `${buaSqft.toLocaleString()} ft² BUA` : '', completion ? `Completion ${completion}` : ''].filter(Boolean).join(' · ')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">

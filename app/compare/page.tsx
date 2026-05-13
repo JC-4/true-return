@@ -9,8 +9,10 @@ import { DEVELOPERS, computeDealMetrics, parseCompletionDate, type PlanRow } fro
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type DealParams = {
-  propertyType?: string; price?: number; rent?: number; growth?: number
+  propertyType?: string; propertySubType?: string
+  price?: number; rent?: number; growth?: number
   internalSqft?: number; balconySqft?: number
+  buaSqft?: number; plotSqft?: number
   serviceCharge?: number; dld?: number; agencyFee?: number; adminFee?: number
   completion?: string; developer?: string; handoverValue?: number
   paymentPlan?: string; mortgageOn?: boolean; depositPct?: number
@@ -30,7 +32,7 @@ type DealEntry = {
   price: number; pricePerSqft: number; serviceChargePerSqft: number
   acquisitionCosts: number; totalAllIn: number
   developer: string; developerTier: number
-  completion: string; propertyType: string
+  completion: string; propertyType: string; propertySubType: string
   handoverValue: number; growth: number
   gainOnPaper: number; gainOnPaperPct: number
   projValueY5: number
@@ -41,13 +43,17 @@ type DealEntry = {
 
 function buildEntry(deal: StoredDeal): DealEntry {
   const p = deal.params
-  const propertyType = (p.propertyType ?? 'offplan') as 'offplan' | 'secondary'
+  const propertyType    = (p.propertyType ?? 'offplan') as 'offplan' | 'secondary'
+  const propertySubType = (p.propertySubType ?? 'apartment') as 'apartment' | 'townhouse' | 'villa'
+  const isApartment     = propertySubType === 'apartment'
+  // buaSqft: explicit for townhouse/villa; falls back to internal+balcony for apartments
+  const buaSqft = isApartment ? undefined : (p.buaSqft ?? ((p.internalSqft ?? 0) + (p.balconySqft ?? 0)))
   let paymentPlan: PlanRow[] = []
   try { paymentPlan = JSON.parse(p.paymentPlan ?? '[]') } catch { paymentPlan = [] }
 
   const m = computeDealMetrics({
     propertyType, price: p.price ?? 0, rent: p.rent ?? 0, growth: p.growth ?? 5,
-    internalSqft: p.internalSqft ?? 0, balconySqft: p.balconySqft ?? 0,
+    internalSqft: p.internalSqft ?? 0, balconySqft: p.balconySqft ?? 0, buaSqft,
     scRate: p.serviceCharge ?? 0, completion: p.completion ?? '',
     developer: p.developer ?? '', handoverValue: p.handoverValue ?? 0,
     paymentPlan, dldPct: p.dld ?? 4, agencyFeePct: p.agencyFee ?? 0, adminFee: p.adminFee ?? 0,
@@ -71,6 +77,7 @@ function buildEntry(deal: StoredDeal): DealEntry {
     developer: p.developer || '—', developerTier,
     completion: p.completion || '—',
     propertyType: p.propertyType ?? 'offplan',
+    propertySubType,
     handoverValue: p.handoverValue ?? 0,
     growth: p.growth ?? 5,
     gainOnPaper: m.gainOnPaper,
@@ -288,7 +295,8 @@ function ComparisonTable({ entries }: { entries: DealEntry[] }) {
     { label: 'Developer',        cells: entries.map(e => e.developer),                                      winnerIdx: devW },
     { label: 'Investment score', cells: entries.map(e => e.score > 0 ? `${e.score} / 100` : '—'),          winnerIdx: scoreW },
     { label: 'Completion',       cells: entries.map(e => e.completion),                                     winnerIdx: completW },
-    { label: 'Property type',    cells: entries.map(e => e.propertyType === 'secondary' ? 'Secondary' : 'Off-plan'), winnerIdx: -1 },
+    { label: 'Sale type',         cells: entries.map(e => e.propertyType === 'secondary' ? 'Secondary' : 'Off-plan'), winnerIdx: -1 },
+    { label: 'Property subtype', cells: entries.map(e => e.propertySubType.charAt(0).toUpperCase() + e.propertySubType.slice(1)), winnerIdx: -1 },
   ]
 
   const costsRows: RowDef[] = [

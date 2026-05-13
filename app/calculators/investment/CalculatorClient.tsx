@@ -905,9 +905,14 @@ export default function CalculatorClient() {
   const [rent,   setRent]   = useState(0)
   const [growth, setGrowth] = useState(5)
 
+  // Property subtype
+  const [propertySubType, setPropertySubType] = useState<'apartment' | 'townhouse' | 'villa'>('apartment')
+
   // Property details
   const [internalSqft, setInternal]   = useState(0)
   const [balconySqft,  setBalcony]    = useState(0)
+  const [buaSqft,      setBuaSqft]    = useState(0)
+  const [plotSqft,     setPlotSqft]   = useState(0)
   const [project,      setProject]    = useState('')
   const [unit,         setUnit]       = useState('')
   const [view,         setView]       = useState('')
@@ -931,6 +936,9 @@ export default function CalculatorClient() {
     existingId: string; existingName: string
     payload: Record<string, unknown>
   } | null>(null)
+  // When editing a previously saved deal (dealId URL param present)
+  const [loadedDealId,   setLoadedDealId]   = useState<string | null>(null)
+  const [loadedDealName, setLoadedDealName] = useState('')
   const [dealsIndex, setDealsIndex] = useState<{ id: string; name: string; savedAt: string; updatedAt?: string }[]>([])
 
   // UI toggles
@@ -978,8 +986,12 @@ export default function CalculatorClient() {
     const p     = gn('price');         if (p     !== null) setPrice(p)
     const r     = gn('rent');          if (r     !== null) setRent(r)
     const g     = gn('growth');        if (g     !== null) setGrowth(g)
-    const isqft = gn('internalSqft');  if (isqft !== null) setInternal(isqft)
-    const bsqft = gn('balconySqft');   if (bsqft !== null) setBalcony(bsqft)
+    const isqft  = gn('internalSqft');  if (isqft  !== null) setInternal(isqft)
+    const bsqft  = gn('balconySqft');   if (bsqft  !== null) setBalcony(bsqft)
+    const bua    = gn('buaSqft');        if (bua    !== null) setBuaSqft(bua)
+    const plot   = gn('plotSqft');       if (plot   !== null) setPlotSqft(plot)
+    const pst = s.get('propertySubType')
+    if (pst === 'apartment' || pst === 'townhouse' || pst === 'villa') setPropertySubType(pst)
     const sc    = gn('serviceCharge'); if (sc    !== null) { setScRate(sc); setScInput(String(sc)) }
     const dld   = gn('dld');          if (dld   !== null) { setDldPct(dld); setDldInput(String(dld)) }
     const af    = gn('agencyFee');    if (af    !== null) { setAgencyFeePct(af); setAgencyFeeInput(String(af)) }
@@ -1025,6 +1037,16 @@ export default function CalculatorClient() {
     if (s.get('project') && s.get('internalSqft') && s.get('serviceCharge')) {
       setDetailsOpen(false)
     }
+
+    // Loaded deal — record the ID and fetch the name for the save modal
+    const dealId = s.get('dealId')
+    if (dealId) {
+      setLoadedDealId(dealId)
+      fetch(`/api/user/deals/${dealId}`)
+        .then(r => r.json())
+        .then((deal: { name?: string }) => { if (deal.name) setLoadedDealName(deal.name) })
+        .catch(() => {})
+    }
   }, [searchParams])
 
   useEffect(() => {
@@ -1037,13 +1059,19 @@ export default function CalculatorClient() {
   // ── Share URL ─────────────────────────────────────────────────────────────
   function buildDealParams(): Record<string, unknown> {
     const p: Record<string, unknown> = {}
-    if (propertyType !== 'offplan') p.propertyType = propertyType
-    if (handoverValue > 0)          p.handoverValue = handoverValue
+    if (propertyType !== 'offplan')         p.propertyType    = propertyType
+    if (propertySubType !== 'apartment')    p.propertySubType = propertySubType
+    if (handoverValue > 0)                  p.handoverValue   = handoverValue
     if (price > 0)        p.price        = price
     if (rent > 0)         p.rent         = rent
     if (growth !== 5)     p.growth       = growth
-    if (internalSqft > 0) p.internalSqft = internalSqft
-    if (balconySqft > 0)  p.balconySqft  = balconySqft
+    if (propertySubType === 'apartment') {
+      if (internalSqft > 0) p.internalSqft = internalSqft
+      if (balconySqft > 0)  p.balconySqft  = balconySqft
+    } else {
+      if (buaSqft > 0)   p.buaSqft   = buaSqft
+      if (plotSqft > 0)  p.plotSqft  = plotSqft
+    }
     if (project)          p.project      = project
     if (unit)             p.unit         = unit
     if (view)             p.view         = view
@@ -1095,14 +1123,19 @@ export default function CalculatorClient() {
 
   // ── Calculations ──────────────────────────────────────────────────────────
 
-  const totalSqft     = internalSqft + balconySqft
-  const balconyRate   = scRate * BALCONY_SC_RATIO
-  const serviceCharge = internalSqft * scRate + balconySqft * balconyRate
+  // BUA: apartments use internal + balcony; townhouse/villa use the entered buaSqft directly
+  // Apartment SC:      (internalSqft × scRate) + (balconySqft × scRate × 0.25)
+  // Townhouse/Villa SC: buaSqft × scRate  (no balcony split)
+  const isApartment   = propertySubType === 'apartment'
+  const bua           = isApartment ? internalSqft + balconySqft : buaSqft
+  const serviceCharge = isApartment
+    ? (internalSqft * scRate) + (balconySqft * scRate * BALCONY_SC_RATIO)
+    : buaSqft * scRate
 
   const grossYield    = price > 0 ? (rent / price) * 100 : 0
   const netIncome     = rent - serviceCharge
   const netYield      = price > 0 ? (netIncome / price) * 100 : 0
-  const pricePerSqft  = totalSqft > 0 && price > 0 ? price / totalSqft : 0
+  const pricePerSqft  = bua > 0 && price > 0 ? price / bua : 0
 
   // Acquisition cost calculations (driven by editable state)
   const dldFee       = price * dldPct / 100
@@ -1243,11 +1276,15 @@ export default function CalculatorClient() {
   const hasMetadata = project || unit || view || completion
 
   // Service charge tooltip lines
-  const scTooltipLines = [
-    `Internal: ${fmt(internalSqft)} sqft × AED ${scRate}/sqft = AED ${fmt(internalSqft * scRate)}`,
-    `Balcony: ${fmt(balconySqft)} sqft × AED ${balconyRate.toFixed(2)}/sqft (25% of internal) = AED ${fmt(balconySqft * balconyRate)}`,
-    `Total: AED ${fmt(serviceCharge)}`,
-  ]
+  const scTooltipLines = isApartment
+    ? [
+        `Internal: ${fmt(internalSqft)} sqft × AED ${scRate}/sqft = AED ${fmt(internalSqft * scRate)}`,
+        `Balcony: ${fmt(balconySqft)} sqft × AED ${(scRate * BALCONY_SC_RATIO).toFixed(2)}/sqft (25% of internal) = AED ${fmt(balconySqft * scRate * BALCONY_SC_RATIO)}`,
+        `Total: AED ${fmt(serviceCharge)}`,
+      ]
+    : [
+        `BUA: ${fmt(buaSqft)} sqft × AED ${scRate}/sqft = AED ${fmt(serviceCharge)}`,
+      ]
 
   const editInputBase = 'border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white text-right'
 
@@ -1262,8 +1299,14 @@ export default function CalculatorClient() {
       return
     }
     setSaveError('')
-    const parts = [project, unit ? `— ${unit}` : ''].filter(Boolean)
-    setSaveName(parts.join(' ').trim() || 'Untitled deal')
+    if (loadedDealId) {
+      // Editing a saved deal — pre-fill with its existing name
+      setSaveName(loadedDealName)
+    } else {
+      // Blank calculator — derive name from project/unit
+      const parts = [project, unit ? `— ${unit}` : ''].filter(Boolean)
+      setSaveName(parts.join(' ').trim() || 'Untitled deal')
+    }
     setSaveModalOpen(true)
   }
 
@@ -1271,7 +1314,9 @@ export default function CalculatorClient() {
     return {
       name,
       params: {
-        propertyType, price, rent, growth, internalSqft, balconySqft,
+        propertyType, propertySubType, price, rent, growth,
+        internalSqft, balconySqft,
+        ...(propertySubType !== 'apartment' && { buaSqft, plotSqft }),
         view, unit, project, completion, developer, emirate, location,
         serviceCharge: scRate, dld: dldPct, agencyFee: agencyFeePct, adminFee,
         handoverValue: handoverValue > 0 ? handoverValue : undefined,
@@ -1352,6 +1397,40 @@ export default function CalculatorClient() {
     showFeedback()
   }
 
+  // Overwrite the deal that was loaded via dealId URL param
+  async function handleOverwriteLoaded() {
+    if (!loadedDealId) return
+    const name = saveName.trim() || loadedDealName || 'Untitled deal'
+    const payload = buildDealPayload(name)
+    await fetch(`/api/user/deals/${loadedDealId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const updatedAt = new Date().toISOString()
+    setDealsIndex(prev => prev.map(d =>
+      d.id === loadedDealId ? { ...d, name, updatedAt } : d
+    ))
+    setSaveModalOpen(false)
+    showFeedback()
+  }
+
+  // Save as a brand-new deal when the user came from an existing deal (no dup check)
+  async function handleSaveAsNewFromLoaded() {
+    const name = saveName.trim() || 'Untitled deal'
+    const payload = buildDealPayload(name)
+    const res = await fetch('/api/user/deals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const { id } = await res.json()
+    const savedAt = new Date().toISOString()
+    setDealsIndex(prev => [{ id, name, savedAt }, ...prev])
+    setSaveModalOpen(false)
+    showFeedback()
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -1370,8 +1449,14 @@ export default function CalculatorClient() {
                   </h1>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 items-center">
                     {location && <span>{location}, {emirate}</span>}
-                    {internalSqft > 0 && (
-                      <span>{fmt(internalSqft)} sqft internal{balconySqft > 0 ? ` + ${fmt(balconySqft)} sqft balcony` : ''}</span>
+                    {isApartment ? (
+                      internalSqft > 0 && (
+                        <span>{fmt(internalSqft)} sqft internal{balconySqft > 0 ? ` + ${fmt(balconySqft)} sqft balcony` : ''}</span>
+                      )
+                    ) : (
+                      buaSqft > 0 && (
+                        <span>{fmt(buaSqft)} sqft BUA{plotSqft > 0 ? ` · ${fmt(plotSqft)} sqft plot` : ''}</span>
+                      )
                     )}
                     {view                                   && <span>{view} view</span>}
                     {completion && propertyType === 'offplan' && <span>Completion {completion}</span>}
@@ -1468,9 +1553,9 @@ export default function CalculatorClient() {
               <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${detailsOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
               <div className="overflow-hidden">
 
-              {/* Property type toggle */}
+              {/* Sale type toggle */}
               <div className="flex justify-between items-center py-1.5">
-                <span className="text-xs text-gray-400">Property type</span>
+                <span className="text-xs text-gray-400">Sale type</span>
                 <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs font-semibold">
                   {(['offplan', 'secondary'] as const).map(t => (
                     <button
@@ -1489,6 +1574,27 @@ export default function CalculatorClient() {
                 </div>
               </div>
 
+              {/* Property subtype toggle */}
+              <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                <span className="text-xs text-gray-400">Property subtype</span>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs font-semibold">
+                  {(['apartment', 'townhouse', 'villa'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setPropertySubType(t)}
+                      className={`px-3 py-1.5 transition-colors capitalize ${
+                        propertySubType === t
+                          ? 'bg-[#18181b] text-white'
+                          : 'bg-white text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {t === 'apartment' ? 'Apt' : t === 'townhouse' ? 'TH' : 'Villa'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Emirate */}
               <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
                 <span className="text-xs text-gray-400">Emirate</span>
@@ -1498,6 +1604,9 @@ export default function CalculatorClient() {
                     onChange={e => {
                       const v = e.target.value as 'Dubai' | 'Abu Dhabi'
                       setEmirate(v)
+                      const defaultDld = v === 'Abu Dhabi' ? 2 : 4
+                      setDldPct(defaultDld)
+                      setDldInput(String(defaultDld))
                     }}
                     className="border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-[#18181b] focus:bg-white"
                   >
@@ -1561,39 +1670,69 @@ export default function CalculatorClient() {
                 )}
               </div>
 
-              {/* Number fields: Internal area, Balcony */}
-              {([
-                { label: 'Internal area',    value: internalSqft, setter: (v: number) => setInternal(v) },
-                { label: 'Balcony / terrace', value: balconySqft, setter: (v: number) => setBalcony(v) },
-              ]).map(({ label, value, setter }) => (
-                <div key={label} className="flex justify-between items-center py-1.5 border-t border-gray-50">
-                  <span className="text-xs text-gray-400">{label}</span>
-                  {editingDetails ? (
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      step={1}
-                      value={value === 0 ? '' : value}
-                      onChange={e => setter(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                      placeholder="0"
-                      className={`w-32 ${editInputBase}`}
-                    />
-                  ) : (
+              {/* Sqft fields — apartment vs townhouse/villa */}
+              {isApartment ? (
+                <>
+                  {([
+                    { label: 'Internal area',     value: internalSqft, setter: (v: number) => setInternal(v) },
+                    { label: 'Balcony / terrace', value: balconySqft,  setter: (v: number) => setBalcony(v) },
+                  ]).map(({ label, value, setter }) => (
+                    <div key={label} className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                      <span className="text-xs text-gray-400">{label}</span>
+                      {editingDetails ? (
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1}
+                          value={value === 0 ? '' : value}
+                          onChange={e => setter(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                          placeholder="0"
+                          className={`w-32 ${editInputBase}`}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-gray-800">
+                          {value > 0 ? `${fmt(value)} sqft` : '—'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {/* BUA read-only for apartments */}
+                  <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                    <span className="text-xs text-gray-400">BUA (total)</span>
                     <span className="text-sm font-medium text-gray-800">
-                      {value > 0 ? `${fmt(value)} sqft` : '—'}
+                      {bua > 0 ? `${fmt(bua)} sqft` : '—'}
                     </span>
-                  )}
-                </div>
-              ))}
-
-              {/* Total area — always read-only */}
-              <div className="flex justify-between items-center py-1.5 border-t border-gray-50">
-                <span className="text-xs text-gray-400">Total area</span>
-                <span className="text-sm font-medium text-gray-800">
-                  {totalSqft > 0 ? `${fmt(totalSqft)} sqft` : '—'}
-                </span>
-              </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {([
+                    { label: 'Built up area (sqft)', value: buaSqft,  setter: (v: number) => setBuaSqft(v) },
+                    { label: 'Plot size (sqft)',      value: plotSqft, setter: (v: number) => setPlotSqft(v) },
+                  ]).map(({ label, value, setter }) => (
+                    <div key={label} className="flex justify-between items-center py-1.5 border-t border-gray-50">
+                      <span className="text-xs text-gray-400">{label}</span>
+                      {editingDetails ? (
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1}
+                          value={value === 0 ? '' : value}
+                          onChange={e => setter(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                          placeholder="0"
+                          className={`w-32 ${editInputBase}`}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-gray-800">
+                          {value > 0 ? `${fmt(value)} sqft` : '—'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
 
               {/* Service charge */}
               <div className="border-t border-gray-100 mt-3 pt-3">
@@ -1960,8 +2099,8 @@ export default function CalculatorClient() {
 
           </div>
 
-          {/* ── Right column — outputs (35%), sticky on desktop ─────────── */}
-          <div className="w-full md:w-[35%] md:sticky md:top-16 md:max-h-[calc(100vh-4rem)] md:overflow-y-auto space-y-5 pb-8">
+          {/* ── Right column — outputs (35%) ──────────────────────────── */}
+          <div className="w-full md:w-[35%] space-y-5 pb-8">
 
             {/* Save Deal */}
             <div>
@@ -1989,7 +2128,7 @@ export default function CalculatorClient() {
               <MetricCard label="Gross yield"    value={price > 0 ? fmtPct(grossYield) : '—'} sub="on purchase price"   highlight />
               <MetricCard label="Net yield"      value={price > 0 ? fmtPct(netYield)   : '—'} sub="after service charge" highlight />
               <NetIncomeMetricCard netIncome={netIncome} grossRent={rent} serviceCharge={serviceCharge} />
-              <MetricCard label="Price per sqft" value={pricePerSqft > 0 ? fmt(pricePerSqft) : '—'} sub="AED · total area" />
+              <MetricCard label="Price per sqft" value={pricePerSqft > 0 ? fmt(pricePerSqft) : '—'} sub={`AED · ${isApartment ? 'total area' : 'BUA'}`} />
             </div>
 
             {/* Gain on paper — off-plan only when handover value is set */}
@@ -2217,33 +2356,75 @@ export default function CalculatorClient() {
           onMouseDown={e => { if (e.target === e.currentTarget) setSaveModalOpen(false) }}
         >
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-gray-800 mb-1">Save deal</h3>
-            <p className="text-xs text-gray-400 mb-4">Edit the name below, then confirm to save.</p>
-            <input
-              type="text"
-              value={saveName}
-              onChange={e => setSaveName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter')  confirmSaveDeal()
-                if (e.key === 'Escape') setSaveModalOpen(false)
-              }}
-              autoFocus
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#18181b] mb-4"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSaveModalOpen(false)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmSaveDeal}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
-              >
-                Save
-              </button>
-            </div>
+            {loadedDealId ? (
+              /* ── Loaded deal: Overwrite or Save as new ── */
+              <>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Update deal</h3>
+                <p className="text-xs text-gray-400 mb-4">Overwrite the existing deal or save a new copy.</p>
+                <input
+                  type="text"
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  handleOverwriteLoaded()
+                    if (e.key === 'Escape') setSaveModalOpen(false)
+                  }}
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#18181b] mb-4"
+                />
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={handleOverwriteLoaded}
+                    className="w-full py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
+                  >
+                    Overwrite
+                  </button>
+                  <button
+                    onClick={handleSaveAsNewFromLoaded}
+                    className="w-full py-2 rounded-lg text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    Save as new deal
+                  </button>
+                  <button
+                    onClick={() => setSaveModalOpen(false)}
+                    className="w-full py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* ── New deal: single Save button ── */
+              <>
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Save deal</h3>
+                <p className="text-xs text-gray-400 mb-4">Edit the name below, then confirm to save.</p>
+                <input
+                  type="text"
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter')  confirmSaveDeal()
+                    if (e.key === 'Escape') setSaveModalOpen(false)
+                  }}
+                  autoFocus
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#18181b] mb-4"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSaveModalOpen(false)}
+                    className="flex-1 py-2 rounded-lg text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmSaveDeal}
+                    className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

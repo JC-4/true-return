@@ -9,6 +9,8 @@ const USER_ID = 'jc'
 type ShareParams = {
   price?: number; rent?: number; growth?: number
   internalSqft?: number; balconySqft?: number
+  buaSqft?: number; plotSqft?: number
+  propertySubType?: string
   view?: string; unit?: string; project?: string
   completion?: string; developer?: string
   serviceCharge?: number; dld?: number; agencyFee?: number; adminFee?: number
@@ -26,6 +28,9 @@ function buildCalcUrl(p: ShareParams): string {
   if (p.growth !== undefined)               q.set('growth',        String(p.growth))
   if (p.internalSqft)                       q.set('internalSqft',  String(p.internalSqft))
   if (p.balconySqft)                        q.set('balconySqft',   String(p.balconySqft))
+  if (p.buaSqft)                            q.set('buaSqft',       String(p.buaSqft))
+  if (p.plotSqft)                           q.set('plotSqft',      String(p.plotSqft))
+  if (p.propertySubType && p.propertySubType !== 'apartment') q.set('propertySubType', p.propertySubType)
   if (p.project)                            q.set('project',       p.project)
   if (p.unit)                               q.set('unit',          p.unit)
   if (p.view)                               q.set('view',          p.view)

@@ -340,6 +340,8 @@ export function computeDealMetrics(params: {
   propertyType: 'offplan' | 'secondary'
   price: number; rent: number; growth: number
   internalSqft: number; balconySqft: number; scRate: number
+  /** When set (townhouse/villa), overrides internalSqft+balconySqft for area-based calcs */
+  buaSqft?: number
   completion: string; developer: string; handoverValue: number
   paymentPlan: PlanRow[]
   dldPct: number; agencyFeePct: number; adminFee: number
@@ -348,17 +350,23 @@ export function computeDealMetrics(params: {
 }): DealMetrics {
   const {
     propertyType, price, rent, growth,
-    internalSqft, balconySqft, scRate, completion, developer, handoverValue,
+    internalSqft, balconySqft, scRate, buaSqft, completion, developer, handoverValue,
     paymentPlan, dldPct, agencyFeePct, adminFee,
     mortgageOn, depositPct, interestRate, termYears,
   } = params
 
   // ── Yield & income ────────────────────────────────────────────────────────
-  const balconyRate  = scRate * BALCONY_SC_RATIO
-  const serviceCharge = internalSqft * scRate + balconySqft * balconyRate
+  // Callers pass buaSqft only for townhouse/villa (undefined for apartments).
+  // Apartment SC: (internalSqft × scRate) + (balconySqft × scRate × 0.25)
+  // Townhouse/Villa SC: buaSqft × scRate  (no balcony split)
+  const isApartment   = !(buaSqft != null && buaSqft > 0)
+  const totalSqft     = isApartment ? internalSqft + balconySqft : buaSqft!
+  const balconyRate   = scRate * BALCONY_SC_RATIO
+  const serviceCharge = isApartment
+    ? (internalSqft * scRate) + (balconySqft * scRate * BALCONY_SC_RATIO)
+    : buaSqft! * scRate
   const grossRent    = rent
   const netIncome    = rent - serviceCharge
-  const totalSqft    = internalSqft + balconySqft
   const grossYield   = price > 0 ? (rent / price) * 100 : 0
   const netYield     = price > 0 ? (netIncome / price) * 100 : 0
   const pricePerSqft = totalSqft > 0 && price > 0 ? price / totalSqft : 0
