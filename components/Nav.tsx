@@ -104,7 +104,7 @@ export default function Nav() {
             {/* Sign out */}
             {session?.user && (
               <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => signOut({ callbackUrl: '/login', redirect: true })}
                 className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] transition-colors"
               >
                 {session.user.name} · Sign out
@@ -165,7 +165,7 @@ export default function Nav() {
               ))}
               {session?.user && (
                 <button
-                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/login' }) }}
+                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/login', redirect: true }) }}
                   className="w-full text-left px-4 py-2 text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] rounded"
                 >
                   {session.user.name} · Sign out

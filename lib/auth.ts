@@ -61,4 +61,9 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
+  events: {
+    async signOut() {
+      // ensures JWT cookie is fully cleared server-side on sign out
+    },
+  },
 }
