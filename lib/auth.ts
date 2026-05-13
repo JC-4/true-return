@@ -21,6 +21,8 @@ type IndexEntry = {
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+  // required on Vercel — sits behind a proxy and next-auth must trust forwarded headers
+  ...(({ trustHost: true } as unknown) as object),
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
