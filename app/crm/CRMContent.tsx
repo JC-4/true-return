@@ -653,9 +653,8 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
             onKeyDown={handleKeyDown}
             disabled={streaming}
             placeholder={client ? `Ask about ${client.name}…` : 'Ask about your clients…'}
-            rows={1}
             className="flex-1 px-3 py-2.5 rounded-xl border border-[#e4e4e7] text-sm text-[#18181b] bg-white focus:outline-none focus:ring-1 focus:ring-[#10b981] focus:border-[#10b981] resize-none disabled:opacity-60 placeholder:text-[#a1a1aa]"
-            style={{ maxHeight: 120, overflowY: 'auto' }}
+            style={{ height: 100, overflowY: 'auto' }}
           />
           <button
             onClick={() => sendMessage(input)}
@@ -818,11 +817,11 @@ export default function CRMPage() {
         )}
       </div>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {/* ── Sidebar ── */}
         <aside className={`
           ${mobileView === 'list' ? 'flex' : 'hidden'} sm:flex
-          flex-col w-full sm:w-[280px] bg-white border-r border-[#e4e4e7] flex-shrink-0
+          flex-col w-full sm:w-[280px] bg-white border-r border-[#e4e4e7] flex-shrink-0 self-stretch
         `}>
           {/* Sidebar header — desktop only */}
           <div className="hidden sm:flex items-center justify-between px-4 py-4 border-b border-[#e4e4e7]">
@@ -908,28 +907,26 @@ export default function CRMPage() {
           </div>
 
           {/* Sidebar footer */}
-          <div className="flex flex-col gap-2 p-3 border-t border-[#e4e4e7]">
-            <div className="flex gap-2">
-              <button
-                onClick={loadClients}
-                disabled={refreshing}
-                className="flex-1 py-2 rounded-lg text-xs font-medium text-[#71717a] bg-[#f4f4f5] hover:bg-[#e4e4e7] disabled:opacity-60 transition-colors"
-              >
-                {refreshing ? 'Refreshing…' : 'Refresh'}
-              </button>
-              <button
-                onClick={() => setShowAdd(true)}
-                className="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
-              >
-                + Add client
-              </button>
-            </div>
+          <div className="mt-auto flex flex-col gap-2 p-3">
+            <button
+              onClick={loadClients}
+              disabled={refreshing}
+              className="w-full py-2 rounded-lg text-xs font-medium text-[#71717a] bg-[#f4f4f5] border border-[#e4e4e7] hover:bg-[#e4e4e7] disabled:opacity-60 transition-colors"
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="w-full py-2 rounded-lg text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
+            >
+              + Add client
+            </button>
             <button
               onClick={() => { setEditingKnowledge(true); setMobileView('detail') }}
-              className={`w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+              className={`w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 border ${
                 editingKnowledge
-                  ? 'bg-[#10b981]/10 text-[#10b981]'
-                  : 'text-[#71717a] bg-[#f4f4f5] hover:bg-[#e4e4e7]'
+                  ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
+                  : 'text-[#71717a] bg-[#f4f4f5] border-[#e4e4e7] hover:bg-[#e4e4e7]'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -944,7 +941,7 @@ export default function CRMPage() {
         {/* ── Main area ── */}
         <main className={`
           ${mobileView === 'detail' ? 'flex' : 'hidden'} sm:flex
-          flex-col flex-1 min-w-0 min-h-0 overflow-hidden
+          flex-col flex-1 min-w-0 min-h-0 overflow-hidden self-stretch
         `}>
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* Context header */}
