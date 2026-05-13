@@ -19,11 +19,29 @@ type IndexEntry = {
   createdAt: string
 }
 
+const isProd = process.env.NODE_ENV === 'production'
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   // required on Vercel — sits behind a proxy and next-auth must trust forwarded headers
   ...(({ trustHost: true } as unknown) as object),
   session: { strategy: 'jwt' },
+  // Explicitly set the __Secure- prefixed cookie name for Vercel's HTTPS environment.
+  // Without this, next-auth may use the non-prefixed name and the middleware can't read it.
+  // Conditional so localhost (HTTP) continues to work without the __Secure- prefix.
+  ...(isProd ? {
+    cookies: {
+      sessionToken: {
+        name: '__Secure-next-auth.session-token',
+        options: {
+          httpOnly: true,
+          sameSite: 'lax' as const,
+          path: '/',
+          secure: true,
+        },
+      },
+    },
+  } : {}),
   pages: {
     signIn: '/login',
   },
