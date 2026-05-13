@@ -8,6 +8,13 @@ import { redis } from '@/lib/redis'
 // Delimiter written at the end of the stream to signal a system/record-update message
 const SYS_MARKER = '\x00SYS:'
 
+const CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
+function generateId(length = 8): string {
+  let id = ''
+  for (let i = 0; i < length; i++) id += CHARS[Math.floor(Math.random() * CHARS.length)]
+  return id
+}
+
 type ClientRecord = {
   id: string
   name: string
@@ -140,14 +147,14 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      const conversationText = [
+        ...messages.map(m => `${m.role}: ${m.content}`),
+        `assistant: ${fullResponse}`,
+      ].join('\n')
+
       // Auto-update client record if this is a per-client chat
       if (focusedClient) {
         try {
-          const conversationText = [
-            ...messages.map(m => `${m.role}: ${m.content}`),
-            `assistant: ${fullResponse}`,
-          ].join('\n')
-
           const extraction = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 512,
@@ -194,6 +201,58 @@ Rules:
           }
         } catch (err) {
           console.error('[AI route] Auto-update error:', err)
+        }
+      } else {
+        // General mode: check if the conversation requested a new client to be created
+        try {
+          const intentCheck = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 512,
+            system: 'You are a JSON extractor. Return only a valid JSON object, no markdown fences, no explanation.',
+            messages: [{
+              role: 'user',
+              content: `If the user asked to add or create a new client in this conversation, extract the client details and return ONLY a JSON object in this format: { "action": "create_client", "data": { "name": "", "status": "Active", "market": [], "propertyType": "", "minBudgetAED": null, "maxBudgetAED": null, "notes": "", "followUpAction": "", "nextFollowUp": null } }. If no client creation was requested, return { "action": "none" }.
+
+Rules:
+- market must be an array containing "Off Plan", "Secondary", or both, or []
+- minBudgetAED and maxBudgetAED must be numbers (e.g. 1500000) or null
+- nextFollowUp must be a date in YYYY-MM-DD format or null — never a phrase like "next week"
+- today's date is ${todayStr} — use it to resolve relative dates
+- notes and followUpAction should be empty strings if not mentioned
+
+Conversation:
+${conversationText}`,
+            }],
+          })
+
+          const raw = intentCheck.content[0]?.type === 'text' ? intentCheck.content[0].text.trim() : '{}'
+          const jsonStr = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+          const intent = JSON.parse(jsonStr) as { action: string; data?: Record<string, unknown> }
+
+          if (intent.action === 'create_client' && typeof intent.data?.name === 'string' && intent.data.name.trim()) {
+            const newId = generateId()
+            const savedAt = new Date().toISOString()
+            // Sanitize: ensure nextFollowUp is YYYY-MM-DD or omitted
+            const d = intent.data
+            if (typeof d.nextFollowUp === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(d.nextFollowUp)) {
+              d.nextFollowUp = null
+            }
+            const clientData = {
+              id: newId,
+              savedAt,
+              updatedAt: savedAt,
+              status: 'Active',
+              market: [] as string[],
+              ...d,
+            }
+            await redis.set(`client:${userId}:${newId}`, clientData)
+            const idx = await redis.get<IndexEntry[]>(`clients:${userId}`) ?? []
+            idx.unshift({ id: newId, name: intent.data.name.trim(), status: (intent.data.status as string) ?? 'Active', savedAt, updatedAt: savedAt })
+            await redis.set(`clients:${userId}`, idx)
+            await writer.write(encoder.encode(`${SYS_MARKER}Client "${intent.data.name.trim()}" added to your CRM.`))
+          }
+        } catch (err) {
+          console.error('[AI route] Client creation check error:', err)
         }
       }
     } catch (error) {

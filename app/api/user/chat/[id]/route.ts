@@ -27,17 +27,26 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { role, content } = await req.json() as { role: string; content: string }
-
-  const timestamp = new Date().toISOString()
-  const messages = await redis.get<StoredMessage[]>(`chat:${userId}:${id}`) ?? []
-
-  messages.push({ role: role as 'user' | 'assistant', content, timestamp })
-
-  if (messages.length > MAX_MESSAGES) {
-    messages.splice(0, messages.length - MAX_MESSAGES)
+  const body = await req.json() as {
+    role?: string
+    content?: string
+    messages?: Array<{ role: string; content: string }>
   }
 
-  await redis.set(`chat:${userId}:${id}`, messages)
+  const timestamp = new Date().toISOString()
+  const stored = await redis.get<StoredMessage[]>(`chat:${userId}:${id}`) ?? []
+
+  // Accept either a single {role,content} or a batch {messages:[...]}
+  const incoming: StoredMessage[] = body.messages
+    ? body.messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content, timestamp }))
+    : [{ role: body.role as 'user' | 'assistant', content: body.content!, timestamp }]
+
+  stored.push(...incoming)
+  if (stored.length > MAX_MESSAGES) {
+    stored.splice(0, stored.length - MAX_MESSAGES)
+  }
+
+  await redis.set(`chat:${userId}:${id}`, stored)
+  console.log(`[chat:${id}] saved ${incoming.length} msg(s), total ${stored.length}`)
   return NextResponse.json({ ok: true })
 }

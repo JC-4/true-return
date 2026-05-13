@@ -427,15 +427,6 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
     `What properties suit ${client.name}?`,
   ] : []
 
-  // Persist a single message to Redis (fire-and-forget)
-  function persistMessage(role: 'user' | 'assistant', content: string) {
-    fetch(`/api/user/chat/${chatId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, content }),
-    }).catch(() => {})
-  }
-
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || streaming) return
@@ -495,9 +486,17 @@ function ChatPanel({ chatId, client, onClientsMaybeChanged }: {
         return next
       })
 
-      // Persist both messages
-      persistMessage('user', trimmed)
-      persistMessage('assistant', assistantText)
+      // Persist both messages atomically (single request avoids race condition)
+      fetch(`/api/user/chat/${chatId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: trimmed },
+            { role: 'assistant', content: assistantText },
+          ],
+        }),
+      }).catch(err => console.error('[chat persist]', err))
 
       // Refresh client list if the AI updated a record
       if (systemText) onClientsMaybeChanged()
@@ -709,6 +708,7 @@ function KnowledgeEditor({ onClose }: { onClose: () => void }) {
 export default function CRMPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null) // null = General mode
   const [showAdd, setShowAdd] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
@@ -718,6 +718,7 @@ export default function CRMPage() {
   const chatId = selectedId ?? 'general'
 
   const loadClients = useCallback(async () => {
+    setRefreshing(true)
     try {
       const index = await fetch('/api/user/clients').then(r => r.json()) as IndexEntry[]
       const full = await Promise.all(
@@ -728,6 +729,7 @@ export default function CRMPage() {
       // silently ignore
     } finally {
       setLoaded(true)
+      setRefreshing(false)
     }
   }, [])
 
@@ -873,9 +875,10 @@ export default function CRMPage() {
             <div className="flex gap-2">
               <button
                 onClick={loadClients}
-                className="flex-1 py-2 rounded-lg text-xs font-medium text-[#71717a] bg-[#f4f4f5] hover:bg-[#e4e4e7] transition-colors"
+                disabled={refreshing}
+                className="flex-1 py-2 rounded-lg text-xs font-medium text-[#71717a] bg-[#f4f4f5] hover:bg-[#e4e4e7] disabled:opacity-60 transition-colors"
               >
-                Refresh
+                {refreshing ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 onClick={() => setShowAdd(true)}
