@@ -11,12 +11,19 @@ const config: Config = {
       colors: {
         brand: {
           black:   '#18181b',
-          surface: '#27272a',
-          bg:      '#fafafa',
           white:   '#ffffff',
-          border:  '#e4e4e7',
-          muted:   '#71717a',
           accent:  '#10b981',
+          bg:      'rgb(var(--brand-bg-rgb) / <alpha-value>)',
+          surface: 'rgb(var(--brand-surface-rgb) / <alpha-value>)',
+          border:  'rgb(var(--brand-border-rgb) / <alpha-value>)',
+          text:    'rgb(var(--brand-text-rgb) / <alpha-value>)',
+          muted:   'rgb(var(--brand-muted-rgb) / <alpha-value>)',
+          hint:    'rgb(var(--brand-hint-rgb) / <alpha-value>)',
+          bronze: {
+            DEFAULT: 'rgb(var(--brand-bronze-rgb) / <alpha-value>)',
+            light:   'rgb(var(--brand-bronze-light-rgb) / <alpha-value>)',
+            mid:     'rgb(var(--brand-bronze-mid-rgb) / <alpha-value>)',
+          },
         },
       },
       fontFamily: {

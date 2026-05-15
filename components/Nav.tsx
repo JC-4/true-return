@@ -10,6 +10,7 @@ const calculatorLinks = [
 ]
 
 const otherLinks = [
+  { href: '/projects',     label: 'Projects' },
   { href: '/deals',        label: 'Deals' },
   { href: '/areas',        label: 'Areas' },
   { href: '/notes',        label: 'Notes' },

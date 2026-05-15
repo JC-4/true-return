@@ -5,6 +5,7 @@
       "name": "true-return",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/jacksoncrosland/Documents/Documents - M5 MacBook Air/Websites/true-return",
       "port": 3000
     }
   ]

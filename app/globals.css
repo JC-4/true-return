@@ -6,12 +6,29 @@
 
 :root {
   --brand-black:   #18181b;
-  --brand-surface: #27272a;
-  --brand-bg:      #fafafa;
   --brand-white:   #ffffff;
-  --brand-border:  #e4e4e7;
-  --brand-muted:   #71717a;
   --brand-accent:  #10b981;
+
+  --brand-bg:           #FAFAF8;
+  --brand-surface:      #F4F3F0;
+  --brand-border:       #E5E3DC;
+  --brand-text:         #1C1B18;
+  --brand-muted:        #6B6860;
+  --brand-hint:         #9E9B93;
+  --brand-bronze:       #A0784A;
+  --brand-bronze-light: #F2EAE0;
+  --brand-bronze-mid:   #C49A6C;
+
+  /* RGB triplets for Tailwind color utilities */
+  --brand-bg-rgb:           250 250 248;
+  --brand-surface-rgb:      244 243 240;
+  --brand-border-rgb:       229 227 220;
+  --brand-text-rgb:         28 27 24;
+  --brand-muted-rgb:        107 104 96;
+  --brand-hint-rgb:         158 155 147;
+  --brand-bronze-rgb:       160 120 74;
+  --brand-bronze-light-rgb: 242 234 224;
+  --brand-bronze-mid-rgb:   196 154 108;
 }
 
 /* Slider styling */
