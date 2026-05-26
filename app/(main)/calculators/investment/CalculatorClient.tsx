@@ -3,59 +3,19 @@ import { useSearchParams } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { calculateInvestmentScore, type ScoreBreakdown } from '@/lib/calculations'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const BALCONY_SC_RATIO = 0.25
-
-// ─── Developer list ───────────────────────────────────────────────────────────
-
-const DEVELOPERS = [
-  { name: 'Aldar',                  tier: 1 },
-  { name: 'Arada',                  tier: 2 },
-  { name: 'Azizi',                  tier: 2 },
-  { name: 'Beyond',                 tier: 3 },
-  { name: 'Binghatti',              tier: 2 },
-  { name: 'Bloom Living',           tier: 3 },
-  { name: 'Damac',                  tier: 2 },
-  { name: 'Danube',                 tier: 3 },
-  { name: 'Deyaar',                 tier: 2 },
-  { name: 'Dubai Properties',       tier: 2 },
-  { name: 'Ellington Properties',   tier: 1 },
-  { name: 'Emaar',                  tier: 1 },
-  { name: 'HMB Developments',       tier: 3 },
-  { name: 'HRE Development',        tier: 2 },
-  { name: 'Iman',                   tier: 2 },
-  { name: 'Imtiaz',                 tier: 2 },
-  { name: 'Majid Al Futtaim (MAF)', tier: 1 },
-  { name: 'Meraas',                 tier: 1 },
-  { name: 'Meraki',                 tier: 3 },
-  { name: 'Modon',                  tier: 1 },
-  { name: 'Nakheel',                tier: 1 },
-  { name: 'Nshama',                 tier: 2 },
-  { name: 'Object 1',               tier: 3 },
-  { name: 'Omniyat',                tier: 1 },
-  { name: 'ORA Developers',         tier: 2 },
-  { name: 'RAK Properties',         tier: 2 },
-  { name: 'REEF',                   tier: 3 },
-  { name: 'Reportage',              tier: 3 },
-  { name: 'Samana',                 tier: 3 },
-  { name: 'Scope Properties',        tier: 2 },
-  { name: 'Select Group',           tier: 1 },
-  { name: 'Sobha',                  tier: 1 },
-  { name: 'SOL',                    tier: 2 },
-  { name: 'Taraf',                  tier: 3 },
-  { name: 'Tiger Properties',       tier: 3 },
-  { name: 'Trident',                tier: 2 },
-  { name: 'Union Properties',       tier: 3 },
-  { name: 'Wasl',                   tier: 1 },
-  { name: 'Zaya',                   tier: 3 },
-]
+import {
+  BALCONY_SC_RATIO, PLAN_COLOR_CLASSES, DEVELOPERS,
+  normalizeCompletionDate,
+  parseCompletionDate, getMonthsToCompletion, getYearsToCompletion, parseDateToYear,
+  solveIRR, buildAndSolveIRR,
+  calculateInvestmentScore,
+  type ScoreBreakdown, type PlanRow as CalcPlanRow,
+} from '@/lib/calculations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type PlanRow = { id: string; label: string; date: string; pct: number; handover?: boolean }
+// Re-export PlanRow locally so the rest of this file doesn't need changing
+type PlanRow = CalcPlanRow
 
 export type InitialValues = {
   price?: number
@@ -76,191 +36,13 @@ export type InitialValues = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Parse MM/YYYY or Q1-Q4 YYYY → Date object. Returns null if unparseable.
-function parseCompletionDate(s: string): Date | null {
-  if (!s) return null
-  // MM/YYYY
-  const mmyyyy = s.match(/^(\d{1,2})\/(\d{4})$/)
-  if (mmyyyy) {
-    const month = parseInt(mmyyyy[1], 10) - 1 // 0-indexed
-    const year  = parseInt(mmyyyy[2], 10)
-    if (isNaN(month) || isNaN(year)) return null
-    return new Date(year, month, 1)
-  }
-  // Q1–Q4 YYYY (legacy)
-  const quarter = s.match(/^Q([1-4])\s+(\d{4})$/i)
-  if (quarter) {
-    const monthMap: Record<string, number> = { '1': 2, '2': 5, '3': 8, '4': 11 } // 0-indexed
-    return new Date(parseInt(quarter[2], 10), monthMap[quarter[1]], 1)
-  }
-  return null
-}
-
-// Returns exact months from today to completion date, or null if not parseable.
-function getMonthsToCompletion(s: string): number | null {
-  const d = parseCompletionDate(s)
-  if (!d) return null
-  const now = new Date()
-  const months = (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth())
-  return Math.max(0, months)
-}
-
-// Returns fractional years from today to completion date, or null if not parseable.
-// Uses months/12 — NOT Math.ceil — so annualised gain denominator is accurate.
-function getYearsToCompletion(s: string): number | null {
-  const months = getMonthsToCompletion(s)
-  if (months === null) return null
-  return months / 12
-}
-
-// Normalise legacy "Q1 2028" → "03/2028" for the stored/displayed value in the input field.
-function normalizeCompletionDate(s: string): string {
-  const q = s.trim().match(/^Q([1-4])\s*[\s/]?\s*(\d{4})$/i)
-  if (q) {
-    const m: Record<string, string> = { '1': '03', '2': '06', '3': '09', '4': '12' }
-    return `${m[q[1]]}/${q[2]}`
-  }
-  return s
-}
-
-const PLAN_COLORS = [
-  'bg-blue-500', 'bg-green-500', 'bg-yellow-400', 'bg-orange-500',
-  'bg-purple-600', 'bg-pink-500', 'bg-teal-400',  'bg-red-400',
-]
+// Local alias so existing render code doesn't need updating
+const PLAN_COLORS = PLAN_COLOR_CLASSES
 
 function fmt(n: number) { return Math.round(n).toLocaleString('en-US') }
 function fmtPct(n: number, dp = 1) { return n.toFixed(dp) + '%' }
 
-// ─── IRR calculation ──────────────────────────────────────────────────────────
-
-// Convert a free-text date string from a payment plan row into years from now.
-// Falls back to 0 if unparseable.
-function parseDateToYear(dateStr: string, completionYears: number): number {
-  if (!dateStr) return 0
-  const lower = dateStr.toLowerCase().trim()
-  const yearMatch = dateStr.match(/\b(20\d\d)\b/)
-  if (yearMatch) return Math.max(0, parseInt(yearMatch[1]) - new Date().getFullYear())
-  if (lower.includes('now') || lower.includes('sign') || lower.includes('book')) return 0
-  if (lower.includes('hand') || lower.includes('complet') || lower.includes('deliver')) return completionYears
-  if (lower.includes('month') || lower.includes('during') || lower.includes('construct') || lower.includes('progress')) {
-    return Math.round(completionYears / 2)
-  }
-  return 0
-}
-
-// Newton-Raphson IRR solver. Returns IRR as a percentage, or null if it fails.
-function solveIRR(cashFlows: number[]): number | null {
-  const hasNeg = cashFlows.some(c => c < 0)
-  const hasPos = cashFlows.some(c => c > 0)
-  if (!hasNeg || !hasPos) return null
-
-  let rate = 0.1
-  for (let iter = 0; iter < 300; iter++) {
-    let npv = 0; let dnpv = 0
-    for (let t = 0; t < cashFlows.length; t++) {
-      const factor = Math.pow(1 + rate, t)
-      npv  += cashFlows[t] / factor
-      dnpv -= t * cashFlows[t] / (factor * (1 + rate))
-    }
-    if (Math.abs(dnpv) < 1e-15) break
-    const delta = npv / dnpv
-    rate -= delta
-    if (rate <= -1) rate = -0.9999
-    if (Math.abs(delta) < 1e-8) return rate * 100
-  }
-  return null
-}
-
-// Build annual cash flow array and solve IRR.
-// Secondary: single upfront purchase, income y1–y4, exit at y5.
-// Off-plan: payment plan outflows timed by date, income from completion, exit at completion+5.
-//   If handoverValue provided, exit basis is handoverValue grown at growth% for 5 yrs post-completion.
-function buildAndSolveIRR({
-  price, netIncome, growth, paymentPlan, completion, handoverValue, propertyType,
-  mortgageOn = false, annualMortgageCost = 0, upfrontCash = 0,
-  loanAmount = 0, monthlyPayment = 0, monthlyRate = 0,
-}: {
-  price: number; netIncome: number; growth: number
-  paymentPlan: PlanRow[]; completion: string
-  handoverValue: number; propertyType: 'offplan' | 'secondary'
-  mortgageOn?: boolean
-  annualMortgageCost?: number
-  upfrontCash?: number
-  loanAmount?: number
-  monthlyPayment?: number
-  monthlyRate?: number
-}): number | null {
-  if (price <= 0 || netIncome <= 0) return null
-
-  const annualCashflow = mortgageOn ? netIncome - annualMortgageCost : netIncome
-
-  const balanceAt = (years: number): number => {
-    if (!mortgageOn || loanAmount <= 0) return 0
-    const months = years * 12
-    if (monthlyRate > 0) {
-      return Math.max(0, loanAmount * Math.pow(1 + monthlyRate, months)
-        - monthlyPayment * (Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
-    }
-    return Math.max(0, loanAmount - monthlyPayment * months)
-  }
-
-  if (propertyType === 'secondary') {
-    const exitYear = 5
-    const flows: number[] = new Array(exitYear + 1).fill(0)
-    if (mortgageOn) {
-      flows[0] -= upfrontCash
-      for (let y = 1; y < exitYear; y++) flows[y] += annualCashflow
-      const exitValue = price * Math.pow(1 + growth / 100, exitYear)
-      flows[exitYear] += annualCashflow + exitValue - balanceAt(exitYear)
-    } else {
-      flows[0] -= price
-      for (let y = 1; y < exitYear; y++) flows[y] += netIncome
-      flows[exitYear] += netIncome + price * Math.pow(1 + growth / 100, exitYear)
-    }
-    return solveIRR(flows)
-  }
-
-  // Off-plan — use integer-rounded years for array indexing, fractional for accuracy
-  const rawYears = getYearsToCompletion(completion)
-  const safeCompletionYears = (rawYears === null || isNaN(rawYears) || rawYears < 0) ? 2 : Math.round(rawYears)
-  const exitYear = safeCompletionYears + 5
-  const flows: number[] = new Array(exitYear + 1).fill(0)
-
-  // Outflows from payment plan, or single price (or upfrontCash if mortgaged) at t=0
-  if (paymentPlan.length > 0) {
-    if (mortgageOn && loanAmount > 0) {
-      // Acquisition costs are paid upfront (they sit outside the payment plan)
-      const acqCosts = upfrontCash - (price - loanAmount)   // upfrontCash − depositAmount
-      flows[0] -= acqCosts
-      // Mortgage is disbursed at handover — add it as an inflow at that year
-      const handoverRow = paymentPlan.find(r => r.handover)
-      const handoverYr = handoverRow
-        ? Math.min(Math.max(0, Math.round(parseDateToYear(handoverRow.date, safeCompletionYears))), exitYear)
-        : safeCompletionYears
-      flows[handoverYr] += loanAmount
-    }
-    for (const row of paymentPlan) {
-      const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, safeCompletionYears))), exitYear)
-      flows[yr] -= price * row.pct / 100
-    }
-  } else {
-    flows[0] -= mortgageOn ? upfrontCash : price
-  }
-
-  // Annual cashflow (after mortgage if applicable) for 5 years post-completion
-  for (let y = safeCompletionYears; y < exitYear; y++) {
-    flows[y] += annualCashflow
-  }
-
-  // Exit value: if handoverValue provided, grow from that for 5 yrs post-completion
-  const exitBase = handoverValue > 0 ? handoverValue : price
-  const exitGrowthYears = handoverValue > 0 ? 5 : exitYear
-  const exitValue = exitBase * Math.pow(1 + growth / 100, exitGrowthYears)
-  // annualCashflow always included for exit year (= netIncome when no mortgage)
-  flows[exitYear] += annualCashflow + exitValue - (mortgageOn ? balanceAt(exitYear) : 0)
-
-  return solveIRR(flows)
-}
+// parseDateToYear, solveIRR, buildAndSolveIRR, getYearsToCompletion etc. imported from lib/calculations
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

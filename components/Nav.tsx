@@ -9,14 +9,32 @@ const calculatorLinks = [
   { href: '/calculators/mortgage',   label: 'Mortgage Calculator' },
 ]
 
-const otherLinks = [
-  { href: '/projects',     label: 'Projects' },
-  { href: '/deals',        label: 'Deals' },
-  { href: '/areas',        label: 'Areas' },
-  { href: '/notes',        label: 'Notes' },
-  { href: '/crm',          label: 'CRM' },
-  { href: '/work-with-me', label: 'Work With Me' },
+const publicLinks = [
+  { href: '/projects', label: 'Projects' },
+  { href: '/contact',  label: 'Contact' },
 ]
+
+const adminLinks = [
+  { href: '/deals', label: 'Deals' },
+  { href: '/areas', label: 'Areas' },
+  { href: '/notes', label: 'Notes' },
+  { href: '/crm',   label: 'CRM' },
+]
+
+function NavLink({ href, label, pathname, onClick }: { href: string; label: string; pathname: string; onClick?: () => void }) {
+  const active = pathname === href || (href !== '/' && pathname.startsWith(href))
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+        active ? 'text-[#18181b] bg-[#e4e4e7]' : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+      }`}
+    >
+      {label}
+    </Link>
+  )
+}
 
 export default function Nav() {
   const pathname = usePathname()
@@ -24,6 +42,7 @@ export default function Nav() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
+  const isAdmin = !!session?.user
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -34,6 +53,9 @@ export default function Nav() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   const calcActive = pathname.startsWith('/calculators')
 
@@ -47,69 +69,70 @@ export default function Nav() {
 
           {/* Desktop links */}
           <div className="hidden sm:flex items-center gap-1">
-
-            {/* Calculators dropdown */}
-            <div ref={dropdownRef} className="relative">
-              <button
-                onClick={() => setDropdownOpen(v => !v)}
-                className={`flex items-center gap-1 px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  calcActive
-                    ? 'text-[#10b981] bg-[#10b981]/10'
-                    : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
-                }`}
-              >
-                Calculators
-                <svg
-                  className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-[#e4e4e7] py-1 z-50">
-                  {calculatorLinks.map(({ href, label }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDropdownOpen(false)}
-                      className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
-                        pathname === href
-                          ? 'text-[#10b981] bg-[#10b981]/10'
-                          : 'text-[#71717a] hover:text-[#10b981] hover:bg-[#10b981]/10'
-                      }`}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Other links */}
-            {otherLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-                  pathname.startsWith(href)
-                    ? 'text-[#18181b] bg-[#e4e4e7]'
-                    : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
-                }`}
-              >
-                {label}
-              </Link>
+            {publicLinks.map(({ href, label }) => (
+              <NavLink key={href} href={href} label={label} pathname={pathname} />
             ))}
 
-            {/* Sign out */}
-            {session?.user && (
-              <button
-                onClick={() => signOut({ callbackUrl: '/login', redirect: true })}
-                className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] transition-colors"
+            {/* Admin-only: Calculators dropdown + extra links */}
+            {isAdmin && (
+              <>
+                <div ref={dropdownRef} className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(v => !v)}
+                    className={`flex items-center gap-1 px-4 py-2 rounded text-sm font-medium transition-colors ${
+                      calcActive
+                        ? 'text-[#18181b] bg-[#e4e4e7]'
+                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                    }`}
+                  >
+                    Calculators
+                    <svg
+                      className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {dropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-[#e4e4e7] py-1 z-50">
+                      {calculatorLinks.map(({ href, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setDropdownOpen(false)}
+                          className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                            pathname === href
+                              ? 'text-[#18181b] bg-[#e4e4e7]'
+                              : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                          }`}
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {adminLinks.map(({ href, label }) => (
+                  <NavLink key={href} href={href} label={label} pathname={pathname} />
+                ))}
+
+                <button
+                  onClick={() => signOut({ callbackUrl: '/', redirect: true })}
+                  className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] transition-colors"
+                >
+                  Sign out
+                </button>
+              </>
+            )}
+
+            {!isAdmin && (
+              <Link
+                href="/login"
+                className="ml-2 px-3 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] transition-colors"
               >
-                {session.user.name} · Sign out
-              </button>
+                Sign in
+              </Link>
             )}
           </div>
 
@@ -131,48 +154,75 @@ export default function Nav() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="sm:hidden border-t border-[#e4e4e7] py-2">
-            <p className="px-4 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#71717a]">
-              Calculators
-            </p>
-            {calculatorLinks.map(({ href, label }) => (
+          <div className="sm:hidden border-t border-[#e4e4e7] py-2 space-y-0.5">
+            {publicLinks.map(({ href, label }) => (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setMobileOpen(false)}
                 className={`block px-4 py-2 text-sm font-medium rounded ${
-                  pathname === href
-                    ? 'text-[#10b981] bg-[#10b981]/10'
-                    : 'text-[#71717a] hover:text-[#10b981] hover:bg-[#10b981]/10'
+                  pathname.startsWith(href)
+                    ? 'text-[#18181b] bg-[#e4e4e7]'
+                    : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
                 }`}
               >
                 {label}
               </Link>
             ))}
-            <div className="border-t border-[#e4e4e7] mt-1 pt-1">
-              {otherLinks.map(({ href, label }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-2 text-sm font-medium rounded ${
-                    pathname.startsWith(href)
-                      ? 'text-[#18181b] bg-[#e4e4e7]'
-                      : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-              {session?.user && (
+
+            {isAdmin && (
+              <div className="border-t border-[#e4e4e7] pt-2 mt-1 space-y-0.5">
+                <p className="px-4 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#a1a1aa]">
+                  Calculators
+                </p>
+                {calculatorLinks.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-4 py-2 text-sm font-medium rounded ${
+                      pathname === href
+                        ? 'text-[#18181b] bg-[#e4e4e7]'
+                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+                {adminLinks.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-4 py-2 text-sm font-medium rounded ${
+                      pathname.startsWith(href)
+                        ? 'text-[#18181b] bg-[#e4e4e7]'
+                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
                 <button
-                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/login', redirect: true }) }}
+                  onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/', redirect: true }) }}
                   className="w-full text-left px-4 py-2 text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] rounded"
                 >
-                  {session.user.name} · Sign out
+                  Sign out
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+
+            {!isAdmin && (
+              <div className="border-t border-[#e4e4e7] mt-1 pt-2">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] rounded"
+                >
+                  Sign in
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>

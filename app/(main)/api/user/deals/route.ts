@@ -13,12 +13,25 @@ function generateId(length = 8): string {
 
 type IndexEntry = { id: string; name: string; savedAt: string; updatedAt?: string }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as { id?: string }).id!
 
   const index = await redis.get<IndexEntry[]>(`deals:${userId}`) ?? []
+
+  // When ?projectSlug= is provided, return full deal params filtered to that project
+  const projectSlug = new URL(req.url).searchParams.get('projectSlug')
+  if (projectSlug) {
+    const deals = await Promise.all(
+      index.map(entry => redis.get<{ params: Record<string, unknown> } & IndexEntry>(`deal:${userId}:${entry.id}`))
+    )
+    const filtered = deals
+      .filter((d): d is NonNullable<typeof d> => !!d && d.params?.projectSlug === projectSlug)
+      .map(d => ({ id: d.id, name: d.name, savedAt: d.savedAt, params: d.params }))
+    return NextResponse.json(filtered)
+  }
+
   return NextResponse.json(index)
 }
 

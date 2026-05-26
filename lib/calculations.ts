@@ -3,50 +3,79 @@
 export const BALCONY_SC_RATIO = 0.25
 
 export const DEVELOPERS = [
+  // ── Tier 1 ─────────────────────────────────────────────────────────────────
   { name: 'Aldar',                  tier: 1 },
-  { name: 'Arada',                  tier: 2 },
-  { name: 'Azizi',                  tier: 2 },
-  { name: 'Beyond',                 tier: 3 },
-  { name: 'Binghatti',              tier: 2 },
-  { name: 'Bloom Living',           tier: 3 },
-  { name: 'Damac',                  tier: 2 },
-  { name: 'Danube',                 tier: 3 },
-  { name: 'Deyaar',                 tier: 2 },
-  { name: 'Dubai Properties',       tier: 2 },
+  { name: 'Dubai Properties',       tier: 1 },
+  { name: 'Eagle Hills',            tier: 1 },
   { name: 'Ellington Properties',   tier: 1 },
   { name: 'Emaar',                  tier: 1 },
-  { name: 'HMB Developments',       tier: 3 },
-  { name: 'HRE Development',        tier: 2 },
-  { name: 'Iman',                   tier: 2 },
-  { name: 'Imtiaz',                 tier: 2 },
-  { name: 'Majid Al Futtaim (MAF)', tier: 1 },
+  { name: 'Expo City',              tier: 1 },
+  { name: 'H&H Development',        tier: 1 },
+  { name: 'Majid Al Futtaim',       tier: 1 },
+  { name: 'Majid Al Futtaim (MAF)', tier: 1 },  // legacy alias
   { name: 'Meraas',                 tier: 1 },
-  { name: 'Meraki',                 tier: 3 },
   { name: 'Modon',                  tier: 1 },
   { name: 'Nakheel',                tier: 1 },
-  { name: 'Nshama',                 tier: 2 },
-  { name: 'Object 1',               tier: 3 },
   { name: 'Omniyat',                tier: 1 },
-  { name: 'ORA Developers',         tier: 2 },
-  { name: 'RAK Properties',         tier: 2 },
-  { name: 'REEF',                   tier: 3 },
-  { name: 'Reportage',              tier: 3 },
-  { name: 'Samana',                 tier: 3 },
-  { name: 'Scope Properties',       tier: 2 },
   { name: 'Select Group',           tier: 1 },
   { name: 'Sobha',                  tier: 1 },
-  { name: 'SOL',                    tier: 2 },
-  { name: 'Taraf',                  tier: 3 },
-  { name: 'Tiger Properties',       tier: 3 },
-  { name: 'Trident',                tier: 2 },
-  { name: 'Union Properties',       tier: 3 },
   { name: 'Wasl',                   tier: 1 },
-  { name: 'Zaya',                   tier: 3 },
+  // ── Tier 2 ─────────────────────────────────────────────────────────────────
+  { name: 'Arada',                  tier: 2 },
+  { name: 'Beyond',                 tier: 2 },
+  { name: 'Damac',                  tier: 2 },
+  { name: 'Emirates Developments',  tier: 2 },
+  { name: 'HRE Development',        tier: 2 },
+  { name: 'Iman',                   tier: 2 },
+  { name: 'Imtiaz Developments',    tier: 2 },
+  { name: 'Imtiaz',                 tier: 2 },  // legacy alias for old Redis deals
+  { name: 'Nshama',                 tier: 2 },
+  { name: 'ORA Developers',         tier: 2 },
+  { name: 'Palma Development',      tier: 2 },
+  { name: 'SOL',                    tier: 2 },
+  { name: 'Zaya',                   tier: 2 },
+  // ── Tier 3 ─────────────────────────────────────────────────────────────────
+  { name: 'Avenew Properties',      tier: 3 },
+  { name: 'Azizi',                  tier: 3 },
+  { name: 'Binghatti',              tier: 3 },
+  { name: 'Bloom Living',           tier: 3 },
+  { name: 'DAR Global',             tier: 3 },
+  { name: 'Deyaar',                 tier: 3 },
+  { name: 'HMB Developments',       tier: 3 },
+  { name: 'LEOS',                   tier: 3 },
+  { name: 'MAG',                    tier: 3 },
+  { name: 'Mira Developments',      tier: 3 },
+  { name: 'Mirfa',                  tier: 3 },
+  { name: 'Mr Eight Development',   tier: 3 },
+  { name: 'Prescott',               tier: 3 },
+  { name: 'RAK Properties',         tier: 3 },
+  { name: 'Samana',                 tier: 3 },
+  { name: 'SAAS Properties',        tier: 3 },
+  { name: 'Scope Properties',       tier: 3 },
+  { name: 'Vision Development',     tier: 3 },
+  // ── Tier 4 ─────────────────────────────────────────────────────────────────
+  { name: 'Holm',                   tier: 4 },
+  { name: 'Meraki',                 tier: 4 },
+  { name: 'REEF',                   tier: 4 },
+  { name: 'Taraf',                  tier: 4 },
+  { name: 'Tiger Properties',       tier: 4 },
+  { name: 'Trident',                tier: 4 },
+  { name: 'Union Properties',       tier: 4 },
+  // ── Tier 5 ─────────────────────────────────────────────────────────────────
+  { name: 'Danube',                 tier: 5 },
+  { name: 'Object 1',               tier: 5 },
+  { name: 'Reportage',              tier: 5 },
 ]
 
 export const PLAN_COLORS = [
   '#3b82f6', '#22c55e', '#eab308', '#f97316',
   '#9333ea', '#ec4899', '#2dd4bf', '#f87171',
+]
+
+// Tailwind bg-class equivalents of PLAN_COLORS (same palette, different format for className usage)
+export const PLAN_COLOR_CLASSES = [
+  'bg-blue-500', 'bg-green-500', 'bg-yellow-400', 'bg-orange-500',
+  'bg-purple-600', 'bg-pink-500', 'bg-teal-400',  'bg-red-400',
 ]
 
 export type PlanRow = { id: string; label: string; date: string; pct: number; handover?: boolean }
@@ -89,6 +118,16 @@ export type DealMetrics = {
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
+
+// Normalise legacy "Q1 2028" → "03/2028" for the stored/displayed value in an input field.
+export function normalizeCompletionDate(s: string): string {
+  const q = s.trim().match(/^Q([1-4])\s*[\s/]?\s*(\d{4})$/i)
+  if (q) {
+    const m: Record<string, string> = { '1': '03', '2': '06', '3': '09', '4': '12' }
+    return `${m[q[1]]}/${q[2]}`
+  }
+  return s
+}
 
 export function parseCompletionDate(s: string): Date | null {
   if (!s) return null
@@ -253,7 +292,7 @@ export function buildAndSolveIRR({
  *   Calibrated anchors: 6% ≈ 7, 8% ≈ 18, 8.9% ≈ 21, 10.5% ≈ 27, 12.5% ≈ 33
  *   Always uses mortgageOn: false regardless of actual deal structure.
  *
- * Factor 3 — Developer tier (20 pts max): Tier 1 = 20, Tier 2 = 14, Tier 3/null = 6
+ * Factor 3 — Developer tier (20 pts max): Tier 1 = 20, Tier 2 = 15, Tier 3 = 10, Tier 4 = 5, Tier 5/null = 0
  *
  * Factor 4 — Pre-completion ROE / property type (10 pts max):
  *   Secondary: flat 10 pts
@@ -290,9 +329,11 @@ export function calculateInvestmentScore({
     : 0
 
   // Factor 3: Developer tier (20 pts max) — categorical slabs
-  let devPts = 6  // Tier 3 or unknown/null
+  let devPts = 0  // Tier 5 or unknown/null
   if      (developerTier === 1) devPts = 20
-  else if (developerTier === 2) devPts = 14
+  else if (developerTier === 2) devPts = 15
+  else if (developerTier === 3) devPts = 10
+  else if (developerTier === 4) devPts =  5
 
   // Factor 4: Pre-completion ROE / property type (10 pts max)
   const hasPaymentPlan = paymentPlan.length > 0
@@ -343,6 +384,13 @@ export function computeDealMetrics(params: {
   /** When set (townhouse/villa), overrides internalSqft+balconySqft for area-based calcs */
   buaSqft?: number
   completion: string; developer: string; handoverValue: number
+  /**
+   * Tier sourced directly from Supabase (1 | 2 | 3).
+   * When provided and non-null, takes priority over the DEVELOPERS name lookup.
+   * Falls back to DEVELOPERS lookup when undefined/null — preserves scoring for
+   * old Redis-saved deals that stored the developer as a plain string.
+   */
+  developerTierOverride?: number | null
   paymentPlan: PlanRow[]
   dldPct: number; agencyFeePct: number; adminFee: number
   mortgageOn: boolean; depositPct: number; interestRate: number
@@ -448,9 +496,14 @@ export function computeDealMetrics(params: {
   const totalReturnY5 = price > 0 ? netIncome * 5 + (projValueY5 - price) : 0
 
   // ── Score ─────────────────────────────────────────────────────────────────
-  const developerTier = developer
-    ? (DEVELOPERS.find(d => d.name === developer)?.tier ?? null)
-    : null
+  // Prefer the Supabase tier when available; fall back to the hardcoded name
+  // lookup for backward compat with old Redis-saved deals.
+  const developerTier: number | null =
+    (params.developerTierOverride != null)
+      ? params.developerTierOverride
+      : developer
+        ? (DEVELOPERS.find(d => d.name === developer)?.tier ?? null)
+        : null
 
   const { score, grade, missingItems, breakdown } = calculateInvestmentScore({
     netYield, developerTier, paymentPlan, propertyType,

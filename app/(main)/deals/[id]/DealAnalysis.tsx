@@ -19,6 +19,7 @@ type DealParams = {
   mortgageOn?: boolean; depositPct?: number; interestRate?: number
   termYears?: number; mortgageType?: string
   emirate?: string; location?: string
+  bedrooms?: number | null; typology?: string | null
 }
 
 export type StoredDeal = {
@@ -1109,14 +1110,22 @@ export default function DealAnalysis({ deal, isPublic = false }: { deal: StoredD
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">{deal.name}</h1>
             <p className="text-sm text-zinc-400 mt-0.5">
-              {[p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '', developer, p.view, buaSqft > 0 ? `${buaSqft.toLocaleString()} ft² BUA` : '', completion ? `Completion ${completion}` : ''].filter(Boolean).join(' · ')}
+              {[
+                p.location ? `${p.location}, ${p.emirate ?? 'Dubai'}` : '',
+                developer,
+                p.bedrooms !== undefined ? (p.bedrooms === 0 ? 'Studio' : p.bedrooms === null ? 'Commercial' : `${p.bedrooms} Bed`) : '',
+                p.typology ?? '',
+                p.view,
+                buaSqft > 0 ? `${buaSqft.toLocaleString()} ft² BUA` : '',
+                completion ? `Completion ${completion}` : '',
+              ].filter(Boolean).join(' · ')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {!isPublic && (
-              <Link href={buildCalcUrl(p)}
+              <Link href={`/deals/${deal.id}/edit`}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-600 text-zinc-300 hover:border-zinc-400 hover:text-white transition-colors">
-                Edit in calculator
+                Edit deal
               </Link>
             )}
             <button onClick={handleShare}

@@ -90,7 +90,7 @@ export default async function DealPage({
         <h1 className="text-lg font-semibold text-gray-900 mb-2">Deal not found</h1>
         <p className="text-sm text-gray-500 mb-6">This link may have expired or the deal was never saved.</p>
         <Link
-          href="/calculators/investment"
+          href="/deals/new"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#18181b] hover:bg-[#27272a] transition-colors"
         >
           Open calculator

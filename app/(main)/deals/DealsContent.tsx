@@ -198,11 +198,7 @@ function DealCard({
             Analyse
           </button>
           <button
-            onClick={() => {
-              const url = buildCalcUrl(p)
-              const sep = url.includes('?') ? '&' : '?'
-              router.push(`${url}${sep}dealId=${deal.id}`)
-            }}
+            onClick={() => router.push(`/deals/${deal.id}/edit`)}
             className="flex-1 py-2 rounded-lg text-xs font-semibold text-[#18181b] bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             Edit

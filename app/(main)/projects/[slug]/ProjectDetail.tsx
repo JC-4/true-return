@@ -1,10 +1,10 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
-import CalculatorClient from '../../calculators/investment/CalculatorClient'
-import type { InitialValues } from '../../calculators/investment/CalculatorClient'
+import DealBuilder from '@/app/(main)/deals/new/DealBuilder'
+import type { InitialValues } from '@/lib/hooks/useCalculator'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -223,7 +223,19 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProjectDetail({ project, insight }: { project: Project; insight?: ProjectInsight }) {
+type SnapshotValues = InitialValues & { bedrooms?: number | null; typology?: string | null }
+
+export default function ProjectDetail({
+  project,
+  insight,
+  isAdmin = false,
+  snapshotValues,
+}: {
+  project: Project
+  insight?: ProjectInsight
+  isAdmin?: boolean
+  snapshotValues?: SnapshotValues
+}) {
   const [activeSection, setActiveSection] = useState('overview')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
@@ -243,14 +255,52 @@ export default function ProjectDetail({ project, insight }: { project: Project; 
     'faq',
   ]
 
-  // Calculator initial values derived from project data
-  const calcInitialValues: InitialValues | undefined = insight ? {
+  // Map stored DealParamsPayload fields (from insight.defaultParams) to InitialValues keys
+  function applyDefaultParams(dp: Record<string, unknown>): Partial<InitialValues & { bedrooms?: number | null; typology?: string | null }> {
+    const out: Partial<InitialValues & { bedrooms?: number | null; typology?: string | null }> = {}
+    if (dp.price        != null) out.price        = dp.price        as number
+    if (dp.rent         != null) out.rent         = dp.rent         as number
+    if (dp.growth       != null) out.growth       = dp.growth       as number
+    if (dp.handoverValue != null) out.handoverValue = dp.handoverValue as number
+    if (dp.propertySubType) out.propertySubType = dp.propertySubType as 'apartment' | 'townhouse' | 'villa'
+    if (dp.internalSqft != null) out.internalSqft = dp.internalSqft as number
+    if (dp.balconySqft  != null) out.balconySqft  = dp.balconySqft  as number
+    if (dp.buaSqft      != null) out.buaSqft      = dp.buaSqft      as number
+    if (dp.plotSqft     != null) out.plotSqft     = dp.plotSqft     as number
+    if (dp.serviceCharge != null) out.scRate       = dp.serviceCharge as number
+    if (dp.completion)  out.completion = dp.completion as string
+    if (dp.view)        out.view       = dp.view       as string
+    if (dp.unit)        out.unit       = dp.unit       as string
+    if (dp.emirate)     out.emirate    = dp.emirate    as 'Dubai' | 'Abu Dhabi'
+    if (dp.location)    out.location   = dp.location   as string
+    if (dp.dld          != null) out.dldPct       = dp.dld          as number
+    if (dp.agencyFee    != null) out.agencyFeePct = dp.agencyFee    as number
+    if (dp.adminFee     != null) out.adminFee     = dp.adminFee     as number
+    if (dp.mortgageOn   != null) out.mortgageOn   = dp.mortgageOn   as boolean
+    if (dp.depositPct   != null) out.depositPct   = dp.depositPct   as number
+    if (dp.interestRate != null) out.interestRate = dp.interestRate as number
+    if (dp.termYears    != null) out.termYears    = dp.termYears    as number
+    if (dp.mortgageType) out.mortgageType = dp.mortgageType as 'repayment' | 'interest-only'
+    if (dp.paymentPlan) { try { out.paymentPlan = JSON.parse(dp.paymentPlan as string) as PlanRow[] } catch { /* ignore */ } }
+    if (dp.bedrooms !== undefined) out.bedrooms = dp.bedrooms as number | null
+    if (dp.typology) out.typology = dp.typology as string
+    return out
+  }
+
+  // Calculator initial values derived from project data, optionally overridden by a snapshot
+  const calcInitialValues: (InitialValues & { bedrooms?: number | null; typology?: string | null }) | undefined = insight ? {
     price:       project.starting_price ?? 0,
     completion:  formatHandoverDate(project.handover_date),
     developer:   project.developer?.name ?? '',
+    developerId: project.developer_id,
+    projectSlug: project.slug,
     project:     project.name,
     propertyType: 'offplan',
     paymentPlan: adaptPaymentPlan(project.payment_plans, project.handover_date),
+    // Saved defaults override project values (if admin has set them)
+    ...(insight.defaultParams ? applyDefaultParams(insight.defaultParams) : {}),
+    // Snapshot values override everything (shareable link)
+    ...snapshotValues,
   } : undefined
 
   useEffect(() => {
@@ -494,14 +544,15 @@ export default function ProjectDetail({ project, insight }: { project: Project; 
         {insight && (
           <section id="calculator" ref={el => { sectionRefs.current['calculator'] = el }} className="py-16 border-t border-brand-border">
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Run the numbers</p>
-            <div className="rounded-2xl overflow-hidden ring-1 ring-brand-border -mx-6 sm:-mx-10">
-              <Suspense fallback={
-                <div className="h-64 flex items-center justify-center bg-gray-50">
-                  <p className="text-sm text-gray-400">Loading calculator…</p>
-                </div>
-              }>
-                <CalculatorClient initialValues={calcInitialValues} />
-              </Suspense>
+            <div className="rounded-2xl overflow-clip ring-1 ring-brand-border -mx-6 sm:-mx-10">
+              <DealBuilder
+                initialValues={calcInitialValues}
+                lockDeveloper lockProject
+                stickyTop="top-28"
+                showShare={isAdmin}
+                showSaveDefault={isAdmin}
+                showLoad={isAdmin}
+              />
             </div>
           </section>
         )}

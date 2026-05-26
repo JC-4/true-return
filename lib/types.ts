@@ -17,6 +17,8 @@ export type UnitType = {
   price_from: number
   size_sqft_from: number
   price_per_sqft: number
+  bedrooms: number | null   // 0 = studio, 1/2/3 = residential, null = commercial
+  typology: string | null   // distinguishing label within a bedroom count (e.g. "Suite", "Standard"); null if unique
 }
 
 export type ConnectivityItem = {
@@ -75,4 +77,7 @@ export type ProjectInsight = {
   insight_projections?: string
   insight_risks?: string
   documents?: InsightDocument[]
+  /** Default deal-builder params saved by the admin. Applied as initial values for
+   *  any visitor who opens /projects/[slug]/insight without a snapshot ID. */
+  defaultParams?: Record<string, unknown>
 }
