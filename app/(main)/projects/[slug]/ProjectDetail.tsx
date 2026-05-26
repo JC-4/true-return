@@ -1,7 +1,10 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import type { Project, PaymentSegment } from '@/lib/types'
+import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
+import type { PlanRow } from '@/lib/calculations'
+import CalculatorClient from '../../calculators/investment/CalculatorClient'
+import type { InitialValues } from '../../calculators/investment/CalculatorClient'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +73,9 @@ function ConnectivityIcon({ label }: { label: string }) {
 
 // ─── Section nav ─────────────────────────────────────────────────────────────
 
-const SECTIONS = ['overview', 'gallery', 'payment-plan', 'location', 'amenities', 'faq'] as const
+// All possible section IDs — used for observer registration (missing refs are safely skipped)
+const ALL_SECTION_IDS = ['overview', 'gallery', 'my-take', 'calculator', 'payment-plan', 'location', 'amenities', 'documents', 'faq'] as const
+
 const SECTION_LABELS: Record<string, string> = {
   overview:       'Overview',
   gallery:        'Gallery',
@@ -78,6 +83,26 @@ const SECTION_LABELS: Record<string, string> = {
   location:       'Location',
   amenities:      'Amenities',
   faq:            'FAQ',
+  'my-take':      'My Take',
+  calculator:     'Calculator',
+  documents:      'Documents',
+}
+
+function formatHandoverDate(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
+
+function adaptPaymentPlan(plans: Project['payment_plans'], handoverDate: string | null): PlanRow[] {
+  const plan = plans?.[0]
+  if (!plan?.segments?.length) return []
+  return plan.segments.map((seg, i) => {
+    const isHandover = /hand|deliver|complet/i.test(seg.label)
+    const isBooking  = /book|sign|reserv|now/i.test(seg.label)
+    const date = isBooking ? 'On booking' : isHandover ? formatHandoverDate(handoverDate) : 'During construction'
+    return { id: `seg-${i}`, label: seg.label, date, pct: seg.percent, ...(isHandover ? { handover: true } : {}) }
+  })
 }
 
 // ─── Brochure form ────────────────────────────────────────────────────────────
@@ -198,13 +223,39 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProjectDetail({ project }: { project: Project }) {
+export default function ProjectDetail({ project, insight }: { project: Project; insight?: ProjectInsight }) {
   const [activeSection, setActiveSection] = useState('overview')
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({})
 
+  // Insight-derived flags
+  const hasMytake = !!(insight?.insight_opinion || insight?.insight_projections || insight?.insight_risks)
+  const documents = insight?.documents ?? []
+  const hasDocs   = documents.length > 0
+  const [activeDocTab, setActiveDocTab] = useState(0)
+
+  // Dynamic nav order: insight sections slot in after gallery / before faq
+  const SECTIONS: string[] = [
+    'overview', 'gallery',
+    ...(hasMytake ? ['my-take'] : []),
+    ...(insight   ? ['calculator'] : []),
+    'payment-plan', 'location', 'amenities',
+    ...(hasDocs   ? ['documents'] : []),
+    'faq',
+  ]
+
+  // Calculator initial values derived from project data
+  const calcInitialValues: InitialValues | undefined = insight ? {
+    price:       project.starting_price ?? 0,
+    completion:  formatHandoverDate(project.handover_date),
+    developer:   project.developer?.name ?? '',
+    project:     project.name,
+    propertyType: 'offplan',
+    paymentPlan: adaptPaymentPlan(project.payment_plans, project.handover_date),
+  } : undefined
+
   useEffect(() => {
     const observers: IntersectionObserver[] = []
-    SECTIONS.forEach(id => {
+    ALL_SECTION_IDS.forEach(id => {
       const el = sectionRefs.current[id]
       if (!el) return
       const obs = new IntersectionObserver(
@@ -355,6 +406,42 @@ export default function ProjectDetail({ project }: { project: Project }) {
           )}
         </section>
 
+        {/* My Take — independent analysis overlay */}
+        {hasMytake && (
+          <section id="my-take" ref={el => { sectionRefs.current['my-take'] = el }} className="py-16 border-t border-brand-border">
+            <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
+              {/* Header */}
+              <div className="px-8 py-5 border-b border-white/10 flex items-center gap-2.5">
+                <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#A0784A' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A0784A' }}>Independent Analysis</span>
+              </div>
+              {/* Three columns */}
+              <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+                {insight?.insight_opinion && (
+                  <div className="px-8 py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-3">Opinion</p>
+                    <p className="text-sm text-white/75 leading-relaxed">{insight.insight_opinion}</p>
+                  </div>
+                )}
+                {insight?.insight_projections && (
+                  <div className="px-8 py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-3">Projections</p>
+                    <p className="text-sm text-white/75 leading-relaxed">{insight.insight_projections}</p>
+                  </div>
+                )}
+                {insight?.insight_risks && (
+                  <div className="px-8 py-7">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgb(251 191 36 / 0.6)' }}>Risks</p>
+                    <p className="text-sm leading-relaxed" style={{ color: 'rgb(255 255 255 / 0.65)' }}>{insight.insight_risks}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 6. Unit mix */}
         {unitTypes.length > 0 && (
           <section className="py-16 border-t border-brand-border">
@@ -403,6 +490,22 @@ export default function ProjectDetail({ project }: { project: Project }) {
           </section>
         )}
 
+        {/* Calculator — embedded, pre-filled */}
+        {insight && (
+          <section id="calculator" ref={el => { sectionRefs.current['calculator'] = el }} className="py-16 border-t border-brand-border">
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Run the numbers</p>
+            <div className="rounded-2xl overflow-hidden ring-1 ring-brand-border -mx-6 sm:-mx-10">
+              <Suspense fallback={
+                <div className="h-64 flex items-center justify-center bg-gray-50">
+                  <p className="text-sm text-gray-400">Loading calculator…</p>
+                </div>
+              }>
+                <CalculatorClient initialValues={calcInitialValues} />
+              </Suspense>
+            </div>
+          </section>
+        )}
+
         {/* 8. Connectivity */}
         {connectivity.length > 0 && (
           <section id="location" ref={el => { sectionRefs.current['location'] = el }} className="py-16 border-t border-brand-border">
@@ -433,18 +536,67 @@ export default function ProjectDetail({ project }: { project: Project }) {
           </section>
         )}
 
-        {/* 10. Brochure download */}
-        <section className="py-16 border-t border-brand-border">
-          <div className="bg-brand-bronze-light border border-[#DCC4A8] rounded-xl px-6 py-5 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between" style={{ backgroundColor: '#F2EAE0', borderColor: '#DCC4A8' }}>
-            <div>
-              <p className="text-sm font-medium text-brand-text">Download the full brochure</p>
-              <p className="text-xs text-brand-muted mt-1">Verify your email to access floor plans, renders and payment schedule.</p>
+        {/* 10. Documents (insight page) or brochure gate (public page) */}
+        {insight ? (
+          hasDocs && (
+            <section id="documents" ref={el => { sectionRefs.current['documents'] = el }} className="py-16 border-t border-brand-border">
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Documents</p>
+              {/* Tab bar */}
+              {documents.length > 1 && (
+                <div className="flex gap-1 mb-4 border-b border-brand-border">
+                  {documents.map((doc, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveDocTab(i)}
+                      className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
+                        activeDocTab === i
+                          ? 'border-brand-bronze text-brand-bronze'
+                          : 'border-transparent text-brand-hint hover:text-brand-muted'
+                      }`}
+                    >
+                      {doc.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {/* PDF viewer */}
+              <div className="rounded-xl overflow-hidden border border-brand-border bg-brand-surface">
+                <iframe
+                  key={activeDocTab}
+                  src={documents[activeDocTab]?.url}
+                  title={documents[activeDocTab]?.label}
+                  className="w-full"
+                  style={{ height: '700px', border: 'none' }}
+                />
+              </div>
+              <div className="mt-3 flex justify-end">
+                <a
+                  href={documents[activeDocTab]?.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-brand-bronze hover:underline flex items-center gap-1"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open in new tab
+                </a>
+              </div>
+            </section>
+          )
+        ) : (
+          <section className="py-16 border-t border-brand-border">
+            <div className="bg-brand-bronze-light border border-[#DCC4A8] rounded-xl px-6 py-5 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between" style={{ backgroundColor: '#F2EAE0', borderColor: '#DCC4A8' }}>
+              <div>
+                <p className="text-sm font-medium text-brand-text">Download the full brochure</p>
+                <p className="text-xs text-brand-muted mt-1">Verify your email to access floor plans, renders and payment schedule.</p>
+              </div>
+              <div className="flex-shrink-0 w-full sm:w-auto">
+                <BrochureForm projectSlug={project.slug} />
+              </div>
             </div>
-            <div className="flex-shrink-0 w-full sm:w-auto">
-              <BrochureForm projectSlug={project.slug} />
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 11. Developer card */}
         {project.developer && (

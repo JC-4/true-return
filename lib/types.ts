@@ -63,3 +63,16 @@ export type Project = {
 
 export type DeveloperWithCount = Developer & { project_count: number }
 export type DeveloperWithProjects = Developer & { projects: Project[] }
+
+export type InsightDocument = {
+  label: string
+  url: string
+  type: 'brochure' | 'floor_plans' | 'other'
+}
+
+export type ProjectInsight = {
+  insight_opinion?: string
+  insight_projections?: string
+  insight_risks?: string
+  documents?: InsightDocument[]
+}

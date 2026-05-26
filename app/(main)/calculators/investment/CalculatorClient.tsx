@@ -57,6 +57,23 @@ const DEVELOPERS = [
 
 type PlanRow = { id: string; label: string; date: string; pct: number; handover?: boolean }
 
+export type InitialValues = {
+  price?: number
+  rent?: number
+  growth?: number
+  completion?: string
+  developer?: string
+  project?: string
+  propertyType?: 'offplan' | 'secondary'
+  propertySubType?: 'apartment' | 'townhouse' | 'villa'
+  paymentPlan?: PlanRow[]
+  handoverValue?: number
+  internalSqft?: number
+  balconySqft?: number
+  buaSqft?: number
+  plotSqft?: number
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // Parse MM/YYYY or Q1-Q4 YYYY → Date object. Returns null if unparseable.
@@ -897,27 +914,27 @@ function LocationCombobox({ value, onChange, emirate }: { value: string; onChang
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function CalculatorClient() {
+export default function CalculatorClient({ initialValues }: { initialValues?: InitialValues } = {}) {
   const searchParams = useSearchParams()
 
   // Sliders
-  const [price,  setPrice]  = useState(0)
-  const [rent,   setRent]   = useState(0)
-  const [growth, setGrowth] = useState(5)
+  const [price,  setPrice]  = useState(initialValues?.price  ?? 0)
+  const [rent,   setRent]   = useState(initialValues?.rent   ?? 0)
+  const [growth, setGrowth] = useState(initialValues?.growth ?? 5)
 
   // Property subtype
-  const [propertySubType, setPropertySubType] = useState<'apartment' | 'townhouse' | 'villa'>('apartment')
+  const [propertySubType, setPropertySubType] = useState<'apartment' | 'townhouse' | 'villa'>(initialValues?.propertySubType ?? 'apartment')
 
   // Property details
-  const [internalSqft, setInternal]   = useState(0)
-  const [balconySqft,  setBalcony]    = useState(0)
-  const [buaSqft,      setBuaSqft]    = useState(0)
-  const [plotSqft,     setPlotSqft]   = useState(0)
-  const [project,      setProject]    = useState('')
+  const [internalSqft, setInternal]   = useState(initialValues?.internalSqft ?? 0)
+  const [balconySqft,  setBalcony]    = useState(initialValues?.balconySqft  ?? 0)
+  const [buaSqft,      setBuaSqft]    = useState(initialValues?.buaSqft      ?? 0)
+  const [plotSqft,     setPlotSqft]   = useState(initialValues?.plotSqft     ?? 0)
+  const [project,      setProject]    = useState(initialValues?.project      ?? '')
   const [unit,         setUnit]       = useState('')
   const [view,         setView]       = useState('')
-  const [completion,   setCompletion] = useState('')
-  const [developer,    setDeveloper]  = useState('')
+  const [completion,   setCompletion] = useState(initialValues?.completion   ?? '')
+  const [developer,    setDeveloper]  = useState(initialValues?.developer    ?? '')
   const [emirate,      setEmirate]    = useState<'Dubai' | 'Abu Dhabi'>('Dubai')
   const [location,     setLocation]   = useState('')
 
@@ -945,13 +962,13 @@ export default function CalculatorClient() {
   const [showBreakdown,      setShowBreakdown]      = useState(false)
   const [returnMetricsOpen,  setReturnMetricsOpen]  = useState(true)
   const [capitalGrowthOpen,  setCapitalGrowthOpen]  = useState(true)
-  const [planOpen,           setPlanOpen]           = useState(false)
+  const [planOpen,           setPlanOpen]           = useState(() => (initialValues?.paymentPlan?.length ?? 0) > 0)
 
   // Property type
-  const [propertyType, setPropertyType] = useState<'offplan' | 'secondary'>('offplan')
+  const [propertyType, setPropertyType] = useState<'offplan' | 'secondary'>(initialValues?.propertyType ?? 'offplan')
 
   // Estimated handover value (off-plan only)
-  const [handoverValue, setHandoverValue] = useState(0)
+  const [handoverValue, setHandoverValue] = useState(initialValues?.handoverValue ?? 0)
 
   // Property details collapse
   const [detailsOpen, setDetailsOpen] = useState(true)
@@ -961,7 +978,7 @@ export default function CalculatorClient() {
   const [scInput, setScInput] = useState('')
 
   // Payment plan
-  const [paymentPlan, setPaymentPlan] = useState<PlanRow[]>([])
+  const [paymentPlan, setPaymentPlan] = useState<PlanRow[]>(initialValues?.paymentPlan ?? [])
 
   // Acquisition costs
   const [dldPct,         setDldPct]         = useState(4)
@@ -980,6 +997,7 @@ export default function CalculatorClient() {
 
   // ── URL params ────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (initialValues) return
     const s  = searchParams
     const gn = (k: string) => { const v = s.get(k); return v !== null ? Number(v) : null }
 
