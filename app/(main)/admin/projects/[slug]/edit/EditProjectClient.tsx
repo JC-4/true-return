@@ -114,15 +114,23 @@ function parseDateValue(
   date: string,
   handoverMMYYYY: string
 ): { mode: DateMode; month: string; year: string } {
-  const fallback = { month: '01', year: '2026' }
-  if (!date || date === 'On booking') return { mode: 'on-booking', ...fallback }
+  if (date === 'On booking') return { mode: 'on-booking', month: '', year: '' }
   if ((handoverMMYYYY && date === handoverMMYYYY) || date === 'Handover')
-    return { mode: 'handover', ...fallback }
+    return { mode: 'handover', month: '', year: '' }
+  // Complete MM/YYYY
   const mmyyyy = date.match(/^(\d{1,2})\/(\d{4})$/)
   if (mmyyyy) return { mode: 'month-year', month: mmyyyy[1].padStart(2, '0'), year: mmyyyy[2] }
+  // Bare year → default to January
   const bareYear = date.match(/^(\d{4})$/)
   if (bareYear) return { mode: 'month-year', month: '01', year: bareYear[1] }
-  return { mode: 'month-year', ...fallback }
+  // Partial "MM/" (month set, year not yet)
+  const mmOnly = date.match(/^(\d{1,2})\/$/)
+  if (mmOnly) return { mode: 'month-year', month: mmOnly[1].padStart(2, '0'), year: '' }
+  // Partial "/YYYY" (year set, month not yet)
+  const yyyyOnly = date.match(/^\/(\d{4})$/)
+  if (yyyyOnly) return { mode: 'month-year', month: '', year: yyyyOnly[1] }
+  // Empty or unrecognised → month-year with blank selects (not "On booking")
+  return { mode: 'month-year', month: '', year: '' }
 }
 
 function SlabDatePicker({
@@ -134,22 +142,21 @@ function SlabDatePicker({
   onChange: (v: string) => void
   handoverMMYYYY: string
 }) {
-  const parsed = parseDateValue(value, handoverMMYYYY)
-  const [mode, setMode] = useState<DateMode>(parsed.mode)
-  const [month, setMonth] = useState(parsed.month)
-  const [year, setYear]   = useState(parsed.year)
+  // Fully controlled — derive display state from value prop every render.
+  // No local useState: avoids stale-closure sync bugs.
+  const { mode, month, year } = parseDateValue(value, handoverMMYYYY)
 
-  function emit(m: DateMode, mo: string, yr: string) {
-    if (m === 'on-booking') onChange('On booking')
-    else if (m === 'handover') onChange(handoverMMYYYY || 'Handover')
-    else onChange(`${mo}/${yr}`)
+  function handleModeChange(newMode: DateMode) {
+    if (newMode === 'on-booking') onChange('On booking')
+    else if (newMode === 'handover') onChange(handoverMMYYYY || 'Handover')
+    else onChange(`${month}/${year}`)
   }
 
   return (
     <div className="flex gap-2 items-center min-w-0">
       <select
         value={mode}
-        onChange={e => { const m = e.target.value as DateMode; setMode(m); emit(m, month, year) }}
+        onChange={e => handleModeChange(e.target.value as DateMode)}
         className={`${inputCls} ${mode !== 'month-year' ? 'flex-1' : 'shrink-0 w-auto'}`}
       >
         <option value="on-booking">On booking</option>
@@ -160,18 +167,20 @@ function SlabDatePicker({
         <>
           <select
             value={month}
-            onChange={e => { const m = e.target.value; setMonth(m); emit(mode, m, year) }}
+            onChange={e => onChange(`${e.target.value}/${year}`)}
             className={`${inputCls} flex-1`}
           >
+            <option value="">— month —</option>
             {MONTHS.map((lbl, idx) => (
               <option key={lbl} value={String(idx + 1).padStart(2, '0')}>{lbl}</option>
             ))}
           </select>
           <select
             value={year}
-            onChange={e => { const y = e.target.value; setYear(y); emit(mode, month, y) }}
+            onChange={e => onChange(`${month}/${e.target.value}`)}
             className={`${inputCls} w-24`}
           >
+            <option value="">— year —</option>
             {YEARS.map(y => (
               <option key={y} value={String(y)}>{y}</option>
             ))}
@@ -191,6 +200,11 @@ type EditSegment = {
   percent: string
   date: string
   color: PaymentSegment['color']
+}
+
+type EditPlan = {
+  name: string
+  segments: EditSegment[]
 }
 
 type EditUnitType = {
@@ -241,13 +255,16 @@ export default function EditProjectClient({ project }: { project: Project }) {
     project.payment_plan_confirmed ?? false
   )
 
-  // Payment segments
-  const [segments, setSegments] = useState<EditSegment[]>(
-    (project.payment_plans?.[0]?.segments ?? []).map(s => ({
-      label: s.label,
-      percent: s.percent.toString(),
-      date: s.date ?? '',
-      color: s.color,
+  // Payment plans (all of them)
+  const [plans, setPlans] = useState<EditPlan[]>(
+    (project.payment_plans ?? []).map(plan => ({
+      name: plan.name,
+      segments: plan.segments.map(s => ({
+        label: s.label,
+        percent: s.percent.toString(),
+        date: s.date ?? '',
+        color: s.color,
+      })),
     }))
   )
 
@@ -271,22 +288,46 @@ export default function EditProjectClient({ project }: { project: Project }) {
 
   // ── Payment plan helpers ───────────────────────────────────────────────────
 
-  const totalPct = segments.reduce((sum, s) => sum + (parseFloat(s.percent) || 0), 0)
-  const pctOk = Math.abs(totalPct - 100) < 0.01
-
-  function updateSegment<K extends keyof EditSegment>(index: number, key: K, value: EditSegment[K]) {
-    setSegments(prev => prev.map((s, i) => (i === index ? { ...s, [key]: value } : s)))
+  function updateSegment<K extends keyof EditSegment>(planIdx: number, segIdx: number, key: K, value: EditSegment[K]) {
+    setPlans(prev => prev.map((plan, pi) =>
+      pi !== planIdx ? plan : {
+        ...plan,
+        segments: plan.segments.map((s, si) => si === segIdx ? { ...s, [key]: value } : s),
+      }
+    ))
   }
 
-  function addSegment() {
-    setSegments(prev => [
+  function addSegment(planIdx: number) {
+    setPlans(prev => prev.map((plan, pi) =>
+      pi !== planIdx ? plan : {
+        ...plan,
+        segments: [...plan.segments, { label: '', percent: '', date: '', color: SEGMENT_COLORS[plan.segments.length % 3] }],
+      }
+    ))
+  }
+
+  function removeSegment(planIdx: number, segIdx: number) {
+    setPlans(prev => prev.map((plan, pi) =>
+      pi !== planIdx ? plan : {
+        ...plan,
+        segments: plan.segments.filter((_, si) => si !== segIdx),
+      }
+    ))
+  }
+
+  function updatePlanName(planIdx: number, name: string) {
+    setPlans(prev => prev.map((plan, pi) => pi === planIdx ? { ...plan, name } : plan))
+  }
+
+  function addPlan() {
+    setPlans(prev => [
       ...prev,
-      { label: '', percent: '', date: '', color: SEGMENT_COLORS[prev.length % 3] },
+      { name: '', segments: [{ label: '', percent: '', date: '', color: SEGMENT_COLORS[0] }] },
     ])
   }
 
-  function removeSegment(index: number) {
-    setSegments(prev => prev.filter((_, i) => i !== index))
+  function removePlan(planIdx: number) {
+    setPlans(prev => prev.filter((_, pi) => pi !== planIdx))
   }
 
   // ── Unit type helpers ──────────────────────────────────────────────────────
@@ -310,20 +351,15 @@ export default function EditProjectClient({ project }: { project: Project }) {
     setSaving(true)
     setError(null)
 
-    const existingPlans = project.payment_plans ?? []
-    const updatedSegments = segments.map(s => ({
-      label: s.label,
-      percent: parseFloat(s.percent) || 0,
-      date: s.date,
-      color: s.color,
+    const updatedPlans = plans.map(plan => ({
+      name: plan.name,
+      segments: plan.segments.map(s => ({
+        label: s.label,
+        percent: parseFloat(s.percent) || 0,
+        date: s.date,
+        color: s.color,
+      })),
     }))
-
-    let updatedPlans = existingPlans
-    if (existingPlans.length > 0) {
-      updatedPlans = [{ ...existingPlans[0], segments: updatedSegments }, ...existingPlans.slice(1)]
-    } else if (segments.length > 0) {
-      updatedPlans = [{ name: 'Payment Plan', segments: updatedSegments }]
-    }
 
     const projectPayload = {
       name: name.trim(),
@@ -471,81 +507,125 @@ export default function EditProjectClient({ project }: { project: Project }) {
             </div>
           </div>
 
-          {/* ── Payment plan slabs ───────────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
-            <SectionHeader label="Payment plan slabs" />
-
-            {/* Progress bar */}
-            <div className="mb-5">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-gray-400">Total allocated</span>
-                <span className={`text-xs font-semibold ${pctOk ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {totalPct.toFixed(totalPct % 1 === 0 ? 0 : 1)}%
-                  {!pctOk && segments.length > 0 && ' — must equal 100%'}
-                </span>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${pctOk ? 'bg-emerald-500' : 'bg-amber-400'}`}
-                  style={{ width: `${Math.min(totalPct, 100)}%` }}
-                />
-              </div>
+          {/* ── Payment plan options ─────────────────────────────────────── */}
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Payment plan options</p>
+              <p className="text-xs text-gray-400 mt-1">Clients will see these as alternatives to choose from.</p>
             </div>
 
-            {/* Segment rows */}
-            <div className="space-y-2">
-              {segments.length === 0 && (
-                <p className="text-sm text-gray-400 py-2">No segments yet — add one below.</p>
-              )}
-              {segments.map((seg, i) => (
-                <div key={i} className="flex flex-wrap gap-2 items-center">
-                  <input
-                    type="text"
-                    value={seg.label}
-                    onChange={e => updateSegment(i, 'label', e.target.value)}
-                    placeholder="Label (e.g. Booking)"
-                    className={`${inputCls} flex-1 min-w-[120px]`}
-                  />
-                  <div className="relative w-20 shrink-0">
+            {plans.map((plan, pi) => {
+              const totalPct = plan.segments.reduce((sum, s) => sum + (parseFloat(s.percent) || 0), 0)
+              const pctOk = Math.abs(totalPct - 100) < 0.01
+              return (
+                <div key={pi} className="bg-white rounded-xl border border-gray-100 p-6">
+
+                  {/* Plan name + remove */}
+                  <div className="flex items-center gap-3 mb-5">
                     <input
-                      type="number"
-                      value={seg.percent}
-                      onChange={e => updateSegment(i, 'percent', e.target.value)}
-                      placeholder="0"
-                      className={`${inputCls} pr-6`}
+                      type="text"
+                      value={plan.name}
+                      onChange={e => updatePlanName(pi, e.target.value)}
+                      placeholder={`Plan name (e.g. Standard — 50/50)`}
+                      className={`${inputCls} flex-1`}
                     />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                    {plans.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removePlan(pi)}
+                        className="shrink-0 text-xs text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap"
+                      >
+                        Remove plan
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-[220px]">
-                    <SlabDatePicker
-                      value={seg.date}
-                      onChange={v => updateSegment(i, 'date', v)}
-                      handoverMMYYYY={isoToMMYYYY(handoverDate)}
-                    />
+
+                  {/* Progress bar */}
+                  <div className="mb-5">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-xs text-gray-400">Total allocated</span>
+                      <span className={`text-xs font-semibold ${pctOk ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {totalPct.toFixed(totalPct % 1 === 0 ? 0 : 1)}%
+                        {!pctOk && plan.segments.length > 0 && ' — must equal 100%'}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${pctOk ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                        style={{ width: `${Math.min(totalPct, 100)}%` }}
+                      />
+                    </div>
                   </div>
+
+                  {/* Segment rows */}
+                  <div className="space-y-2">
+                    {plan.segments.length === 0 && (
+                      <p className="text-sm text-gray-400 py-2">No segments yet — add one below.</p>
+                    )}
+                    {plan.segments.map((seg, si) => (
+                      <div key={si} className="flex flex-wrap gap-2 items-center">
+                        <input
+                          type="text"
+                          value={seg.label}
+                          onChange={e => updateSegment(pi, si, 'label', e.target.value)}
+                          placeholder="Label (e.g. Booking)"
+                          className={`${inputCls} flex-1 min-w-[120px]`}
+                        />
+                        <div className="relative w-20 shrink-0">
+                          <input
+                            type="number"
+                            value={seg.percent}
+                            onChange={e => updateSegment(pi, si, 'percent', e.target.value)}
+                            placeholder="0"
+                            className={`${inputCls} pr-6`}
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                        </div>
+                        <div className="flex-1 min-w-[220px]">
+                          <SlabDatePicker
+                            value={seg.date}
+                            onChange={v => updateSegment(pi, si, 'date', v)}
+                            handoverMMYYYY={isoToMMYYYY(handoverDate)}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSegment(pi, si)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
+                          title="Remove row"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => removeSegment(i)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
-                    title="Remove row"
+                    onClick={() => addSegment(pi)}
+                    className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-[#18181b] transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
+                    Add row
                   </button>
                 </div>
-              ))}
-            </div>
+              )
+            })}
 
+            {/* Add payment plan */}
             <button
               type="button"
-              onClick={addSegment}
-              className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-[#18181b] transition-colors"
+              onClick={addPlan}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-[#18181b] transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add row
+              Add payment plan
             </button>
           </div>
 

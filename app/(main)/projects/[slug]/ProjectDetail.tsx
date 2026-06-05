@@ -199,10 +199,20 @@ function formatHandoverDate(iso: string | null): string {
 function adaptPaymentPlan(plans: Project['payment_plans'], handoverDate: string | null): PlanRow[] {
   const plan = plans?.[0]
   if (!plan?.segments?.length) return []
+  const handoverFormatted = formatHandoverDate(handoverDate)
   return plan.segments.map((seg, i) => {
-    const isHandover = /hand|deliver|complet/i.test(seg.label)
-    const isBooking  = /book|sign|reserv|now/i.test(seg.label)
-    const date = isBooking ? 'On booking' : isHandover ? formatHandoverDate(handoverDate) : 'During construction'
+    const isHandover = /hand|deliver|complet/i.test(seg.label) || (!!seg.date && seg.date === handoverFormatted)
+    const isBooking = /book|sign|reserv|now/i.test(seg.label) || /^on booking$/i.test(seg.date ?? '')
+    let date: string
+    if (isBooking) {
+      date = 'On booking'
+    } else if (isHandover) {
+      date = handoverFormatted ?? 'On handover'
+    } else if (seg.date) {
+      date = /^\d{4}$/.test(seg.date) ? `01/${seg.date}` : seg.date
+    } else {
+      date = 'During construction'
+    }
     return { id: `seg-${i}`, label: seg.label, date, pct: seg.percent, ...(isHandover ? { handover: true } : {}) }
   })
 }
@@ -1338,17 +1348,8 @@ export default function ProjectDetail({
           {authTab === 'analysis' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10 py-10 space-y-10">
               {myTakeSection}
-              <div className="rounded-2xl overflow-clip ring-1 ring-brand-border -mx-6 sm:-mx-10">
-                <DealBuilder
-                  initialValues={calcInitialValues}
-                  lockDeveloper
-                  lockProject
-                  compact
-                  stickyTop="top-28"
-                  showShare={isAdmin}
-                  showSaveDefault={isAdmin}
-                  showLoad={isAdmin}
-                />
+              <div>
+                <PublicAnalysisPanel project={project} />
               </div>
 
               {/* Documents */}
