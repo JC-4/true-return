@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
-import { solveIRR, getYearsToCompletion, parseDateToYear } from '@/lib/calculations'
+import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
 import type { PlanRow } from '@/lib/calculations'
 import DealBuilder from '@/app/(main)/deals/new/DealBuilder'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
@@ -852,6 +852,660 @@ function PublicAnalysisPanel({ project }: { project: Project }) {
   )
 }
 
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
+
+function Tooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const tipRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function outside(e: MouseEvent | TouchEvent) {
+      if (tipRef.current && !tipRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', outside)
+    document.addEventListener('touchstart', outside)
+    return () => {
+      document.removeEventListener('mousedown', outside)
+      document.removeEventListener('touchstart', outside)
+    }
+  }, [open])
+
+  return (
+    <div ref={tipRef} className="relative inline-flex items-center">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen(v => !v)}
+        className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0 leading-none border"
+        style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC', color: '#9B9589' }}
+        aria-label="More info"
+      >
+        ?
+      </button>
+      {open && (
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 text-xs rounded-lg px-3 py-2.5 shadow-xl z-50 leading-relaxed"
+          style={{ backgroundColor: '#1C1B18', color: 'rgba(255,255,255,0.8)', pointerEvents: 'none' }}
+        >
+          {text}
+          <div
+            className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
+            style={{ borderTopColor: '#1C1B18' }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Full analysis panel ──────────────────────────────────────────────────────
+
+function FullAnalysisPanel({ project }: { project: Project }) {
+  const unitTypes = project.unit_types ?? []
+  const scRate    = project.service_charge_rate ?? 0
+  const planRows  = adaptPaymentPlan(project.payment_plans, project.handover_date)
+  const completionStr = formatHandoverDate(project.handover_date)
+
+  // ── Unit / bedroom selector ────────────────────────────────────────────────
+  const bedroomGroups = [...new Set(unitTypes.map(ut => ut.bedrooms))].sort((a, b) => {
+    if (a === null) return 1
+    if (b === null) return -1
+    return a - b
+  })
+  const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(bedroomGroups[0] ?? null)
+  const unitsInGroup = unitTypes.filter(ut => ut.bedrooms === selectedBedrooms)
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(unitsInGroup[0]?.id ?? '')
+  const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? unitsInGroup[0]
+
+  const basePrice    = selectedUnit?.price_from ?? project.starting_price ?? 0
+  const internalSqft = selectedUnit?.internal_sqft ?? 0
+  const balconySqft  = selectedUnit?.balcony_sqft  ?? 0
+
+  function snapRent(v: number) { return Math.min(300_000, Math.max(20_000, Math.round(v / 5_000) * 5_000)) }
+  function snapHV(v: number)   { return Math.min(5_000_000, Math.max(300_000, Math.round(v / 50_000) * 50_000)) }
+
+  const [rent,          setRent]          = useState(() => snapRent(selectedUnit?.expected_rent          ?? basePrice * 0.07))
+  const [handoverValue, setHandoverValue] = useState(() => snapHV  (selectedUnit?.expected_handover_value ?? basePrice * 1.2))
+  const [growth,        setGrowth]        = useState(5)
+  const [holdPeriod,    setHoldPeriod]    = useState(5)
+
+  useEffect(() => {
+    const unit = unitTypes.find(ut => ut.id === selectedUnitId)
+    if (!unit) return
+    const p = unit.price_from ?? 0
+    setRent(snapRent(unit.expected_rent          ?? p * 0.07))
+    setHandoverValue(snapHV(unit.expected_handover_value ?? p * 1.2))
+  }, [selectedUnitId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const first = unitTypes.find(ut => ut.bedrooms === selectedBedrooms)
+    if (first) setSelectedUnitId(first.id)
+  }, [selectedBedrooms]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Financing state ────────────────────────────────────────────────────────
+  const [financing,    setFinancing]    = useState<'cash' | 'mortgage'>('cash')
+  const [ltvPct,       setLtvPct]       = useState(75)
+  const [mortgageRate, setMortgageRate] = useState(4.5)
+  const mortgageOn = financing === 'mortgage'
+
+  // ── Core metrics via computeDealMetrics ────────────────────────────────────
+  const metrics = basePrice > 0 ? computeDealMetrics({
+    propertyType: 'offplan',
+    price:        basePrice,
+    rent,
+    growth,
+    internalSqft,
+    balconySqft,
+    scRate,
+    completion:   completionStr,
+    developer:    project.developer?.name ?? '',
+    handoverValue,
+    paymentPlan:  planRows,
+    dldPct:       4,
+    agencyFeePct: 0,
+    adminFee:     4_200,
+    mortgageOn,
+    depositPct:   100 - ltvPct,
+    interestRate: mortgageRate,
+    termYears:    25,
+  }) : null
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const serviceCharge = metrics?.serviceCharge ?? (internalSqft * scRate) + (balconySqft * scRate * 0.25)
+  const netIncome     = rent - serviceCharge
+  const rawCompYears  = getYearsToCompletion(completionStr)
+  const compYears     = Math.max(0, Math.round(rawCompYears ?? 2))
+
+  // Year-5 IRR via buildAndSolveIRR (unleveraged — matches main deal calculator)
+  const year5BaseIRR = basePrice > 0 && netIncome > 0 ? buildAndSolveIRR({
+    price: basePrice, netIncome, growth, paymentPlan: planRows,
+    completion: completionStr, handoverValue, propertyType: 'offplan',
+  }) : null
+
+  // ── Exit scenario builder ──────────────────────────────────────────────────
+  function buildExitResult(holdYrs: number) {
+    const hv = handoverValue > 0 ? handoverValue : basePrice
+    if (holdYrs === 0) {
+      const n = Math.max(compYears, 1)
+      const flows: number[] = new Array(n + 1).fill(0)
+      if (planRows.length > 0) {
+        for (const row of planRows) {
+          const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, compYears))), n)
+          flows[yr] -= basePrice * row.pct / 100
+        }
+      } else {
+        flows[0] -= basePrice
+      }
+      flows[n] += hv
+      return { irr: basePrice > 0 ? solveIRR(flows) : null, exitValue: hv, totalReturn: hv - basePrice, capitalGain: hv - basePrice }
+    }
+    const exitYr = compYears + holdYrs
+    const flows: number[] = new Array(exitYr + 1).fill(0)
+    if (planRows.length > 0) {
+      for (const row of planRows) {
+        const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, compYears))), exitYr)
+        flows[yr] -= basePrice * row.pct / 100
+      }
+    } else {
+      flows[0] -= basePrice
+    }
+    for (let y = compYears; y < exitYr; y++) flows[y] += netIncome
+    const exitValue   = hv * Math.pow(1 + growth / 100, holdYrs)
+    const capitalGain = exitValue - basePrice
+    const totalReturn = capitalGain + netIncome * holdYrs
+    flows[exitYr] += netIncome + exitValue
+    return { irr: basePrice > 0 ? solveIRR(flows) : null, exitValue, totalReturn, capitalGain }
+  }
+
+  const exitScenarios = [
+    { label: 'At handover', holdYrs: 0 },
+    { label: 'Year 3',      holdYrs: 3 },
+    { label: 'Year 5',      holdYrs: 5 },
+    { label: 'Year 10',     holdYrs: 10 },
+  ].map(s => {
+    const result = buildExitResult(s.holdYrs)
+    // Year 5 uses buildAndSolveIRR to match the main deal calculator
+    const irr = s.holdYrs === 5 ? year5BaseIRR : result.irr
+    return { ...s, ...result, irr }
+  })
+
+  // ── Gain on paper ──────────────────────────────────────────────────────────
+  const gainOnPaper    = metrics?.gainOnPaper    ?? (handoverValue > basePrice ? handoverValue - basePrice : 0)
+  const gainOnPaperPct = metrics?.gainOnPaperPct ?? (basePrice > 0 ? (gainOnPaper / basePrice) * 100 : 0)
+  const handoverIRR    = exitScenarios[0].irr
+
+  // ── Financing card details ─────────────────────────────────────────────────
+  const dldFee             = basePrice * 0.04
+  const adminFee           = 4_200
+  const firstSlab          = planRows[0]
+  const remainingInstals   = planRows.slice(1)
+  const dueAtBooking       = (firstSlab ? (firstSlab.pct / 100) * basePrice : 0) + dldFee + adminFee
+
+  const loanAmount         = metrics?.loanAmount         ?? 0
+  const monthlyPayment     = metrics?.monthlyPayment     ?? 0
+  const annualMortgageCost = metrics?.annualMortgageCost ?? 0
+  const totalInterest      = monthlyPayment * 25 * 12 - loanAmount
+
+  const mRate = mortgageRate / 100 / 12
+  function balanceAt(years: number): number {
+    if (loanAmount <= 0) return 0
+    const months = years * 12
+    if (mRate > 0) {
+      return Math.max(0, loanAmount * Math.pow(1 + mRate, months)
+        - monthlyPayment * (Math.pow(1 + mRate, months) - 1) / mRate)
+    }
+    return Math.max(0, loanAmount - monthlyPayment * months)
+  }
+
+  const hv0 = handoverValue > 0 ? handoverValue : basePrice
+  const equityRows = [
+    { label: 'Now',                    propValue: basePrice,                             loanBal: loanAmount },
+    { label: `Handover (+${compYears}yr)`, propValue: hv0,                              loanBal: balanceAt(compYears) },
+    { label: '+3yr post-handover',     propValue: hv0 * Math.pow(1 + growth / 100, 3),  loanBal: balanceAt(compYears + 3) },
+    { label: '+5yr post-handover',     propValue: hv0 * Math.pow(1 + growth / 100, 5),  loanBal: balanceAt(compYears + 5) },
+    { label: '+10yr post-handover',    propValue: hv0 * Math.pow(1 + growth / 100, 10), loanBal: balanceAt(compYears + 10) },
+  ].map(r => ({ ...r, equity: r.propValue - r.loanBal }))
+
+  // ── Break-even ────────────────────────────────────────────────────────────
+  const minRent = serviceCharge + (mortgageOn ? annualMortgageCost : 0)
+
+  function findGrowthFor8PctIRR(): number | null {
+    const hYrs = holdPeriod > 0 ? holdPeriod : 5
+    if (basePrice <= 0) return null
+    let lo = 0, hi = 30
+    let converged = false
+    for (let i = 0; i < 60; i++) {
+      const mid    = (lo + hi) / 2
+      const exitYr = compYears + hYrs
+      const flows: number[] = new Array(exitYr + 1).fill(0)
+      if (planRows.length > 0) {
+        for (const row of planRows) {
+          const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, compYears))), exitYr)
+          flows[yr] -= basePrice * row.pct / 100
+        }
+      } else {
+        flows[0] -= basePrice
+      }
+      for (let y = compYears; y < exitYr; y++) flows[y] += netIncome
+      const hv = handoverValue > 0 ? handoverValue : basePrice
+      const ev = hv * Math.pow(1 + mid / 100, hYrs)
+      flows[exitYr] += netIncome + ev
+      const irr = solveIRR(flows)
+      if (irr === null) { lo = mid; continue }
+      if (irr < 8) lo = mid; else hi = mid
+      if (hi - lo < 0.02) { converged = true; break }
+    }
+    return converged && hi < 29.9 ? hi : null
+  }
+
+  const growthFor8PctIRR = findGrowthFor8PctIRR()
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function fmtA(n: number): string {
+    const abs  = Math.abs(n)
+    const sign = n < 0 ? '-' : ''
+    if (abs >= 1_000_000) return `${sign}AED ${(abs / 1_000_000).toFixed(2)}M`
+    if (abs >= 1_000)     return `${sign}AED ${Math.round(abs / 1_000)}k`
+    return `${sign}AED ${Math.round(abs).toLocaleString()}`
+  }
+  function fmtP(n: number | null): string {
+    if (n === null) return '—'
+    return `${n.toFixed(1)}%`
+  }
+  function bedroomLabel(b: number | null) {
+    if (b === null) return 'Commercial'
+    if (b === 0)    return 'Studio'
+    return `${b} Bed`
+  }
+
+  const PILL     = 'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border'
+  const PILL_ON  = `${PILL} bg-[#18181b] text-white border-[#18181b]`
+  const PILL_OFF = `${PILL} bg-white text-brand-muted border-brand-border hover:border-brand-text hover:text-brand-text`
+  const SPILL_ON  = `${PILL} text-[11px] border-brand-bronze text-white`
+  const SPILL_OFF = `${PILL} text-[11px] bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text`
+
+  if (unitTypes.length === 0) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-sm text-brand-hint">No unit types have been added to this project yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="py-10 space-y-8">
+
+      {/* ── Unit selector ─────────────────────────────────────────────────── */}
+      <div>
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Select unit</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {bedroomGroups.map(b => (
+            <button key={String(b)} onClick={() => setSelectedBedrooms(b)}
+              className={selectedBedrooms === b ? PILL_ON : PILL_OFF}>
+              {bedroomLabel(b)}
+            </button>
+          ))}
+        </div>
+        {unitsInGroup.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {unitsInGroup.map(ut => (
+              <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
+                className={selectedUnitId === ut.id ? SPILL_ON : SPILL_OFF}
+                style={selectedUnitId === ut.id ? { backgroundColor: '#A0784A' } : {}}>
+                {ut.typology ?? ut.type}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectedUnit && (
+          <p className="text-xs text-brand-hint mt-2">
+            {fmtPrice(selectedUnit.price_from)} from
+            {selectedUnit.size_sqft_from ? ` · ${selectedUnit.size_sqft_from.toLocaleString()} sqft` : ''}
+          </p>
+        )}
+      </div>
+
+      {/* ── Assumptions ───────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-brand-border p-5 space-y-6">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-brand-muted"
+          style={{ backgroundColor: '#F4F3F0' }}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          Synced with Returns tab
+        </span>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
+            <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
+          </div>
+          <input type="range" min={20_000} max={300_000} step={5_000} value={rent}
+            onChange={e => setRent(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">AED 20k</span>
+            <span className="text-xs text-brand-hint">AED 300k</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Est. value at handover</span>
+            <span className="text-sm font-semibold text-brand-text">{fmtA(handoverValue)}</span>
+          </div>
+          <input type="range" min={300_000} max={5_000_000} step={50_000} value={handoverValue}
+            onChange={e => setHandoverValue(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">AED 300k</span>
+            <span className="text-xs text-brand-hint">AED 5M</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Annual capital growth (post-handover)</span>
+            <span className="text-sm font-semibold text-brand-text">{growth.toFixed(1)}%</span>
+          </div>
+          <input type="range" min={0} max={15} step={0.5} value={growth}
+            onChange={e => setGrowth(parseFloat(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">0%</span>
+            <span className="text-xs text-brand-hint">15%</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Hold period from handover</span>
+            <span className="text-sm font-semibold text-brand-text">
+              {holdPeriod === 0 ? 'Sell at handover' : `${holdPeriod} yr${holdPeriod > 1 ? 's' : ''}`}
+            </span>
+          </div>
+          <input type="range" min={0} max={15} step={1} value={holdPeriod}
+            onChange={e => setHoldPeriod(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">0 yrs = sell at handover</span>
+            <span className="text-xs text-brand-hint">15 yrs</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Gain on paper at handover ──────────────────────────────────────── */}
+      {basePrice > 0 && handoverValue > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Gain on paper at handover</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-brand-border p-5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xs text-brand-muted">Gain on paper</span>
+                <Tooltip text="Estimated value at handover minus your purchase price. Not realised until you sell." />
+              </div>
+              <p className={`text-lg font-bold ${gainOnPaper >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {gainOnPaper >= 0 ? '+' : ''}{fmtA(gainOnPaper)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-brand-border p-5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xs text-brand-muted">vs. purchase price</span>
+                <Tooltip text="Gain on paper as a percentage of your purchase price." />
+              </div>
+              <p className={`text-lg font-bold ${gainOnPaperPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {gainOnPaperPct >= 0 ? '+' : ''}{fmtP(gainOnPaperPct)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-brand-border p-5">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-xs text-brand-muted">IRR to handover</span>
+                <Tooltip text="Annualised return from purchase to handover, accounting for the staggered payment plan." />
+              </div>
+              <p className={`text-lg font-bold ${(handoverIRR ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {handoverIRR !== null ? `${handoverIRR >= 0 ? '+' : ''}${fmtP(handoverIRR)}` : '—'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Exit scenarios ─────────────────────────────────────────────────── */}
+      <div>
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Exit scenarios</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {exitScenarios.map(s => {
+            const isActive = holdPeriod === s.holdYrs
+            return (
+              <div
+                key={s.holdYrs}
+                className={`rounded-xl border p-5 transition-all ${isActive ? '' : 'bg-white border-brand-border'}`}
+                style={isActive ? { borderColor: '#A0784A', backgroundColor: '#FDFCF9' } : {}}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-brand-text">{s.label}</p>
+                  {isActive && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: '#A0784A' }}>
+                      Selected
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2.5">
+                  <div>
+                    <p className="text-[10px] text-brand-hint mb-0.5">Exit value</p>
+                    <p className="text-sm font-semibold text-brand-text">{fmtA(s.exitValue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-brand-hint mb-0.5">Total return</p>
+                    <p className={`text-sm font-semibold ${s.totalReturn >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {s.totalReturn >= 0 ? '+' : ''}{fmtA(s.totalReturn)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-brand-hint mb-0.5">IRR</p>
+                    <p className={`text-sm font-bold ${(s.irr ?? 0) >= 8 ? 'text-emerald-600' : (s.irr ?? 0) >= 0 ? 'text-brand-text' : 'text-red-500'}`}>
+                      {s.irr !== null ? fmtP(s.irr) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Financing card ─────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-brand-border p-5">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Financing</p>
+          <div className="flex rounded-lg border border-brand-border overflow-hidden text-xs font-medium">
+            <button
+              onClick={() => setFinancing('cash')}
+              className={`px-4 py-2 transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
+              style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
+            >
+              Cash
+            </button>
+            <button
+              onClick={() => setFinancing('mortgage')}
+              className={`px-4 py-2 transition-colors border-l border-brand-border ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
+              style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
+            >
+              Mortgage
+            </button>
+          </div>
+        </div>
+
+        {/* Due at booking */}
+        {firstSlab && basePrice > 0 && (
+          <div className="mb-5 rounded-lg p-4 space-y-2" style={{ backgroundColor: '#F4F3F0' }}>
+            <p className="text-xs font-semibold text-brand-text mb-2">Due at booking</p>
+            <div className="flex justify-between text-xs">
+              <span className="text-brand-muted">{firstSlab.label} ({firstSlab.pct}%)</span>
+              <span className="font-medium text-brand-text">{fmtA((firstSlab.pct / 100) * basePrice)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-brand-muted">DLD (4%)</span>
+              <span className="font-medium text-brand-text">{fmtA(dldFee)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-brand-muted">Admin fee</span>
+              <span className="font-medium text-brand-text">{fmtA(adminFee)}</span>
+            </div>
+            <div className="border-t border-brand-border pt-2 flex justify-between text-xs font-semibold">
+              <span className="text-brand-text">Total due now</span>
+              <span className="text-brand-text">{fmtA(dueAtBooking)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Remaining instalments */}
+        {remainingInstals.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs font-medium text-brand-muted mb-2">Remaining instalments</p>
+            <div className="space-y-1.5">
+              {remainingInstals.map((row, i) => (
+                <div key={i} className="flex justify-between text-xs">
+                  <span className="text-brand-hint">{row.label} · {row.date}</span>
+                  <span className="font-medium text-brand-text">{fmtA((row.pct / 100) * basePrice)} ({row.pct}%)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mortgage section */}
+        {mortgageOn && (
+          <div className="space-y-5 border-t border-brand-border pt-5">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-brand-muted">LTV (loan to value)</span>
+                  <Tooltip text="Percentage of the property value financed by the mortgage. UAE max is typically 75% for expats." />
+                </div>
+                <span className="text-sm font-semibold text-brand-text">{ltvPct}%</span>
+              </div>
+              <input type="range" min={20} max={80} step={5} value={ltvPct}
+                onChange={e => setLtvPct(parseInt(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-brand-hint">20%</span>
+                <span className="text-xs text-brand-hint">80%</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-brand-muted">Interest rate</span>
+                  <Tooltip text="Annual mortgage interest rate. UAE rates typically range from 3.5% to 6%." />
+                </div>
+                <span className="text-sm font-semibold text-brand-text">{mortgageRate.toFixed(1)}%</span>
+              </div>
+              <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
+                onChange={e => setMortgageRate(parseFloat(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+              <div className="flex justify-between mt-1">
+                <span className="text-xs text-brand-hint">2%</span>
+                <span className="text-xs text-brand-hint">10%</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+                <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
+                <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
+              </div>
+              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+                <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
+                <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
+              </div>
+              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+                <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
+                <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
+              </div>
+              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+                <p className="text-[10px] text-brand-hint mb-1">Total interest (25yr)</p>
+                <p className="text-sm font-semibold text-brand-text">{totalInterest > 0 ? fmtA(totalInterest) : '—'}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-brand-muted mb-2">Equity build-up</p>
+              <div className="rounded-lg overflow-hidden border border-brand-border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ backgroundColor: '#F4F3F0' }}>
+                      <th className="text-left px-3 py-2 text-brand-hint font-medium">Period</th>
+                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Value</th>
+                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Loan</th>
+                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Equity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brand-border">
+                    {equityRows.map((r, i) => (
+                      <tr key={i} className="bg-white">
+                        <td className="px-3 py-2 text-brand-muted">{r.label}</td>
+                        <td className="px-3 py-2 text-right text-brand-text font-medium">{fmtA(r.propValue)}</td>
+                        <td className="px-3 py-2 text-right text-brand-hint">{fmtA(r.loanBal)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-emerald-600">{fmtA(r.equity)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Break-even */}
+        <div className={`border-t border-brand-border pt-5${mortgageOn ? '' : ' mt-0'}`}>
+          <p className="text-xs font-medium text-brand-muted mb-3">Break-even analysis</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-brand-hint">Min. annual rent</p>
+                <Tooltip text={mortgageOn
+                  ? 'Minimum rent to cover service charge and annual mortgage payments.'
+                  : 'Minimum rent to cover the service charge (net income = 0).'} />
+              </div>
+              <p className="text-sm font-semibold text-brand-text">{minRent > 0 ? fmtA(minRent) : '—'}</p>
+              {minRent > 0 && rent > 0 && (
+                <p className={`text-[10px] mt-0.5 ${rent >= minRent ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {rent >= minRent
+                    ? `AED ${(rent - minRent).toLocaleString()} headroom`
+                    : `AED ${(minRent - rent).toLocaleString()} shortfall`}
+                </p>
+              )}
+            </div>
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <p className="text-[10px] text-brand-hint">Growth for 8% IRR</p>
+                <Tooltip text="Annual capital growth needed to achieve an 8% IRR over your selected hold period." />
+              </div>
+              <p className="text-sm font-semibold text-brand-text">
+                {growthFor8PctIRR !== null ? `${growthFor8PctIRR.toFixed(1)}%` : '> 30%'}
+              </p>
+              {growthFor8PctIRR !== null && (
+                <p className={`text-[10px] mt-0.5 ${growth >= growthFor8PctIRR ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {growth >= growthFor8PctIRR
+                    ? 'Met at current assumption'
+                    : `Need +${(growthFor8PctIRR - growth).toFixed(1)}% pa`}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ProjectDetail({
@@ -868,10 +1522,10 @@ export default function ProjectDetail({
   const isAuth = !!insight
 
   // Auth tab state
-  const [authTab, setAuthTab] = useState<'overview' | 'analysis' | 'brochure'>('overview')
+  const [authTab, setAuthTab] = useState<'overview' | 'analysis' | 'full-analysis' | 'brochure'>('overview')
 
   // Public tab state
-  const [pubTab, setPubTab] = useState<'overview' | 'analysis' | 'brochure'>('overview')
+  const [pubTab, setPubTab] = useState<'overview' | 'analysis' | 'full-analysis' | 'brochure'>('overview')
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
@@ -1205,17 +1859,22 @@ export default function ProjectDetail({
           {/* Tab bar */}
           <div className="sticky top-16 z-20 bg-white border-b border-brand-border">
             <div className="max-w-5xl mx-auto px-6 sm:px-10 flex items-center">
-              {(['overview', 'analysis', 'brochure'] as const).map(tab => (
+              {([
+                { key: 'overview',      label: 'Overview' },
+                { key: 'analysis',      label: 'Returns' },
+                { key: 'full-analysis', label: 'Full analysis' },
+                { key: 'brochure',      label: 'Brochure' },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={tab}
-                  onClick={() => setPubTab(tab)}
-                  className={`py-3.5 mr-6 text-sm font-medium border-b-2 transition-colors capitalize ${
-                    pubTab === tab
+                  key={key}
+                  onClick={() => setPubTab(key)}
+                  className={`py-3.5 mr-6 text-sm font-medium border-b-2 transition-colors ${
+                    pubTab === key
                       ? 'border-brand-text text-brand-text'
                       : 'border-transparent text-brand-muted hover:text-brand-text'
                   }`}
                 >
-                  {tab}
+                  {label}
                 </button>
               ))}
             </div>
@@ -1251,10 +1910,39 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Analysis tab */}
+          {/* Returns tab */}
           {pubTab === 'analysis' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-20">
               <PublicAnalysisPanel project={project} />
+            </div>
+          )}
+
+          {/* Full analysis tab — locked gate for public users */}
+          {pubTab === 'full-analysis' && (
+            <div className="max-w-5xl mx-auto px-6 sm:px-10 py-16 flex justify-center">
+              <div className="max-w-md w-full rounded-2xl border border-brand-border p-8 flex flex-col items-center text-center gap-5">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: '#F4F3F0' }}>
+                  <svg className="w-6 h-6 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-brand-text mb-2">Full analysis</p>
+                  <p className="text-xs text-brand-muted leading-relaxed">
+                    IRR by exit year, equity build-up, mortgage modelling, and break-even analysis — all in one place.
+                    Available to registered clients only.
+                  </p>
+                </div>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-colors"
+                  style={{ backgroundColor: '#A0784A' }}
+                >
+                  Enquire for access →
+                </Link>
+              </div>
             </div>
           )}
 
@@ -1269,8 +1957,8 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Sticky CTA — hidden on analysis tab */}
-          {pubTab !== 'analysis' && (
+          {/* Sticky CTA — hidden on analysis / full-analysis tabs */}
+          {pubTab !== 'analysis' && pubTab !== 'full-analysis' && (
             <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
               <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-6 flex justify-center">
                 <Link
@@ -1296,17 +1984,22 @@ export default function ProjectDetail({
           <div ref={scrollNavRef} className="sticky top-16 z-20 bg-white border-b border-brand-border">
             {/* Tab row */}
             <div className={`max-w-5xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
-              {(['overview', 'analysis', 'brochure'] as const).map(tab => (
+              {([
+                { key: 'overview',      label: 'Overview' },
+                { key: 'analysis',      label: 'Returns' },
+                { key: 'full-analysis', label: 'Full analysis' },
+                { key: 'brochure',      label: 'Brochure' },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={tab}
-                  onClick={() => setAuthTab(tab)}
-                  className={`px-5 py-3.5 text-xs font-semibold capitalize border-b-2 transition-colors ${
-                    authTab === tab
+                  key={key}
+                  onClick={() => setAuthTab(key)}
+                  className={`px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors ${
+                    authTab === key
                       ? 'border-brand-bronze text-brand-bronze'
                       : 'border-transparent text-brand-hint hover:text-brand-muted'
                   }`}
                 >
-                  {tab === 'overview' ? 'Overview' : tab === 'analysis' ? 'Analysis' : 'Brochure'}
+                  {label}
                 </button>
               ))}
               {isAdmin && (
@@ -1334,6 +2027,13 @@ export default function ProjectDetail({
               {locationSection}
               {developerSection}
               {faqSection}
+            </div>
+          )}
+
+          {/* Full analysis tab */}
+          {authTab === 'full-analysis' && (
+            <div className="max-w-5xl mx-auto px-6 sm:px-10">
+              <FullAnalysisPanel project={project} />
             </div>
           )}
 
