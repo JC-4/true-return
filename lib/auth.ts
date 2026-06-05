@@ -55,6 +55,17 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null
 
+        // Check admin credentials from env vars
+        const adminUsername = process.env.ADMIN_USERNAME
+        const adminPassword = process.env.ADMIN_PASSWORD
+        if (
+          adminUsername && adminPassword &&
+          credentials.username === adminUsername &&
+          credentials.password === adminPassword
+        ) {
+          return { id: 'admin', name: 'Admin', email: adminUsername }
+        }
+
         const index = await redis.get<IndexEntry[]>('users:index') ?? []
         const entry = index.find(u => u.username === credentials.username)
         if (!entry) return null

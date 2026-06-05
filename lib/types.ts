@@ -19,6 +19,10 @@ export type UnitType = {
   price_per_sqft: number
   bedrooms: number | null   // 0 = studio, 1/2/3 = residential, null = commercial
   typology: string | null   // distinguishing label within a bedroom count (e.g. "Suite", "Standard"); null if unique
+  internal_sqft?: number | null
+  balcony_sqft?: number | null
+  expected_rent?: number | null
+  expected_handover_value?: number | null
 }
 
 export type ConnectivityItem = {
@@ -30,6 +34,7 @@ export type PaymentSegment = {
   label: string
   percent: number
   color: 'bronze' | 'bronze-mid' | 'bronze-light'
+  date?: string
 }
 
 export type PaymentPlan = {
@@ -61,6 +66,9 @@ export type Project = {
   payment_plans: PaymentPlan[]
   faqs: FaqItem[]
   unit_types?: UnitType[]
+  service_charge_rate?: number | null
+  downpayment_pct?: number | null
+  payment_plan_confirmed?: boolean | null
 }
 
 export type DeveloperWithCount = Developer & { project_count: number }

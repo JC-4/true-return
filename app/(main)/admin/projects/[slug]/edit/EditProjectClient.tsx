@@ -1,0 +1,674 @@
+'use client'
+import { useState } from 'react'
+import Link from 'next/link'
+import type { Project, PaymentSegment } from '@/lib/types'
+
+// ─── Shared input styles ──────────────────────────────────────────────────────
+
+const inputCls =
+  'w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#18181b] focus:border-transparent'
+
+const readonlyCls =
+  'w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-400 cursor-default select-none'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatMoney(raw: string): string {
+  if (!raw) return ''
+  const [intPart, decPart] = raw.split('.')
+  const formatted = Number(intPart).toLocaleString('en-US')
+  return decPart !== undefined ? `${formatted}.${decPart}` : formatted
+}
+
+function stripCommas(v: string): string {
+  return v.replace(/,/g, '').replace(/[^\d.]/g, '')
+}
+
+// ─── Field components ─────────────────────────────────────────────────────────
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  readOnly,
+}: {
+  label: string
+  value: string
+  onChange?: (v: string) => void
+  type?: string
+  placeholder?: string
+  readOnly?: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        onChange={e => onChange?.(e.target.value)}
+        className={readOnly ? readonlyCls : inputCls}
+      />
+    </div>
+  )
+}
+
+// Money field: stores raw numeric string, displays with thousand separators
+function MoneyField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (raw: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        {label}
+      </label>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={formatMoney(value)}
+        placeholder={placeholder}
+        onChange={e => onChange(stripCommas(e.target.value))}
+        className={inputCls}
+      />
+    </div>
+  )
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-5">{label}</p>
+  )
+}
+
+// ─── Slab date picker ─────────────────────────────────────────────────────────
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+const YEARS = Array.from({ length: 12 }, (_, i) => 2024 + i) // 2024–2035
+
+function isoToMMYYYY(iso: string | null): string {
+  if (!iso) return ''
+  const parts = iso.split('-')
+  if (parts.length < 2) return ''
+  return `${parts[1].padStart(2, '0')}/${parts[0]}`
+}
+
+type DateMode = 'on-booking' | 'handover' | 'month-year'
+
+function parseDateValue(
+  date: string,
+  handoverMMYYYY: string
+): { mode: DateMode; month: string; year: string } {
+  const fallback = { month: '01', year: '2026' }
+  if (!date || date === 'On booking') return { mode: 'on-booking', ...fallback }
+  if ((handoverMMYYYY && date === handoverMMYYYY) || date === 'Handover')
+    return { mode: 'handover', ...fallback }
+  const mmyyyy = date.match(/^(\d{1,2})\/(\d{4})$/)
+  if (mmyyyy) return { mode: 'month-year', month: mmyyyy[1].padStart(2, '0'), year: mmyyyy[2] }
+  const bareYear = date.match(/^(\d{4})$/)
+  if (bareYear) return { mode: 'month-year', month: '01', year: bareYear[1] }
+  return { mode: 'month-year', ...fallback }
+}
+
+function SlabDatePicker({
+  value,
+  onChange,
+  handoverMMYYYY,
+}: {
+  value: string
+  onChange: (v: string) => void
+  handoverMMYYYY: string
+}) {
+  const parsed = parseDateValue(value, handoverMMYYYY)
+  const [mode, setMode] = useState<DateMode>(parsed.mode)
+  const [month, setMonth] = useState(parsed.month)
+  const [year, setYear]   = useState(parsed.year)
+
+  function emit(m: DateMode, mo: string, yr: string) {
+    if (m === 'on-booking') onChange('On booking')
+    else if (m === 'handover') onChange(handoverMMYYYY || 'Handover')
+    else onChange(`${mo}/${yr}`)
+  }
+
+  return (
+    <div className="flex gap-2 items-center min-w-0">
+      <select
+        value={mode}
+        onChange={e => { const m = e.target.value as DateMode; setMode(m); emit(m, month, year) }}
+        className={`${inputCls} ${mode !== 'month-year' ? 'flex-1' : 'shrink-0 w-auto'}`}
+      >
+        <option value="on-booking">On booking</option>
+        <option value="handover">Handover</option>
+        <option value="month-year">Month / year…</option>
+      </select>
+      {mode === 'month-year' && (
+        <>
+          <select
+            value={month}
+            onChange={e => { const m = e.target.value; setMonth(m); emit(mode, m, year) }}
+            className={`${inputCls} flex-1`}
+          >
+            {MONTHS.map((lbl, idx) => (
+              <option key={lbl} value={String(idx + 1).padStart(2, '0')}>{lbl}</option>
+            ))}
+          </select>
+          <select
+            value={year}
+            onChange={e => { const y = e.target.value; setYear(y); emit(mode, month, y) }}
+            className={`${inputCls} w-24`}
+          >
+            {YEARS.map(y => (
+              <option key={y} value={String(y)}>{y}</option>
+            ))}
+          </select>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+const SEGMENT_COLORS: PaymentSegment['color'][] = ['bronze', 'bronze-mid', 'bronze-light']
+
+type EditSegment = {
+  label: string
+  percent: string
+  date: string
+  color: PaymentSegment['color']
+}
+
+type EditUnitType = {
+  id: string
+  type: string
+  bedrooms: number | null
+  price_from: string
+  internal_sqft: string
+  balcony_sqft: string
+  expected_rent: string
+  expected_handover_value: string
+}
+
+// ─── Live calculations ────────────────────────────────────────────────────────
+
+type YieldCalc = { serviceCharge: number; netYield: number | null }
+
+function calcYield(ut: EditUnitType, scRate: string): YieldCalc | null {
+  const price = parseFloat(ut.price_from)
+  const internal = parseInt(ut.internal_sqft)
+  const rate = parseFloat(scRate)
+  if (!price || !internal || !rate) return null
+
+  const balcony = parseInt(ut.balcony_sqft) || 0
+  const serviceCharge = internal * rate + balcony * rate * 0.25
+
+  const rent = parseFloat(ut.expected_rent)
+  const netYield = rent ? ((rent - serviceCharge) / price) * 100 : null
+
+  return { serviceCharge, netYield }
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function EditProjectClient({ project }: { project: Project }) {
+  // Project-level fields
+  const [name, setName] = useState(project.name)
+  const [description, setDescription] = useState(project.description ?? '')
+  const [status, setStatus] = useState(project.status ?? '')
+  const [handoverDate, setHandoverDate] = useState(project.handover_date ?? '')
+  const [startingPrice, setStartingPrice] = useState(project.starting_price?.toString() ?? '')
+  const [community, setCommunity] = useState(project.community ?? '')
+  const [location, setLocation] = useState(project.location ?? '')
+  const [serviceChargeRate, setServiceChargeRate] = useState(
+    project.service_charge_rate?.toString() ?? ''
+  )
+  const [paymentPlanConfirmed, setPaymentPlanConfirmed] = useState(
+    project.payment_plan_confirmed ?? false
+  )
+
+  // Payment segments
+  const [segments, setSegments] = useState<EditSegment[]>(
+    (project.payment_plans?.[0]?.segments ?? []).map(s => ({
+      label: s.label,
+      percent: s.percent.toString(),
+      date: s.date ?? '',
+      color: s.color,
+    }))
+  )
+
+  // Unit types
+  const [unitTypes, setUnitTypes] = useState<EditUnitType[]>(
+    (project.unit_types ?? []).map(ut => ({
+      id: ut.id,
+      type: ut.type,
+      bedrooms: ut.bedrooms,
+      price_from: ut.price_from?.toString() ?? '',
+      internal_sqft: ut.internal_sqft?.toString() ?? '',
+      balcony_sqft: ut.balcony_sqft?.toString() ?? '',
+      expected_rent: ut.expected_rent?.toString() ?? '',
+      expected_handover_value: ut.expected_handover_value?.toString() ?? '',
+    }))
+  )
+
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // ── Payment plan helpers ───────────────────────────────────────────────────
+
+  const totalPct = segments.reduce((sum, s) => sum + (parseFloat(s.percent) || 0), 0)
+  const pctOk = Math.abs(totalPct - 100) < 0.01
+
+  function updateSegment<K extends keyof EditSegment>(index: number, key: K, value: EditSegment[K]) {
+    setSegments(prev => prev.map((s, i) => (i === index ? { ...s, [key]: value } : s)))
+  }
+
+  function addSegment() {
+    setSegments(prev => [
+      ...prev,
+      { label: '', percent: '', date: '', color: SEGMENT_COLORS[prev.length % 3] },
+    ])
+  }
+
+  function removeSegment(index: number) {
+    setSegments(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // ── Unit type helpers ──────────────────────────────────────────────────────
+
+  function updateUnitType<K extends keyof EditUnitType>(index: number, key: K, value: EditUnitType[K]) {
+    setUnitTypes(prev => prev.map((ut, i) => (i === index ? { ...ut, [key]: value } : ut)))
+  }
+
+  function calcPricePerSqft(ut: EditUnitType): string {
+    const price = parseFloat(ut.price_from)
+    const internal = parseInt(ut.internal_sqft)
+    const balcony = parseInt(ut.balcony_sqft) || 0
+    const total = internal + balcony
+    if (!price || !total) return '—'
+    return `AED ${Math.round(price / total).toLocaleString()}`
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+
+    const existingPlans = project.payment_plans ?? []
+    const updatedSegments = segments.map(s => ({
+      label: s.label,
+      percent: parseFloat(s.percent) || 0,
+      date: s.date,
+      color: s.color,
+    }))
+
+    let updatedPlans = existingPlans
+    if (existingPlans.length > 0) {
+      updatedPlans = [{ ...existingPlans[0], segments: updatedSegments }, ...existingPlans.slice(1)]
+    } else if (segments.length > 0) {
+      updatedPlans = [{ name: 'Payment Plan', segments: updatedSegments }]
+    }
+
+    const projectPayload = {
+      name: name.trim(),
+      description: description.trim() || null,
+      status: status || null,
+      handover_date: handoverDate || null,
+      starting_price: startingPrice ? parseFloat(startingPrice) : null,
+      community: community.trim() || null,
+      location: location.trim() || null,
+      service_charge_rate: serviceChargeRate ? parseFloat(serviceChargeRate) : null,
+      payment_plan_confirmed: paymentPlanConfirmed,
+      payment_plans: updatedPlans,
+    }
+
+    const unitTypesPayload = unitTypes.map(ut => ({
+      id: ut.id,
+      price_from: ut.price_from ? parseFloat(ut.price_from) : null,
+      internal_sqft: ut.internal_sqft ? parseInt(ut.internal_sqft) : null,
+      balcony_sqft: ut.balcony_sqft ? parseInt(ut.balcony_sqft) : 0,
+      expected_rent: ut.expected_rent ? parseFloat(ut.expected_rent) : null,
+      expected_handover_value: ut.expected_handover_value ? parseFloat(ut.expected_handover_value) : null,
+    }))
+
+    try {
+      const res = await fetch(`/api/projects/${project.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: projectPayload, unit_types: unitTypesPayload }),
+      })
+      if (!res.ok) {
+        const body = await res.json() as { error?: string }
+        throw new Error(body.error ?? 'Save failed')
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="bg-[#fafafa] min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+
+        {/* Header */}
+        <div className="mb-8">
+          <p className="text-[#27272a] text-xs font-semibold uppercase tracking-widest mb-2">
+            Admin · Private
+          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-[#18181b] mb-1">Edit project</h1>
+              <p className="text-sm text-[#71717a]">{project.name}</p>
+            </div>
+            <Link
+              href={`/projects/${project.slug}`}
+              className="text-xs text-[#71717a] hover:text-[#18181b] underline underline-offset-2 whitespace-nowrap mt-1"
+            >
+              ← View project
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+
+          {/* ── Project details ──────────────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
+            <SectionHeader label="Project details" />
+
+            <Field label="Name" value={name} onChange={setName} placeholder="Project name" />
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+                placeholder="Project description…"
+                className={`${inputCls} resize-y`}
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">— select —</option>
+                  <option value="off_plan">Off plan</option>
+                  <option value="under_construction">Under construction</option>
+                  <option value="ready">Ready</option>
+                </select>
+              </div>
+              <Field
+                label="Handover date"
+                type="date"
+                value={handoverDate}
+                onChange={setHandoverDate}
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <MoneyField
+                label="Starting price (AED)"
+                value={startingPrice}
+                onChange={setStartingPrice}
+                placeholder="e.g. 1,500,000"
+              />
+              <Field
+                label="Service charge rate (AED/sqft/yr)"
+                type="number"
+                value={serviceChargeRate}
+                onChange={setServiceChargeRate}
+                placeholder="e.g. 18"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Community" value={community} onChange={setCommunity} placeholder="e.g. Dubai Creek Harbour" />
+              <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. Dubai, UAE" />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="pp-confirmed"
+                type="checkbox"
+                checked={paymentPlanConfirmed}
+                onChange={e => setPaymentPlanConfirmed(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-[#18181b] focus:ring-[#18181b] cursor-pointer"
+              />
+              <label htmlFor="pp-confirmed" className="text-sm text-gray-700 cursor-pointer select-none">
+                Payment plan confirmed
+              </label>
+            </div>
+          </div>
+
+          {/* ── Payment plan slabs ───────────────────────────────────────── */}
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <SectionHeader label="Payment plan slabs" />
+
+            {/* Progress bar */}
+            <div className="mb-5">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs text-gray-400">Total allocated</span>
+                <span className={`text-xs font-semibold ${pctOk ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {totalPct.toFixed(totalPct % 1 === 0 ? 0 : 1)}%
+                  {!pctOk && segments.length > 0 && ' — must equal 100%'}
+                </span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${pctOk ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                  style={{ width: `${Math.min(totalPct, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Segment rows */}
+            <div className="space-y-2">
+              {segments.length === 0 && (
+                <p className="text-sm text-gray-400 py-2">No segments yet — add one below.</p>
+              )}
+              {segments.map((seg, i) => (
+                <div key={i} className="flex flex-wrap gap-2 items-center">
+                  <input
+                    type="text"
+                    value={seg.label}
+                    onChange={e => updateSegment(i, 'label', e.target.value)}
+                    placeholder="Label (e.g. Booking)"
+                    className={`${inputCls} flex-1 min-w-[120px]`}
+                  />
+                  <div className="relative w-20 shrink-0">
+                    <input
+                      type="number"
+                      value={seg.percent}
+                      onChange={e => updateSegment(i, 'percent', e.target.value)}
+                      placeholder="0"
+                      className={`${inputCls} pr-6`}
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                  </div>
+                  <div className="flex-1 min-w-[220px]">
+                    <SlabDatePicker
+                      value={seg.date}
+                      onChange={v => updateSegment(i, 'date', v)}
+                      handoverMMYYYY={isoToMMYYYY(handoverDate)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeSegment(i)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
+                    title="Remove row"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addSegment}
+              className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-[#18181b] transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add row
+            </button>
+          </div>
+
+          {/* ── Unit types ───────────────────────────────────────────────── */}
+          {unitTypes.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 p-6">
+              <SectionHeader label="Unit types" />
+              <div className="space-y-6">
+                {unitTypes.map((ut, i) => {
+                  const ppsq = calcPricePerSqft(ut)
+                  const yieldCalc = calcYield(ut, serviceChargeRate)
+                  const bedroomLabel =
+                    ut.bedrooms === null
+                      ? 'Commercial'
+                      : ut.bedrooms === 0
+                      ? 'Studio'
+                      : `${ut.bedrooms} BR`
+                  return (
+                    <div key={ut.id} className="border border-gray-100 rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-[#18181b]">{ut.type}</p>
+                        <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{bedroomLabel}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <MoneyField
+                          label="Price from (AED)"
+                          value={ut.price_from}
+                          onChange={v => updateUnitType(i, 'price_from', v)}
+                          placeholder="e.g. 1,200,000"
+                        />
+                        <Field
+                          label="Internal sqft"
+                          type="number"
+                          value={ut.internal_sqft}
+                          onChange={v => updateUnitType(i, 'internal_sqft', v)}
+                          placeholder="e.g. 750"
+                        />
+                        <Field
+                          label="Balcony sqft"
+                          type="number"
+                          value={ut.balcony_sqft}
+                          onChange={v => updateUnitType(i, 'balcony_sqft', v)}
+                          placeholder="0"
+                        />
+                        <Field
+                          label="Price per sqft"
+                          value={ppsq}
+                          readOnly
+                        />
+                        {/* Expected rent + live calculations */}
+                        <div className="col-span-2 sm:col-span-1 space-y-1.5">
+                          <MoneyField
+                            label="Expected annual rent (AED)"
+                            value={ut.expected_rent}
+                            onChange={v => updateUnitType(i, 'expected_rent', v)}
+                            placeholder="e.g. 80,000"
+                          />
+                          {yieldCalc && (
+                            <p className="text-xs text-gray-400">
+                              Est. service charge: AED {Math.round(yieldCalc.serviceCharge).toLocaleString()}
+                              {yieldCalc.netYield !== null && (
+                                <>
+                                  {' · '}
+                                  <span className={yieldCalc.netYield >= 0 ? 'text-emerald-600' : 'text-red-400'}>
+                                    Net yield: {yieldCalc.netYield.toFixed(1)}%
+                                  </span>
+                                </>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-1.5">
+                          <MoneyField
+                            label="Expected handover value (AED)"
+                            value={ut.expected_handover_value}
+                            onChange={v => updateUnitType(i, 'expected_handover_value', v)}
+                            placeholder="e.g. 1,500,000"
+                          />
+                          {(() => {
+                            const hv = parseFloat(ut.expected_handover_value)
+                            const pf = parseFloat(ut.price_from)
+                            if (!hv || !pf) return null
+                            const capApp = ((hv - pf) / pf) * 100
+                            const positive = capApp >= 0
+                            return (
+                              <p className="text-xs text-gray-400">
+                                Capital appreciation:{' '}
+                                <span className={positive ? 'text-emerald-600' : 'text-red-400'}>
+                                  {positive ? '+' : ''}{capApp.toFixed(1)}%
+                                </span>
+                              </p>
+                            )
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Save ─────────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-[#18181b] hover:bg-[#27272a] text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+            {saved && (
+              <span className="text-sm text-emerald-600 font-medium">Saved successfully</span>
+            )}
+            {error && (
+              <span className="text-sm text-red-500">{error}</span>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}

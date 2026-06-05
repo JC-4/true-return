@@ -27,6 +27,13 @@ type DealBuilderProps = {
   /** When true, shows a "Load deal" button to pull in a previously saved deal for
    *  this project. Admin only. */
   showLoad?: boolean
+  /**
+   * When true, renders in compact/embedded mode for the project Analysis tab:
+   * - Hides the page header and project selector (assume lockProject=true)
+   * - Zone 2 (dark summary) appears full-width at top; Zone 1 inputs are collapsible
+   * - Zone 3 shows as accordion on mobile, tabs on desktop
+   */
+  compact?: boolean
 }
 
 type ApiDeveloper = {
@@ -556,8 +563,8 @@ function TabReturns({
 }) {
   const [rentGrowth, setRentGrowth] = useState(0)
 
-  const rentMin = Math.floor(rent * 0.5 / 5000) * 5000
-  const rentMax = Math.ceil(rent * 1.5 / 5000) * 5000 || 300000
+  const rentMin = price > 0 ? Math.max(30000, Math.floor(price * 0.02 / 5000) * 5000) : 0
+  const rentMax = price > 0 ? (Math.ceil(price * 0.12 / 5000) * 5000 || 500000) : 500000
 
   let cumulative = 0
   const yrRows = [1, 2, 3, 4, 5].map(y => {
@@ -1230,11 +1237,12 @@ export default function DealBuilder({
   editingDealId,
   editingDealName,
   lockDeveloper = false,
-  lockProject = false,
-  stickyTop = 'top-20',
-  showShare = false,
+  lockProject   = false,
+  stickyTop     = 'top-20',
+  showShare     = false,
   showSaveDefault = false,
-  showLoad = false,
+  showLoad      = false,
+  compact       = false,
 }: DealBuilderProps) {
   const router = useRouter()
   const c = useCalculator(initialValues)
@@ -1257,6 +1265,8 @@ export default function DealBuilder({
   const [showSaveModal, setShowSaveModal]   = useState(false)
   const [saving, setSaving]                 = useState(false)
   const [saved, setSaved]                   = useState(false)
+  const [savedDealId,   setSavedDealId]     = useState<string | null>(editingDealId ?? null)
+  const [savedDealName, setSavedDealName]   = useState<string | null>(editingDealName ?? null)
   const [dupModal, setDupModal]             = useState<{ existingId: string; existingName: string; body: object } | null>(null)
 
   // ── Share state ──
@@ -1275,6 +1285,10 @@ export default function DealBuilder({
 
   // ── Tab state ──
   const [activeTab, setActiveTab]           = useState<TabName>('Overview')
+  const [activeAccordion, setActiveAccordion] = useState<TabName | null>(null)
+
+  // ── Compact mode: assumptions panel visibility ──
+  const [assumptionsOpen, setAssumptionsOpen] = useState(true)
 
   // ── Acquisition costs collapsed ──
   const [showAcqCosts, setShowAcqCosts]     = useState(false)
@@ -1407,6 +1421,73 @@ export default function DealBuilder({
     }
   }
 
+  // Restore bedroom/typology selection UI state once projects have loaded.
+  // Calculator values (price, sqft) are already restored from initialValues by useCalculator.
+  // This effect only syncs the selection chips/cards — it does NOT modify calculator state,
+  // so it cannot trigger false dirty-state detection.
+  const restoredSelectionRef = useRef(false)
+  useEffect(() => {
+    if (restoredSelectionRef.current) return
+    if (!selectedProjectId || bedroomOptions.length === 0) return
+    if (initialValues?.bedrooms === undefined && !initialValues?.typology) return
+
+    restoredSelectionRef.current = true
+
+    if (initialValues.bedrooms !== undefined) setSelectedBedrooms(initialValues.bedrooms)
+    if (initialValues.typology != null)       setSelectedTypology(initialValues.typology)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId, bedroomOptions.length])
+
+  // ── Dirty tracking ────────────────────────────────────────────────────────
+  // Computes a compact key from the user-editable fields we care about.
+  // Computed once from initialValues → cleanHash (the "saved" baseline).
+  // Recomputed each render from current state → currentDirtyKey.
+  // isDirty = they differ.
+
+  function makeDirtyKey(
+    price: number, rent: number, growth: number, handoverValue: number,
+    propertyType: string, propertySubType: string,
+    internalSqft: number, balconySqft: number, buaSqft: number, plotSqft: number, scRate: number,
+    mortgageOn: boolean, depositPct: number, interestRate: number, termYears: number, mortgageType: string,
+    beds: number | null | 'unset', typo: string | null
+  ) {
+    return [price, rent, growth, handoverValue, propertyType, propertySubType,
+      internalSqft, balconySqft, buaSqft, plotSqft, scRate,
+      mortgageOn, depositPct, interestRate, termYears, mortgageType,
+      String(beds), typo].join('|')
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const initialDirtyKey = useMemo(() => makeDirtyKey(
+    initialValues?.price ?? 0, initialValues?.rent ?? 0,
+    initialValues?.growth ?? 5, initialValues?.handoverValue ?? 0,
+    initialValues?.propertyType ?? 'offplan', initialValues?.propertySubType ?? 'apartment',
+    initialValues?.internalSqft ?? 0, initialValues?.balconySqft ?? 0,
+    initialValues?.buaSqft ?? 0, initialValues?.plotSqft ?? 0, initialValues?.scRate ?? 0,
+    initialValues?.mortgageOn ?? false, initialValues?.depositPct ?? 25,
+    initialValues?.interestRate ?? 4.0, initialValues?.termYears ?? 25,
+    initialValues?.mortgageType ?? 'repayment',
+    initialValues?.bedrooms !== undefined ? initialValues.bedrooms : 'unset',
+    initialValues?.typology ?? null,
+  ), []) // intentionally empty — snapshot at mount time only
+
+  const currentDirtyKey = makeDirtyKey(
+    c.price, c.rent, c.growth, c.handoverValue,
+    c.propertyType, c.propertySubType,
+    c.internalSqft, c.balconySqft, c.buaSqft, c.plotSqft, c.scRate,
+    c.mortgageOn, c.depositPct, c.interestRate, c.termYears, c.mortgageType,
+    selectedBedrooms, selectedTypology
+  )
+
+  // cleanHash tracks the last-saved state (starts as initialDirtyKey).
+  // After a successful save we update it so "Unsaved" only reappears on further changes.
+  const [cleanHash, setCleanHash] = useState(initialDirtyKey)
+  // Ref so save handlers can read the current dirty key without stale closures
+  const currentDirtyKeyRef = useRef(currentDirtyKey)
+  currentDirtyKeyRef.current = currentDirtyKey
+
+  const isDirty = currentDirtyKey !== cleanHash
+
   // Save flow
   const defaultDealName = [c.project, c.unit].filter(Boolean).join(' ') || editingDealName || 'Unnamed Deal'
 
@@ -1434,18 +1515,35 @@ export default function DealBuilder({
   async function handleSave(name: string) {
     setSaving(true)
     try {
-      // Fetch the current deals index to check for a name collision
+      const body = buildDealBody(name)
+
+      // Editing an existing deal → PUT in place, no new ID needed
+      const currentDealId = savedDealId ?? editingDealId
+      if (currentDealId) {
+        const res = await fetch(`/api/user/deals/${currentDealId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) { const d = await res.json() as { error?: string }; console.error(d.error); return }
+        setShowSaveModal(false)
+        setSaved(true)
+        setCleanHash(currentDirtyKeyRef.current)
+        setSavedDealId(currentDealId)
+        setSavedDealName(name)
+        if (!compact) router.replace(`/deals/${currentDealId}`)
+        return
+      }
+
+      // New deal — check for name collision first
       const indexRes = await fetch('/api/user/deals')
       const index = indexRes.ok
         ? await indexRes.json() as { id: string; name: string }[]
         : []
 
-      const body = buildDealBody(name)
-
-      // Find any existing deal with the same name (case-insensitive),
-      // but ignore a match if it's the deal we're already editing.
+      // Find any existing deal with the same name (case-insensitive)
       const match = index.find(
-        d => d.name.toLowerCase() === name.toLowerCase() && d.id !== editingDealId
+        d => d.name.toLowerCase() === name.toLowerCase()
       )
       if (match) {
         setShowSaveModal(false)
@@ -1461,7 +1559,7 @@ export default function DealBuilder({
     }
   }
 
-  async function doSaveNew(body: object) {
+  async function doSaveNew(body: object & { name?: string }) {
     const res = await fetch('/api/user/deals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1472,7 +1570,14 @@ export default function DealBuilder({
     setShowSaveModal(false)
     setDupModal(null)
     setSaved(true)
-    router.push(`/deals/${data.id}`)
+    setCleanHash(currentDirtyKeyRef.current)
+    const newId = data.id!
+    setSavedDealId(newId)
+    setSavedDealName((body as { name?: string }).name ?? null)
+    // Update URL without navigation — compact mode stays on project page
+    if (!compact) {
+      router.replace(`/deals/${newId}`)
+    }
   }
 
   async function handleOverwrite() {
@@ -1486,9 +1591,16 @@ export default function DealBuilder({
       })
       const data = await res.json() as { id?: string; error?: string }
       if (!res.ok) { console.error(data.error); return }
+      const overwriteId = dupModal.existingId
+      const overwriteName = dupModal.existingName
       setDupModal(null)
       setSaved(true)
-      router.push(`/deals/${dupModal.existingId}`)
+      setCleanHash(currentDirtyKeyRef.current)
+      setSavedDealId(overwriteId)
+      setSavedDealName(overwriteName)
+      if (!compact) {
+        router.replace(`/deals/${overwriteId}`)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -1627,28 +1739,30 @@ export default function DealBuilder({
   const TABS: TabName[] = ['Overview', 'Returns', 'Growth', 'Financing']
 
   return (
-    <div className="bg-[#fafafa] min-h-screen pb-20">
+    <div className={compact ? 'bg-[#fafafa]' : 'bg-[#fafafa] min-h-screen pb-20'}>
 
-      {/* Page header */}
-      <div className="bg-[#18181b] border-b border-[#27272a]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-white">{editingDealId ? 'Edit Deal' : 'New Deal'}</h1>
-            <p className="text-sm text-zinc-400 mt-0.5">Build and analyse your investment</p>
+      {/* Page header — hidden in compact (embedded) mode */}
+      {!compact && (
+        <div className="bg-[#18181b] border-b border-[#27272a]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-white">{editingDealId ? 'Edit Deal' : 'New Deal'}</h1>
+              <p className="text-sm text-zinc-400 mt-0.5">Build and analyse your investment</p>
+            </div>
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors"
+            >
+              Save deal
+            </button>
           </div>
-          <button
-            onClick={() => setShowSaveModal(true)}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors"
-          >
-            Save deal
-          </button>
         </div>
-      </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* ── Zone 1: Project Selector ── */}
-        {!manualMode ? (
+        {/* ── Zone 1: Project Selector — hidden in compact/embedded mode ── */}
+        {!compact && (!manualMode ? (
           <div className="bg-white rounded-2xl border border-[#e4e4e7] p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">Select a project</h2>
@@ -1776,9 +1890,87 @@ export default function DealBuilder({
               Select a project
             </button>
           </div>
+        ))}
+
+        {/* ── Zone 0b: Project selector — compact/embedded mode ── */}
+        {compact && (
+          <div className="bg-white rounded-2xl border border-[#e4e4e7] p-5 space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              {/* Developer — locked */}
+              <div>
+                <label className="block text-xs font-medium text-[#71717a] mb-1.5">Developer</label>
+                <div className="flex items-center gap-2 border border-[#e4e4e7] rounded-xl px-3 py-2 bg-gray-50">
+                  <svg className="w-3.5 h-3.5 text-[#a1a1aa] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-sm text-gray-700">{c.developer || '—'}</span>
+                </div>
+              </div>
+              {/* Project — locked */}
+              <div>
+                <label className="block text-xs font-medium text-[#71717a] mb-1.5">Project</label>
+                <div className="flex items-center gap-2 border border-[#e4e4e7] rounded-xl px-3 py-2 bg-gray-50">
+                  <svg className="w-3.5 h-3.5 text-[#a1a1aa] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  <span className="text-sm text-gray-700">{c.project || '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bedrooms */}
+            {bedroomOptions.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-[#71717a] mb-2">Bedrooms</p>
+                <div className="flex flex-wrap gap-2">
+                  {bedroomOptions.map(b => (
+                    <button
+                      key={String(b)}
+                      onClick={() => handleSelectBedrooms(b)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                        selectedBedrooms === b
+                          ? 'bg-[#18181b] text-white border-[#18181b]'
+                          : 'text-[#71717a] border-[#e4e4e7] hover:bg-[#e4e4e7]'
+                      }`}
+                    >
+                      {bedroomLabel(b)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Typology */}
+            {selectedBedrooms !== 'unset' && bedroomUnits.length > 1 && (
+              <div>
+                <p className="text-xs font-medium text-[#71717a] mb-2">Unit type</p>
+                <div className="flex flex-wrap gap-2">
+                  {bedroomUnits.map(ut => (
+                    <button
+                      key={ut.id}
+                      onClick={() => handleSelectTypology(ut)}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                        selectedTypology === ut.typology
+                          ? 'bg-[#18181b] text-white border-[#18181b]'
+                          : 'text-[#71717a] border-[#e4e4e7] hover:bg-[#e4e4e7]'
+                      }`}
+                    >
+                      {ut.typology ?? ut.type}
+                      <span className="block text-[10px] font-normal mt-0.5 opacity-70">
+                        from AED {fmtK(ut.price_from)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* ── Zone 2: Two-column grid ── */}
+        {/* ── Zone 2: Two-column grid — hidden in compact when inputs collapsed ── */}
+        {/* Always two-column on lg+: inputs left, dark summary sticky right.         */}
+        {/* Mobile compact: stacks naturally (single column).                         */}
+        {(!compact || assumptionsOpen) && (
         <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
 
           {/* Left column — input cards */}
@@ -1850,7 +2042,6 @@ export default function DealBuilder({
                   hint={c.bua > 0 && c.scRate > 0 ? `≈ AED ${fmt(c.scRate * c.bua)} / yr total` : undefined}
                 />
 
-                {/* Extra details */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-[#71717a] mb-1.5">Unit / Floor</label>
@@ -2100,8 +2291,8 @@ export default function DealBuilder({
             )}
           </div>
 
-          {/* Right column — dark summary panel */}
-          <div className={`sticky ${stickyTop}`}>
+          {/* Right column — dark summary panel, sticky on desktop */}
+          <div className={`lg:sticky ${stickyTop}`}>
             <div className="bg-[#18181b] rounded-2xl p-6 space-y-4">
               {/* Header */}
               <div>
@@ -2147,13 +2338,16 @@ export default function DealBuilder({
 
               {/* Save button */}
               <div className="border-t border-zinc-700 pt-4 space-y-2">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  saved
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-amber-50 text-amber-700'
-                }`}>
-                  {saved ? 'Saved ✓' : 'Unsaved'}
-                </span>
+                {/* Badge: show "Name ✓" when clean+saved, "Unsaved" when dirty, nothing otherwise */}
+                {isDirty ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                    Unsaved
+                  </span>
+                ) : saved ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                    {savedDealName ?? 'Saved'} ✓
+                  </span>
+                ) : null}
                 <button
                   onClick={() => setShowSaveModal(true)}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors"
@@ -2216,96 +2410,160 @@ export default function DealBuilder({
                   )}
                 </div>
               )}
+
             </div>
           </div>
         </div>
+        )}
 
-        {/* ── Zone 3: Analysis tabs ── */}
-        {m && (
-          <div>
-            {/* Tab bar */}
-            <div className="bg-white border border-[#e4e4e7] rounded-2xl overflow-hidden mb-4">
-              <div className="flex border-b border-[#e4e4e7]">
-                {TABS.map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
-                      activeTab === tab
-                        ? 'border-emerald-500 text-emerald-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-800'
-                    }`}>
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tab content */}
-            {activeTab === 'Overview' && (
-              <TabOverview
-                m={m}
-                price={c.price}
-                mortgageOn={c.mortgageOn}
-                handoverValue={c.handoverValue}
-                propertyType={c.propertyType}
-                propertySubType={c.propertySubType}
-                project={c.project}
-                developer={c.developer}
-                unit={c.unit}
-                location={c.location}
-                emirate={c.emirate}
-                view={c.view}
-                completion={c.completion}
-                internalSqft={c.internalSqft}
-                balconySqft={c.balconySqft}
-                buaSqft={c.bua}
-                plotSqft={c.plotSqft}
-              />
-            )}
-            {activeTab === 'Returns' && (
-              <TabReturns
-                m={m}
-                mortgageOn={c.mortgageOn}
-                price={c.price}
-                rent={c.rent}
-                setRent={c.setRent}
-                interestRate={c.interestRate}
-                termYears={c.termYears}
-              />
-            )}
-            {activeTab === 'Growth' && (
-              <TabGrowth
-                m={m}
-                mortgageOn={c.mortgageOn}
-                price={c.price}
-                growth={c.growth}
-                setGrowth={c.setGrowth}
-                propertyType={c.propertyType}
-                handoverValue={c.handoverValue}
-                setHandoverValue={c.setHandoverValue}
-                interestRate={c.interestRate}
-                termYears={c.termYears}
-                paymentPlan={c.paymentPlan}
-                completion={c.completion}
-              />
-            )}
-            {activeTab === 'Financing' && (
-              <TabFinancing
-                m={m}
-                mortgageOn={c.mortgageOn}
-                price={c.price}
-                paymentPlan={c.paymentPlan}
-                dldPct={c.dldPct}
-                agencyFeePct={c.agencyFeePct}
-                adminFee={c.adminFee}
-                depositPct={c.depositPct}
-                setDepositPct={c.setDepositPct}
-                interestRate={c.interestRate}
-                setInterestRate={c.setInterestRate}
-                termYears={c.termYears}
-              />
-            )}
+        {/* Inputs toggle — compact mode; always visible, sits above the analysis tabs */}
+        {compact && (
+          <div className="flex items-center">
+            <button
+              onClick={() => setAssumptionsOpen(v => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-[#71717a] hover:text-gray-900 transition-colors"
+            >
+              <svg
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${assumptionsOpen ? 'rotate-180' : ''}`}
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              {assumptionsOpen ? 'Hide inputs' : 'Show inputs'}
+            </button>
           </div>
         )}
+
+        {/* Analysis section heading — compact mode only; separates grid from tabs */}
+        {compact && (
+          <div className="border-t border-[#e4e4e7] pt-6">
+            <p className="text-xs uppercase tracking-widest font-semibold text-[#a1a1aa] mb-4">Analysis</p>
+          </div>
+        )}
+
+        {/* ── Zone 3: Analysis — accordion on mobile, tabs on desktop ── */}
+        {m && (() => {
+          const tabOverviewContent = (
+            <TabOverview
+              m={m}
+              price={c.price}
+              mortgageOn={c.mortgageOn}
+              handoverValue={c.handoverValue}
+              propertyType={c.propertyType}
+              propertySubType={c.propertySubType}
+              project={c.project}
+              developer={c.developer}
+              unit={c.unit}
+              location={c.location}
+              emirate={c.emirate}
+              view={c.view}
+              completion={c.completion}
+              internalSqft={c.internalSqft}
+              balconySqft={c.balconySqft}
+              buaSqft={c.bua}
+              plotSqft={c.plotSqft}
+            />
+          )
+          const tabReturnsContent = (
+            <TabReturns
+              m={m}
+              mortgageOn={c.mortgageOn}
+              price={c.price}
+              rent={c.rent}
+              setRent={c.setRent}
+              interestRate={c.interestRate}
+              termYears={c.termYears}
+            />
+          )
+          const tabGrowthContent = (
+            <TabGrowth
+              m={m}
+              mortgageOn={c.mortgageOn}
+              price={c.price}
+              growth={c.growth}
+              setGrowth={c.setGrowth}
+              propertyType={c.propertyType}
+              handoverValue={c.handoverValue}
+              setHandoverValue={c.setHandoverValue}
+              interestRate={c.interestRate}
+              termYears={c.termYears}
+              paymentPlan={c.paymentPlan}
+              completion={c.completion}
+            />
+          )
+          const tabFinancingContent = (
+            <TabFinancing
+              m={m}
+              mortgageOn={c.mortgageOn}
+              price={c.price}
+              paymentPlan={c.paymentPlan}
+              dldPct={c.dldPct}
+              agencyFeePct={c.agencyFeePct}
+              adminFee={c.adminFee}
+              depositPct={c.depositPct}
+              setDepositPct={c.setDepositPct}
+              interestRate={c.interestRate}
+              setInterestRate={c.setInterestRate}
+              termYears={c.termYears}
+            />
+          )
+          const TAB_CONTENT: Record<TabName, React.ReactNode> = {
+            Overview: tabOverviewContent,
+            Returns: tabReturnsContent,
+            Growth: tabGrowthContent,
+            Financing: tabFinancingContent,
+          }
+          return (
+            <div>
+              {/* Desktop: tabs (≥ sm) */}
+              <div className="hidden sm:block">
+                <div className="bg-white border border-[#e4e4e7] rounded-2xl overflow-hidden mb-4">
+                  <div className="flex border-b border-[#e4e4e7]">
+                    {TABS.map(tab => (
+                      <button key={tab} onClick={() => setActiveTab(tab)}
+                        className={`flex-1 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
+                          activeTab === tab
+                            ? 'border-emerald-500 text-emerald-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-800'
+                        }`}>
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>{TAB_CONTENT[activeTab]}</div>
+              </div>
+
+              {/* Mobile: accordion (< sm) */}
+              <div className="sm:hidden space-y-3">
+                {TABS.map(tab => {
+                  const isOpen = activeAccordion === tab
+                  return (
+                    <div key={tab} className="bg-white border border-[#e4e4e7] rounded-2xl overflow-hidden">
+                      <button
+                        onClick={() => setActiveAccordion(isOpen ? null : tab)}
+                        className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-gray-900"
+                      >
+                        <span>{tab}</span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isOpen && (
+                        <div className="border-t border-[#e4e4e7]">
+                          {TAB_CONTENT[tab]}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         {!m && (
           <div className="bg-white rounded-2xl border border-[#e4e4e7] p-8 text-center">
