@@ -13,12 +13,27 @@ function generateId(length = 8): string {
 
 type IndexEntry = { id: string; name: string; savedAt: string; updatedAt?: string }
 
+// The index is stored as a JSON string (SET key value), not a Redis set.
+// Explicitly parse so it works whether Upstash auto-deserializes or returns the raw string.
+async function readIndex(userId: string): Promise<IndexEntry[]> {
+  const raw = await redis.get(`deals:${userId}`)
+  if (!raw) return []
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) as IndexEntry[] } catch { return [] }
+  }
+  return raw as IndexEntry[]
+}
+
+async function writeIndex(userId: string, index: IndexEntry[]): Promise<void> {
+  await redis.set(`deals:${userId}`, JSON.stringify(index))
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const userId = (session.user as { id?: string }).id!
 
-  const index = await redis.get<IndexEntry[]>(`deals:${userId}`) ?? []
+  const index = await readIndex(userId)
 
   // When ?projectSlug= is provided, return full deal params filtered to that project
   const projectSlug = new URL(req.url).searchParams.get('projectSlug')
@@ -46,9 +61,9 @@ export async function POST(req: NextRequest) {
 
   await redis.set(`deal:${userId}:${id}`, { id, savedAt, ...body })
 
-  const index = await redis.get<IndexEntry[]>(`deals:${userId}`) ?? []
+  const index = await readIndex(userId)
   index.unshift({ id, name: body.name, savedAt })
-  await redis.set(`deals:${userId}`, index)
+  await writeIndex(userId, index)
 
   return NextResponse.json({ id })
 }

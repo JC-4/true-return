@@ -63,7 +63,7 @@ export const authOptions: NextAuthOptions = {
           credentials.username === adminUsername &&
           credentials.password === adminPassword
         ) {
-          return { id: 'admin', name: 'Admin', email: adminUsername }
+          return { id: 'jc', name: 'Admin', email: adminUsername }
         }
 
         const index = await redis.get<IndexEntry[]>('users:index') ?? []
