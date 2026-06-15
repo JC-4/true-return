@@ -27,7 +27,7 @@ function LoginFormInner() {
       setError('Invalid username or password.')
     } else {
       // Full page reload so the new session cookie is picked up by middleware/server components
-      window.location.href = '/crm'
+      window.location.href = '/projects'
     }
   }
 

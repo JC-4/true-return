@@ -5,6 +5,6 @@ import LoginForm from './LoginForm'
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions)
-  if (session) redirect('/crm')
+  if (session) redirect('/projects')
   return <LoginForm />
 }
