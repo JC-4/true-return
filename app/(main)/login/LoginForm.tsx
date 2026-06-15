@@ -3,8 +3,11 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 function LoginFormInner() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/projects'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -27,7 +30,7 @@ function LoginFormInner() {
       setError('Invalid username or password.')
     } else {
       // Full page reload so the new session cookie is picked up by middleware/server components
-      window.location.href = '/projects'
+      window.location.href = callbackUrl
     }
   }
 

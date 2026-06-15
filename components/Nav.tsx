@@ -128,7 +128,7 @@ export default function Nav() {
 
             {!isAdmin && (
               <Link
-                href="/login"
+                href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
                 className="ml-2 px-3 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] transition-colors"
               >
                 Sign in
@@ -215,7 +215,7 @@ export default function Nav() {
             {!isAdmin && (
               <div className="border-t border-[#e4e4e7] mt-1 pt-2">
                 <Link
-                  href="/login"
+                  href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
                   onClick={() => setMobileOpen(false)}
                   className="block px-4 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] rounded"
                 >

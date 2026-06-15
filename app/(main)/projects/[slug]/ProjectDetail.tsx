@@ -6,6 +6,7 @@ import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, comp
 import type { PlanRow } from '@/lib/calculations'
 import DealBuilder from '@/app/(main)/deals/new/DealBuilder'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
+import LeadGenForm from '@/components/LeadGenForm'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ function LockedAnalysisPanel({ project }: { project: Project }) {
             <p className="text-white/50 text-sm mt-1 max-w-xs">Sign in to see yield, IRR and deal score for {project.name}.</p>
           </div>
           <Link
-            href="/api/auth/signin"
+            href={`/login?callbackUrl=${encodeURIComponent(`/projects/${project.slug}`)}`}
             className="bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors mt-1"
             style={{ backgroundColor: '#A0784A' }}
           >
@@ -399,455 +400,84 @@ function BrochureTab({ slug }: { slug: string }) {
   )
 }
 
-// ─── Public analysis panel ───────────────────────────────────────────────────
+// ─── Secondary pill nav ───────────────────────────────────────────────────────
 
-function PublicAnalysisPanel({ project }: { project: Project }) {
-  const unitTypes = project.unit_types ?? []
-  const scRate = project.service_charge_rate ?? 0
-  const planRows = adaptPaymentPlan(project.payment_plans, project.handover_date)
-  const completionStr = formatHandoverDate(project.handover_date)
+function SecondaryPillNav({ sections }: { sections: { id: string; label: string; locked?: boolean }[] }) {
+  const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const [slider, setSlider] = useState({ left: 0, width: 0 })
 
-  // ── Unit / bedroom selector ────────────────────────────────────────────────
-  const bedroomGroups = [...new Set(unitTypes.map(ut => ut.bedrooms))].sort((a, b) => {
-    if (a === null) return 1
-    if (b === null) return -1
-    return a - b
-  })
-  const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
-    bedroomGroups[0] ?? null
-  )
-  const unitsInGroup = unitTypes.filter(ut => ut.bedrooms === selectedBedrooms)
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(unitsInGroup[0]?.id ?? '')
-  const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? unitsInGroup[0]
-
-  const basePrice = selectedUnit?.price_from ?? project.starting_price ?? 0
-  const internalSqft = selectedUnit?.internal_sqft ?? 0
-  const balconySqft = selectedUnit?.balcony_sqft ?? 0
-
-  function snapRent(v: number) { return Math.min(300_000, Math.max(20_000, Math.round(v / 5_000) * 5_000)) }
-  function snapHV(v: number)   { return Math.min(5_000_000, Math.max(300_000, Math.round(v / 50_000) * 50_000)) }
-
-  const [rent,          setRent]          = useState(() => snapRent(selectedUnit?.expected_rent          ?? basePrice * 0.07))
-  const [handoverValue, setHandoverValue] = useState(() => snapHV  (selectedUnit?.expected_handover_value ?? basePrice * 1.2))
-  const [growth,        setGrowth]        = useState(5)
-  const [holdPeriod,    setHoldPeriod]    = useState(5)
-
-  // Sync sliders when unit selection changes
   useEffect(() => {
-    const unit = unitTypes.find(ut => ut.id === selectedUnitId)
-    if (!unit) return
-    const p = unit.price_from ?? 0
-    setRent(snapRent(unit.expected_rent          ?? p * 0.07))
-    setHandoverValue(snapHV(unit.expected_handover_value ?? p * 1.2))
-  }, [selectedUnitId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-select first unit when bedroom group changes
-  useEffect(() => {
-    const first = unitTypes.find(ut => ut.bedrooms === selectedBedrooms)
-    if (first) setSelectedUnitId(first.id)
-  }, [selectedBedrooms]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Core metrics ──────────────────────────────────────────────────────────
-  const serviceCharge = (internalSqft * scRate) + (balconySqft * scRate * 0.25)
-  const netIncome     = rent - serviceCharge
-  const dldFee        = basePrice * 0.04
-  const adminFee      = 4_200
-  const firstSlab     = planRows[0]
-  const downpayment   = firstSlab ? (firstSlab.pct / 100) * basePrice : 0
-  const totalDueNow   = downpayment + dldFee + adminFee
-
-  // ── Payment plan year grouping ─────────────────────────────────────────────
-  const rawCompYears  = getYearsToCompletion(completionStr)
-  const compYears     = Math.max(0, Math.round(rawCompYears ?? 2))
-
-  type YG = { pct: number; aed: number; label: string; isHandover: boolean }
-  const ygMap = new Map<string, YG>()
-  for (const row of planRows) {
-    const yr  = Math.max(0, Math.round(parseDateToYear(row.date, compYears)))
-    const key = row.handover ? 'handover' : `yr-${yr}`
-    const lbl = row.handover
-      ? `Handover (${formatHandoverDate(project.handover_date)})`
-      : yr === 0 ? 'Year 0 (now)' : `Year ${yr}`
-    const prev = ygMap.get(key)
-    const newPct = (prev?.pct ?? 0) + row.pct
-    ygMap.set(key, { pct: newPct, aed: (newPct / 100) * basePrice, label: prev?.label ?? lbl, isHandover: !!(row.handover) })
-  }
-  const yearGroups = [...ygMap.entries()]
-    .sort(([a], [b]) => {
-      if (a === 'handover') return 1
-      if (b === 'handover') return -1
-      return parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])
-    })
-    .map(([, v]) => v)
-
-  // ── Scenario computation ──────────────────────────────────────────────────
-  type ScenarioResult =
-    | { mode: 'flip'; netYield: number; gainOnPaper: number; scenarioHV: number; returnOnCapital: number }
-    | { mode: 'hold'; netYield: number; irr: number | null; valueAtExit: number; totalReturn: number }
-
-  function computeScenario(rentMult: number, growthMult: number, hvMult = 1.0): ScenarioResult {
-    const sRent      = rent * rentMult
-    const sGrowth    = growth * growthMult
-    const sHV        = handoverValue * hvMult
-    const sNetIncome = sRent - serviceCharge
-    const sNetYield  = basePrice > 0 ? (sNetIncome / basePrice) * 100 : 0
-
-    if (holdPeriod === 0) {
-      const gainOnPaper      = sHV - basePrice
-      const totalDeployed    = basePrice + dldFee + adminFee
-      const returnOnCapital  = totalDeployed > 0 ? (gainOnPaper / totalDeployed) * 100 : 0
-      return { mode: 'flip', netYield: sNetYield, gainOnPaper, scenarioHV: sHV, returnOnCapital }
-    }
-
-    const exitYear = compYears + holdPeriod
-    const flows: number[] = new Array(exitYear + 1).fill(0)
-    if (planRows.length > 0) {
-      for (const row of planRows) {
-        const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, compYears))), exitYear)
-        flows[yr] -= basePrice * row.pct / 100
-      }
-    } else {
-      flows[0] -= basePrice
-    }
-    for (let y = compYears; y < exitYear; y++) flows[y] += sNetIncome
-    const exitBase  = sHV > 0 ? sHV : basePrice
-    const exitValue = exitBase * Math.pow(1 + sGrowth / 100, holdPeriod)
-    flows[exitYear] += sNetIncome + exitValue
-
-    const irr         = solveIRR(flows)
-    const totalReturn = sNetIncome * holdPeriod + (exitValue - basePrice)
-    return { mode: 'hold', netYield: sNetYield, irr, valueAtExit: exitValue, totalReturn }
-  }
-
-  const conservative = holdPeriod === 0 ? computeScenario(1,    1,    0.925) : computeScenario(0.85, 0.85)
-  const base         =                    computeScenario(1,    1,    1)
-  const optimistic   = holdPeriod === 0 ? computeScenario(1,    1,    1.075) : computeScenario(1.15, 1.15)
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function fmtA(n: number): string {
-    if (Math.abs(n) >= 1_000_000) return `AED ${(n / 1_000_000).toFixed(2)}M`
-    if (Math.abs(n) >= 1_000)     return `AED ${Math.round(n / 1_000)}k`
-    return `AED ${Math.round(n).toLocaleString()}`
-  }
-  function fmtP(n: number | null): string {
-    if (n === null) return '—'
-    return `${n >= 0 ? '' : ''}${n.toFixed(1)}%`
-  }
-  function bedroomLabel(b: number | null) {
-    if (b === null) return 'Commercial'
-    if (b === 0)    return 'Studio'
-    return `${b} Bed`
-  }
-
-  const PILL      = 'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border'
-  const PILL_ON   = `${PILL} bg-[#18181b] text-white border-[#18181b]`
-  const PILL_OFF  = `${PILL} bg-white text-brand-muted border-brand-border hover:border-brand-text hover:text-brand-text`
-  const SPILL_ON  = `${PILL} text-[11px] border-brand-bronze text-white`
-  const SPILL_OFF = `${PILL} text-[11px] bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text`
-
-  if (unitTypes.length === 0) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-sm text-brand-hint">No unit types have been added to this project yet.</p>
-      </div>
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) setActiveId(entry.target.id)
+        })
+      },
+      { rootMargin: '-140px 0px -65% 0px', threshold: 0 }
     )
+    sections.forEach(({ id }) => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+  }, [sections])
+
+  useEffect(() => {
+    const btn = pillRefs.current.get(activeId)
+    const container = containerRef.current
+    if (btn && container) {
+      const containerRect = container.getBoundingClientRect()
+      const btnRect = btn.getBoundingClientRect()
+      setSlider({ left: btnRect.left - containerRect.left, width: btnRect.width })
+    }
+  }, [activeId, sections])
+
+  function handleClick(id: string) {
+    setActiveId(id)
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  if (sections.length === 0) return null
 
   return (
-    <div className="py-10 space-y-8">
-
-      {/* ── Unit selector ─────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Select unit</p>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {bedroomGroups.map(b => (
-            <button key={String(b)} onClick={() => setSelectedBedrooms(b)}
-              className={selectedBedrooms === b ? PILL_ON : PILL_OFF}>
-              {bedroomLabel(b)}
-            </button>
-          ))}
-        </div>
-        {unitsInGroup.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {unitsInGroup.map(ut => (
-              <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
-                className={selectedUnitId === ut.id ? SPILL_ON : SPILL_OFF}
-                style={selectedUnitId === ut.id ? { backgroundColor: '#A0784A' } : {}}>
-                {ut.typology ?? ut.type}
-              </button>
-            ))}
-          </div>
-        )}
-        {selectedUnit && (
-          <p className="text-xs text-brand-hint mt-2">
-            {fmtPrice(selectedUnit.price_from)} from
-            {selectedUnit.size_sqft_from ? ` · ${selectedUnit.size_sqft_from.toLocaleString()} sqft` : ''}
-          </p>
-        )}
+    <div
+      className="fixed z-50"
+      style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)' }}
+    >
+      <div
+        ref={containerRef}
+        className="relative inline-flex items-center bg-white p-1"
+        style={{ borderRadius: '9999px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+      >
+        <div
+          className="absolute top-1 bottom-1"
+          style={{
+            backgroundColor: '#1C1B18',
+            borderRadius: '9999px',
+            left: slider.left,
+            width: slider.width,
+            transition: 'left 0.4s cubic-bezier(0.4, 0.2, 0.2, 1), width 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)',
+          }}
+        />
+        {sections.map(({ id, label, locked }) => (
+          <button
+            key={id}
+            ref={el => { if (el) pillRefs.current.set(id, el); else pillRefs.current.delete(id) }}
+            onClick={() => handleClick(id)}
+            className="relative z-10 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap border-0 bg-transparent transition-colors inline-flex items-center gap-1.5"
+            style={{ color: activeId === id ? '#fff' : '#8e8e8e' }}
+          >
+            {locked && (
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            )}
+            {label}
+          </button>
+        ))}
       </div>
-
-      {/* ── Assumptions ───────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-brand-border p-5 space-y-6">
-        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-brand-muted"
-          style={{ backgroundColor: '#F4F3F0' }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          Estimated — adjust to explore scenarios
-        </span>
-
-        {/* Rent */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
-            <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
-          </div>
-          <input type="range" min={20_000} max={300_000} step={5_000} value={rent}
-            onChange={e => setRent(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 20k</span>
-            <span className="text-xs text-brand-hint">AED 300k</span>
-          </div>
-        </div>
-
-        {/* Handover value */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Est. value at handover</span>
-            <span className="text-sm font-semibold text-brand-text">{fmtA(handoverValue)}</span>
-          </div>
-          <input type="range" min={300_000} max={5_000_000} step={50_000} value={handoverValue}
-            onChange={e => setHandoverValue(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 300k</span>
-            <span className="text-xs text-brand-hint">AED 5M</span>
-          </div>
-        </div>
-
-        {/* Growth */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Annual capital growth (post-handover)</span>
-            <span className="text-sm font-semibold text-brand-text">{growth.toFixed(1)}%</span>
-          </div>
-          <input type="range" min={0} max={15} step={0.5} value={growth}
-            onChange={e => setGrowth(parseFloat(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">0%</span>
-            <span className="text-xs text-brand-hint">15%</span>
-          </div>
-        </div>
-
-        {/* Hold period */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Hold period from handover</span>
-            <span className="text-sm font-semibold text-brand-text">
-              {holdPeriod === 0 ? 'Sell at handover' : `${holdPeriod} yr${holdPeriod > 1 ? 's' : ''}`}
-            </span>
-          </div>
-          <input type="range" min={0} max={15} step={1} value={holdPeriod}
-            onChange={e => setHoldPeriod(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">0 yrs = sell at handover</span>
-            <span className="text-xs text-brand-hint">15 yrs</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Payment plan + Acquisition costs (two-col) ─────────────────────── */}
-      <div className="grid sm:grid-cols-2 gap-5">
-
-        {/* Payment plan */}
-        {yearGroups.length > 0 && (
-          <div className="bg-white rounded-xl border border-brand-border p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Payment plan</p>
-              <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
-                project.payment_plan_confirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-              }`}>
-                {project.payment_plan_confirmed ? 'Confirmed' : 'Indicative'}
-              </span>
-            </div>
-            <div className="space-y-2.5">
-              {yearGroups.map((g, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <span className={`text-xs ${g.isHandover ? 'font-semibold text-brand-text' : 'text-brand-muted'}`}>
-                    {g.label}
-                  </span>
-                  <div className="text-right">
-                    <span className={`text-xs font-semibold ${g.isHandover ? '' : 'text-brand-text'}`}
-                      style={g.isHandover ? { color: '#A0784A' } : {}}>
-                      {g.pct}%
-                    </span>
-                    {basePrice > 0 && (
-                      <span className="text-xs text-brand-hint ml-2">{fmtA(g.aed)}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Acquisition costs */}
-        {basePrice > 0 && (
-          <div className="bg-white rounded-xl border border-brand-border p-5">
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Due at booking</p>
-            <div className="space-y-2.5">
-              {firstSlab && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-brand-muted">Downpayment ({firstSlab.pct}%)</span>
-                  <span className="text-xs font-medium text-brand-text">{fmtA(downpayment)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-brand-muted">DLD fee (4%)</span>
-                <span className="text-xs font-medium text-brand-text">{fmtA(dldFee)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-brand-muted">Admin &amp; registration</span>
-                <span className="text-xs font-medium text-brand-text">AED 4,200</span>
-              </div>
-              <div className="border-t border-brand-border pt-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold text-brand-text">Total due now</span>
-                <span className="text-sm font-bold text-brand-text">{fmtA(totalDueNow)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Scenario cards ─────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Scenarios</p>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {([
-            { label: 'Conservative', metrics: conservative, highlighted: false },
-            { label: 'Base',         metrics: base,         highlighted: true  },
-            { label: 'Optimistic',   metrics: optimistic,   highlighted: false },
-          ] as const).map(({ label, metrics, highlighted }) => (
-            <div key={label}
-              className={`bg-white rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
-              style={highlighted ? { borderColor: '#A0784A' } : {}}>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold text-brand-muted">{label}</p>
-                {highlighted && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: '#A0784A' }}>
-                    Base case
-                  </span>
-                )}
-              </div>
-              {metrics.mode === 'hold' ? (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Net yield</p>
-                    <p className="text-lg font-semibold text-brand-text">{fmtP(metrics.netYield)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Value at exit</p>
-                    <p className="text-sm font-semibold text-brand-text">{fmtA(metrics.valueAtExit)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Total return</p>
-                    <p className="text-sm font-semibold text-brand-text">{fmtA(metrics.totalReturn)}</p>
-                  </div>
-                  {metrics.irr !== null && (
-                    <div className="pt-2 border-t border-brand-border">
-                      <p className="text-xs text-brand-hint mb-0.5">IRR</p>
-                      <p className="text-base font-bold text-brand-text">{fmtP(metrics.irr)}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Gain on paper</p>
-                    <p className="text-lg font-semibold text-brand-text">{fmtA(metrics.gainOnPaper)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Est. value at handover</p>
-                    <p className="text-sm font-semibold text-brand-text">{fmtA(metrics.scenarioHV)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-brand-hint mb-0.5">Return on capital</p>
-                    <p className="text-sm font-semibold text-brand-text">{fmtP(metrics.returnOnCapital)}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-brand-hint mt-2.5">
-          {holdPeriod === 0
-            ? 'Conservative assumes 7.5% below estimated handover value. Optimistic assumes 7.5% above.'
-            : 'Conservative assumes 15% lower rent and growth than base estimate. Optimistic assumes 15% higher.'}
-        </p>
-      </div>
-
-      {/* ── Summary bar ───────────────────────────────────────────────────── */}
-      {basePrice > 0 && (
-        <div className="rounded-xl px-6 py-4 flex flex-wrap gap-8" style={{ backgroundColor: '#F4F3F0' }}>
-          {base.mode === 'hold' ? (
-            <>
-              <div>
-                <p className="text-xs text-brand-hint mb-0.5">Annual net income</p>
-                <p className="text-sm font-semibold text-brand-text">{fmtA(netIncome)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-brand-hint mb-0.5">Est. service charge / yr</p>
-                <p className="text-sm font-semibold text-brand-text">{scRate > 0 ? fmtA(serviceCharge) : '—'}</p>
-              </div>
-              {base.irr !== null && (
-                <div>
-                  <p className="text-xs text-brand-hint mb-0.5">IRR (full hold)</p>
-                  <p className="text-sm font-bold text-brand-text">{fmtP(base.irr)}</p>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div>
-                <p className="text-xs text-brand-hint mb-0.5">Gain on paper</p>
-                <p className="text-sm font-semibold text-brand-text">{fmtA(base.gainOnPaper)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-brand-hint mb-0.5">Est. service charge / yr</p>
-                <p className="text-sm font-semibold text-brand-text">{scRate > 0 ? fmtA(serviceCharge) : '—'}</p>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── Locked CTA ────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-brand-border p-6 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={{ backgroundColor: '#F4F3F0' }}>
-          <svg className="w-5 h-5 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-brand-text mb-1">Full breakdown</p>
-          <p className="text-xs text-brand-muted leading-relaxed mb-4 max-w-lg">
-            The full picture — cashflow, growth scenarios, what you actually walk away with, and independent advice on whether it&apos;s worth your money.
-          </p>
-          <Link href="/contact"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-colors"
-            style={{ backgroundColor: '#A0784A' }}>
-            Enquire for access →
-          </Link>
-        </div>
-      </div>
-
     </div>
   )
 }
@@ -900,9 +530,9 @@ function Tooltip({ text }: { text: string }) {
   )
 }
 
-// ─── Full analysis panel ──────────────────────────────────────────────────────
+// ─── Return analysis panel ────────────────────────────────────────────────────
 
-function FullAnalysisPanel({ project }: { project: Project }) {
+function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: boolean }) {
   const unitTypes = project.unit_types ?? []
   const scRate    = project.service_charge_rate ?? 0
   const planRows  = adaptPaymentPlan(project.payment_plans, project.handover_date)
@@ -914,9 +544,16 @@ function FullAnalysisPanel({ project }: { project: Project }) {
     if (b === null) return -1
     return a - b
   })
-  const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(bedroomGroups[0] ?? null)
+  const residentialUnits = unitTypes.filter(ut => ut.bedrooms !== null)
+  const poolForDefault   = residentialUnits.length > 0 ? residentialUnits : unitTypes
+  const sortedByPrice    = [...poolForDefault].sort((a, b) => (a.price_from ?? 0) - (b.price_from ?? 0))
+  const midUnit          = sortedByPrice[Math.floor(sortedByPrice.length / 2)] ?? sortedByPrice[0]
+  // Use !== undefined so bedrooms=null (commercial units) is preserved rather than falling through ??
+  const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
+    midUnit !== undefined ? midUnit.bedrooms : (bedroomGroups[0] ?? null)
+  )
   const unitsInGroup = unitTypes.filter(ut => ut.bedrooms === selectedBedrooms)
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(unitsInGroup[0]?.id ?? '')
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(midUnit?.id ?? unitsInGroup[0]?.id ?? '')
   const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? unitsInGroup[0]
 
   const basePrice    = selectedUnit?.price_from ?? project.starting_price ?? 0
@@ -946,7 +583,11 @@ function FullAnalysisPanel({ project }: { project: Project }) {
 
   // ── Financing state ────────────────────────────────────────────────────────
   const [financing,    setFinancing]    = useState<'cash' | 'mortgage'>('cash')
-  const [ltvPct,       setLtvPct]       = useState(75)
+  const handoverRow = planRows.find(r => r.handover) ?? planRows[planRows.length - 1]
+  const defaultLtv  = handoverRow
+    ? Math.min(80, Math.max(20, Math.round(handoverRow.pct / 5) * 5))
+    : 80
+  const [ltvPct,       setLtvPct]       = useState(defaultLtv)
   const [mortgageRate, setMortgageRate] = useState(4.5)
   const mortgageOn = financing === 'mortgage'
 
@@ -977,6 +618,27 @@ function FullAnalysisPanel({ project }: { project: Project }) {
   const netIncome     = rent - serviceCharge
   const rawCompYears  = getYearsToCompletion(completionStr)
   const compYears     = Math.max(0, Math.round(rawCompYears ?? 2))
+
+  // ── Payment plan year grouping ─────────────────────────────────────────────
+  type YG = { pct: number; aed: number; label: string; isHandover: boolean }
+  const ygMap = new Map<string, YG>()
+  for (const row of planRows) {
+    const yr  = Math.max(0, Math.round(parseDateToYear(row.date, compYears)))
+    const key = row.handover ? 'handover' : `yr-${yr}`
+    const lbl = row.handover
+      ? `Handover (${formatHandoverDate(project.handover_date)})`
+      : yr === 0 ? 'Year 0 (now)' : `Year ${yr}`
+    const prev = ygMap.get(key)
+    const newPct = (prev?.pct ?? 0) + row.pct
+    ygMap.set(key, { pct: newPct, aed: (newPct / 100) * basePrice, label: prev?.label ?? lbl, isHandover: !!(row.handover) })
+  }
+  const yearGroups = [...ygMap.entries()]
+    .sort(([a], [b]) => {
+      if (a === 'handover') return 1
+      if (b === 'handover') return -1
+      return parseInt(a.split('-')[1]) - parseInt(b.split('-')[1])
+    })
+    .map(([, v]) => v)
 
   // Year-5 IRR via buildAndSolveIRR (unleveraged — matches main deal calculator)
   const year5BaseIRR = basePrice > 0 && netIncome > 0 ? buildAndSolveIRR({
@@ -1102,6 +764,49 @@ function FullAnalysisPanel({ project }: { project: Project }) {
 
   const growthFor8PctIRR = findGrowthFor8PctIRR()
 
+  // ── Scenario computation (Conservative / Base / Optimistic) ─────────────────
+  type ScenarioResult =
+    | { mode: 'flip'; netYield: number; gainOnPaper: number; scenarioHV: number; returnOnCapital: number }
+    | { mode: 'hold'; netYield: number; irr: number | null; valueAtExit: number; totalReturn: number }
+
+  function computeScenario(rentMult: number, growthMult: number, hvMult = 1.0): ScenarioResult {
+    const sRent      = rent * rentMult
+    const sGrowth    = growth * growthMult
+    const sHV        = handoverValue * hvMult
+    const sNetIncome = sRent - serviceCharge
+    const sNetYield  = basePrice > 0 ? (sNetIncome / basePrice) * 100 : 0
+
+    if (holdPeriod === 0) {
+      const gainOnPaper      = sHV - basePrice
+      const totalDeployed    = basePrice + dldFee + adminFee
+      const returnOnCapital  = totalDeployed > 0 ? (gainOnPaper / totalDeployed) * 100 : 0
+      return { mode: 'flip', netYield: sNetYield, gainOnPaper, scenarioHV: sHV, returnOnCapital }
+    }
+
+    const exitYear = compYears + holdPeriod
+    const flows: number[] = new Array(exitYear + 1).fill(0)
+    if (planRows.length > 0) {
+      for (const row of planRows) {
+        const yr = Math.min(Math.max(0, Math.round(parseDateToYear(row.date, compYears))), exitYear)
+        flows[yr] -= basePrice * row.pct / 100
+      }
+    } else {
+      flows[0] -= basePrice
+    }
+    for (let y = compYears; y < exitYear; y++) flows[y] += sNetIncome
+    const exitBase  = sHV > 0 ? sHV : basePrice
+    const exitValue = exitBase * Math.pow(1 + sGrowth / 100, holdPeriod)
+    flows[exitYear] += sNetIncome + exitValue
+
+    const irr         = solveIRR(flows)
+    const totalReturn = sNetIncome * holdPeriod + (exitValue - basePrice)
+    return { mode: 'hold', netYield: sNetYield, irr, valueAtExit: exitValue, totalReturn }
+  }
+
+  const conservative = holdPeriod === 0 ? computeScenario(1,    1,    0.925) : computeScenario(0.85, 0.85)
+  const base         =                    computeScenario(1,    1,    1)
+  const optimistic   = holdPeriod === 0 ? computeScenario(1,    1,    1.075) : computeScenario(1.15, 1.15)
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   function fmtA(n: number): string {
     const abs  = Math.abs(n)
@@ -1120,11 +825,23 @@ function FullAnalysisPanel({ project }: { project: Project }) {
     return `${b} Bed`
   }
 
-  const PILL     = 'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border'
-  const PILL_ON  = `${PILL} bg-[#18181b] text-white border-[#18181b]`
-  const PILL_OFF = `${PILL} bg-white text-brand-muted border-brand-border hover:border-brand-text hover:text-brand-text`
+  const PILL      = 'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border flex flex-col items-center leading-none'
+  const PILL_ON   = `${PILL} bg-[#18181b] text-white border-[#18181b]`
+  const PILL_OFF  = `${PILL} bg-white text-brand-muted border-brand-border hover:border-brand-text hover:text-brand-text`
   const SPILL_ON  = `${PILL} text-[11px] border-brand-bronze text-white`
   const SPILL_OFF = `${PILL} text-[11px] bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text`
+
+  // Lowest price per bedroom group, for display in each group pill
+  const minPriceByGroup = new Map<number | null, number | null>()
+  for (const b of bedroomGroups) {
+    const prices = unitTypes.filter(ut => ut.bedrooms === b).map(ut => ut.price_from).filter((p): p is number => p !== null)
+    minPriceByGroup.set(b, prices.length > 0 ? Math.min(...prices) : null)
+  }
+  const minSqftByGroup = new Map<number | null, number | null>()
+  for (const b of bedroomGroups) {
+    const sqfts = unitTypes.filter(ut => ut.bedrooms === b).map(ut => ut.internal_sqft).filter((s): s is number => s != null)
+    minSqftByGroup.set(b, sqfts.length > 0 ? Math.min(...sqfts) : null)
+  }
 
   if (unitTypes.length === 0) {
     return (
@@ -1134,110 +851,201 @@ function FullAnalysisPanel({ project }: { project: Project }) {
     )
   }
 
-  return (
-    <div className="py-10 space-y-8">
+  const secondaryNavSections = [
+    { id: 'unit-selection', label: 'Unit Selection' },
+    { id: 'inputs',         label: 'Inputs' },
+    ...(yearGroups.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
+    { id: 'scenarios',     label: 'Scenarios',     locked: !isAuth },
+    { id: 'financing',     label: 'Financing',     locked: !isAuth },
+    { id: 'exit-analysis', label: 'Exit analysis', locked: !isAuth },
+  ]
 
-      {/* ── Unit selector ─────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Select unit</p>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {bedroomGroups.map(b => (
-            <button key={String(b)} onClick={() => setSelectedBedrooms(b)}
-              className={selectedBedrooms === b ? PILL_ON : PILL_OFF}>
-              {bedroomLabel(b)}
-            </button>
-          ))}
-        </div>
-        {unitsInGroup.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            {unitsInGroup.map(ut => (
-              <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
-                className={selectedUnitId === ut.id ? SPILL_ON : SPILL_OFF}
-                style={selectedUnitId === ut.id ? { backgroundColor: '#A0784A' } : {}}>
-                {ut.typology ?? ut.type}
-              </button>
+  // ── Shared Return Analysis content blocks ───────────────────────────────────
+  const financingHeader = (
+    <div className="flex items-center justify-between mb-5">
+      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Financing</p>
+      <div className="flex rounded-lg border border-brand-border overflow-hidden text-xs font-medium">
+        <button
+          onClick={() => setFinancing('cash')}
+          className={`px-4 py-2 transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
+          style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
+        >
+          Cash
+        </button>
+        <button
+          onClick={() => setFinancing('mortgage')}
+          className={`px-4 py-2 transition-colors border-l border-brand-border ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
+          style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
+        >
+          Mortgage
+        </button>
+      </div>
+    </div>
+  )
+
+  const dueAtBookingCard = firstSlab && basePrice > 0 ? (
+    <div className="rounded-lg p-4 space-y-2" style={{ backgroundColor: '#F4F3F0' }}>
+      <p className="text-xs font-semibold text-brand-text mb-2">Due at booking</p>
+      <div className="flex justify-between text-xs">
+        <span className="text-brand-muted">{firstSlab.label} ({firstSlab.pct}%)</span>
+        <span className="font-medium text-brand-text">{fmtA((firstSlab.pct / 100) * basePrice)}</span>
+      </div>
+      <div className="flex justify-between text-xs">
+        <span className="text-brand-muted">DLD (4%)</span>
+        <span className="font-medium text-brand-text">{fmtA(dldFee)}</span>
+      </div>
+      <div className="flex justify-between text-xs">
+        <span className="text-brand-muted">Admin fee</span>
+        <span className="font-medium text-brand-text">{fmtA(adminFee)}</span>
+      </div>
+      <div className="border-t border-brand-border pt-2 flex justify-between text-xs font-semibold">
+        <span className="text-brand-text">Total due now</span>
+        <span className="text-brand-text">{fmtA(dueAtBooking)}</span>
+      </div>
+    </div>
+  ) : null
+
+  const financingRemainder = (
+    <>
+      {remainingInstals.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-medium text-brand-muted mb-2">Remaining instalments</p>
+          <div className="space-y-1.5">
+            {remainingInstals.map((row, i) => (
+              <div key={i} className="flex justify-between text-xs">
+                <span className="text-brand-hint">{row.label} · {row.date}</span>
+                <span className="font-medium text-brand-text">{fmtA((row.pct / 100) * basePrice)} ({row.pct}%)</span>
+              </div>
             ))}
           </div>
-        )}
-        {selectedUnit && (
-          <p className="text-xs text-brand-hint mt-2">
-            {fmtPrice(selectedUnit.price_from)} from
-            {selectedUnit.size_sqft_from ? ` · ${selectedUnit.size_sqft_from.toLocaleString()} sqft` : ''}
-          </p>
-        )}
+        </div>
+      )}
+
+      {mortgageOn && (
+        <div className="space-y-5 border-t border-brand-border pt-5">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-brand-muted">LTV (loan to value)</span>
+                <Tooltip text="Percentage of the property value financed by the mortgage. UAE max is typically 75% for expats." />
+              </div>
+              <span className="text-sm font-semibold text-brand-text">{ltvPct}%</span>
+            </div>
+            <input type="range" min={20} max={80} step={5} value={ltvPct}
+              onChange={e => setLtvPct(parseInt(e.target.value))}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            <div className="flex justify-between mt-1">
+              <span className="text-xs text-brand-hint">20%</span>
+              <span className="text-xs text-brand-hint">80%</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-brand-muted">Interest rate</span>
+                <Tooltip text="Annual mortgage interest rate. UAE rates typically range from 3.5% to 6%." />
+              </div>
+              <span className="text-sm font-semibold text-brand-text">{mortgageRate.toFixed(1)}%</span>
+            </div>
+            <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
+              onChange={e => setMortgageRate(parseFloat(e.target.value))}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            <div className="flex justify-between mt-1">
+              <span className="text-xs text-brand-hint">2%</span>
+              <span className="text-xs text-brand-hint">10%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
+              <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
+            </div>
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
+              <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
+            </div>
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
+              <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
+            </div>
+            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+              <p className="text-[10px] text-brand-hint mb-1">Total interest (25yr)</p>
+              <p className="text-sm font-semibold text-brand-text">{totalInterest > 0 ? fmtA(totalInterest) : '—'}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-brand-muted mb-2">Equity build-up</p>
+            <div className="rounded-lg overflow-hidden border border-brand-border">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ backgroundColor: '#F4F3F0' }}>
+                    <th className="text-left px-3 py-2 text-brand-hint font-medium">Period</th>
+                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Value</th>
+                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Loan</th>
+                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Equity</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-brand-border">
+                  {equityRows.map((r, i) => (
+                    <tr key={i} className="bg-white">
+                      <td className="px-3 py-2 text-brand-muted">{r.label}</td>
+                      <td className="px-3 py-2 text-right text-brand-text font-medium">{fmtA(r.propValue)}</td>
+                      <td className="px-3 py-2 text-right text-brand-hint">{fmtA(r.loanBal)}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-emerald-600">{fmtA(r.equity)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`border-t border-brand-border pt-5${mortgageOn ? '' : ' mt-0'}`}>
+        <p className="text-xs font-medium text-brand-muted mb-3">Break-even analysis</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[10px] text-brand-hint">Min. annual rent</p>
+              <Tooltip text={mortgageOn
+                ? 'Minimum rent to cover service charge and annual mortgage payments.'
+                : 'Minimum rent to cover the service charge (net income = 0).'} />
+            </div>
+            <p className="text-sm font-semibold text-brand-text">{minRent > 0 ? fmtA(minRent) : '—'}</p>
+            {minRent > 0 && rent > 0 && (
+              <p className={`text-[10px] mt-0.5 ${rent >= minRent ? 'text-emerald-600' : 'text-red-500'}`}>
+                {rent >= minRent
+                  ? `AED ${(rent - minRent).toLocaleString()} headroom`
+                  : `AED ${(minRent - rent).toLocaleString()} shortfall`}
+              </p>
+            )}
+          </div>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[10px] text-brand-hint">Growth for 8% IRR</p>
+              <Tooltip text="Annual capital growth needed to achieve an 8% IRR over your selected hold period." />
+            </div>
+            <p className="text-sm font-semibold text-brand-text">
+              {growthFor8PctIRR !== null ? `${growthFor8PctIRR.toFixed(1)}%` : '> 30%'}
+            </p>
+            {growthFor8PctIRR !== null && (
+              <p className={`text-[10px] mt-0.5 ${growth >= growthFor8PctIRR ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {growth >= growthFor8PctIRR
+                  ? 'Met at current assumption'
+                  : `Need +${(growthFor8PctIRR - growth).toFixed(1)}% pa`}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
+    </>
+  )
 
-      {/* ── Assumptions ───────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-brand-border p-5 space-y-6">
-        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-brand-muted"
-          style={{ backgroundColor: '#F4F3F0' }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-          Synced with Returns tab
-        </span>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
-            <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
-          </div>
-          <input type="range" min={20_000} max={300_000} step={5_000} value={rent}
-            onChange={e => setRent(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 20k</span>
-            <span className="text-xs text-brand-hint">AED 300k</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Est. value at handover</span>
-            <span className="text-sm font-semibold text-brand-text">{fmtA(handoverValue)}</span>
-          </div>
-          <input type="range" min={300_000} max={5_000_000} step={50_000} value={handoverValue}
-            onChange={e => setHandoverValue(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 300k</span>
-            <span className="text-xs text-brand-hint">AED 5M</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Annual capital growth (post-handover)</span>
-            <span className="text-sm font-semibold text-brand-text">{growth.toFixed(1)}%</span>
-          </div>
-          <input type="range" min={0} max={15} step={0.5} value={growth}
-            onChange={e => setGrowth(parseFloat(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">0%</span>
-            <span className="text-xs text-brand-hint">15%</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Hold period from handover</span>
-            <span className="text-sm font-semibold text-brand-text">
-              {holdPeriod === 0 ? 'Sell at handover' : `${holdPeriod} yr${holdPeriod > 1 ? 's' : ''}`}
-            </span>
-          </div>
-          <input type="range" min={0} max={15} step={1} value={holdPeriod}
-            onChange={e => setHoldPeriod(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">0 yrs = sell at handover</span>
-            <span className="text-xs text-brand-hint">15 yrs</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Gain on paper at handover ──────────────────────────────────────── */}
+  const exitAnalysisContent = (
+    <>
       {basePrice > 0 && handoverValue > 0 && (
         <div>
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Gain on paper at handover</p>
@@ -1273,7 +1081,6 @@ function FullAnalysisPanel({ project }: { project: Project }) {
         </div>
       )}
 
-      {/* ── Exit scenarios ─────────────────────────────────────────────────── */}
       <div>
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Exit scenarios</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1317,189 +1124,310 @@ function FullAnalysisPanel({ project }: { project: Project }) {
           })}
         </div>
       </div>
+    </>
+  )
 
-      {/* ── Financing card ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-brand-border p-5">
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Financing</p>
-          <div className="flex rounded-lg border border-brand-border overflow-hidden text-xs font-medium">
-            <button
-              onClick={() => setFinancing('cash')}
-              className={`px-4 py-2 transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
-              style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
-            >
-              Cash
-            </button>
-            <button
-              onClick={() => setFinancing('mortgage')}
-              className={`px-4 py-2 transition-colors border-l border-brand-border ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
-              style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
-            >
-              Mortgage
-            </button>
+  const lockCTA = (
+    <div className="rounded-2xl border border-brand-border bg-white p-8 flex flex-col items-center text-center gap-5">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: '#F4F3F0' }}>
+        <svg className="w-6 h-6 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-brand-text mb-2">Full breakdown locked</p>
+        <p className="text-xs text-brand-muted leading-relaxed">
+          Financing, scenario modelling and exit analysis — all in one place. Available to registered clients only.
+        </p>
+      </div>
+      <Link
+        href="/contact"
+        className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-colors"
+        style={{ backgroundColor: '#A0784A' }}
+      >
+        Enquire for access →
+      </Link>
+    </div>
+  )
+
+  return (
+    <div className="py-10 space-y-8">
+
+      <SecondaryPillNav sections={secondaryNavSections} />
+
+      {/* ── 1. Unit selection ─────────────────────────────────────────────── */}
+      <div id="unit-selection">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Select unit</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {bedroomGroups.map(b => {
+            const active = selectedBedrooms === b
+            const muted = active ? 'text-white/60' : 'text-brand-hint'
+            const sqft = minSqftByGroup.get(b)
+            return (
+              <button key={String(b)} onClick={() => setSelectedBedrooms(b)}
+                className={active ? PILL_ON : PILL_OFF}>
+                <span>{bedroomLabel(b)}</span>
+                <span className={`text-[10px] font-normal mt-0.5 ${muted}`}>
+                  From {fmtPrice(minPriceByGroup.get(b) ?? null)}
+                </span>
+                {sqft != null && (
+                  <span className={`text-[9px] font-normal mt-0.5 ${muted}`}>
+                    {sqft.toLocaleString()} sqft
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        {unitsInGroup.length > 1 && (
+          <div className="flex flex-wrap gap-1.5">
+            {unitsInGroup.map(ut => {
+              const active = selectedUnitId === ut.id
+              const muted = active ? 'text-white/60' : 'text-brand-hint'
+              return (
+                <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
+                  className={active ? SPILL_ON : SPILL_OFF}
+                  style={active ? { backgroundColor: '#A0784A' } : {}}>
+                  <span>{ut.typology ?? ut.type}</span>
+                  <span className={`text-[10px] font-normal mt-0.5 ${muted}`}>
+                    From {fmtPrice(ut.price_from)}
+                  </span>
+                  {ut.internal_sqft != null && (
+                    <span className={`text-[9px] font-normal mt-0.5 ${muted}`}>
+                      {ut.internal_sqft.toLocaleString()} sqft
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── 2. Inputs ─────────────────────────────────────────────────────── */}
+      <div id="inputs" className="bg-white rounded-xl border border-brand-border p-5 space-y-6">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-brand-muted"
+          style={{ backgroundColor: '#F4F3F0' }}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Estimated — adjust to explore scenarios
+        </span>
+
+        {/* Rent */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
+            <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
+          </div>
+          <input type="range" min={20_000} max={300_000} step={5_000} value={rent}
+            onChange={e => setRent(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">AED 20k</span>
+            <span className="text-xs text-brand-hint">AED 300k</span>
           </div>
         </div>
 
-        {/* Due at booking */}
-        {firstSlab && basePrice > 0 && (
-          <div className="mb-5 rounded-lg p-4 space-y-2" style={{ backgroundColor: '#F4F3F0' }}>
-            <p className="text-xs font-semibold text-brand-text mb-2">Due at booking</p>
-            <div className="flex justify-between text-xs">
-              <span className="text-brand-muted">{firstSlab.label} ({firstSlab.pct}%)</span>
-              <span className="font-medium text-brand-text">{fmtA((firstSlab.pct / 100) * basePrice)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-brand-muted">DLD (4%)</span>
-              <span className="font-medium text-brand-text">{fmtA(dldFee)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-brand-muted">Admin fee</span>
-              <span className="font-medium text-brand-text">{fmtA(adminFee)}</span>
-            </div>
-            <div className="border-t border-brand-border pt-2 flex justify-between text-xs font-semibold">
-              <span className="text-brand-text">Total due now</span>
-              <span className="text-brand-text">{fmtA(dueAtBooking)}</span>
-            </div>
+        {/* Handover value */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Est. value at handover</span>
+            <span className="text-sm font-semibold text-brand-text">{fmtA(handoverValue)}</span>
           </div>
-        )}
-
-        {/* Remaining instalments */}
-        {remainingInstals.length > 0 && (
-          <div className="mb-5">
-            <p className="text-xs font-medium text-brand-muted mb-2">Remaining instalments</p>
-            <div className="space-y-1.5">
-              {remainingInstals.map((row, i) => (
-                <div key={i} className="flex justify-between text-xs">
-                  <span className="text-brand-hint">{row.label} · {row.date}</span>
-                  <span className="font-medium text-brand-text">{fmtA((row.pct / 100) * basePrice)} ({row.pct}%)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Mortgage section */}
-        {mortgageOn && (
-          <div className="space-y-5 border-t border-brand-border pt-5">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-brand-muted">LTV (loan to value)</span>
-                  <Tooltip text="Percentage of the property value financed by the mortgage. UAE max is typically 75% for expats." />
-                </div>
-                <span className="text-sm font-semibold text-brand-text">{ltvPct}%</span>
-              </div>
-              <input type="range" min={20} max={80} step={5} value={ltvPct}
-                onChange={e => setLtvPct(parseInt(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-brand-hint">20%</span>
-                <span className="text-xs text-brand-hint">80%</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-brand-muted">Interest rate</span>
-                  <Tooltip text="Annual mortgage interest rate. UAE rates typically range from 3.5% to 6%." />
-                </div>
-                <span className="text-sm font-semibold text-brand-text">{mortgageRate.toFixed(1)}%</span>
-              </div>
-              <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
-                onChange={e => setMortgageRate(parseFloat(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-              <div className="flex justify-between mt-1">
-                <span className="text-xs text-brand-hint">2%</span>
-                <span className="text-xs text-brand-hint">10%</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-                <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
-                <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
-              </div>
-              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-                <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
-                <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
-              </div>
-              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-                <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
-                <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
-              </div>
-              <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-                <p className="text-[10px] text-brand-hint mb-1">Total interest (25yr)</p>
-                <p className="text-sm font-semibold text-brand-text">{totalInterest > 0 ? fmtA(totalInterest) : '—'}</p>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-brand-muted mb-2">Equity build-up</p>
-              <div className="rounded-lg overflow-hidden border border-brand-border">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr style={{ backgroundColor: '#F4F3F0' }}>
-                      <th className="text-left px-3 py-2 text-brand-hint font-medium">Period</th>
-                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Value</th>
-                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Loan</th>
-                      <th className="text-right px-3 py-2 text-brand-hint font-medium">Equity</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-brand-border">
-                    {equityRows.map((r, i) => (
-                      <tr key={i} className="bg-white">
-                        <td className="px-3 py-2 text-brand-muted">{r.label}</td>
-                        <td className="px-3 py-2 text-right text-brand-text font-medium">{fmtA(r.propValue)}</td>
-                        <td className="px-3 py-2 text-right text-brand-hint">{fmtA(r.loanBal)}</td>
-                        <td className="px-3 py-2 text-right font-semibold text-emerald-600">{fmtA(r.equity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Break-even */}
-        <div className={`border-t border-brand-border pt-5${mortgageOn ? '' : ' mt-0'}`}>
-          <p className="text-xs font-medium text-brand-muted mb-3">Break-even analysis</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <p className="text-[10px] text-brand-hint">Min. annual rent</p>
-                <Tooltip text={mortgageOn
-                  ? 'Minimum rent to cover service charge and annual mortgage payments.'
-                  : 'Minimum rent to cover the service charge (net income = 0).'} />
-              </div>
-              <p className="text-sm font-semibold text-brand-text">{minRent > 0 ? fmtA(minRent) : '—'}</p>
-              {minRent > 0 && rent > 0 && (
-                <p className={`text-[10px] mt-0.5 ${rent >= minRent ? 'text-emerald-600' : 'text-red-500'}`}>
-                  {rent >= minRent
-                    ? `AED ${(rent - minRent).toLocaleString()} headroom`
-                    : `AED ${(minRent - rent).toLocaleString()} shortfall`}
-                </p>
-              )}
-            </div>
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <div className="flex items-center gap-1.5 mb-1">
-                <p className="text-[10px] text-brand-hint">Growth for 8% IRR</p>
-                <Tooltip text="Annual capital growth needed to achieve an 8% IRR over your selected hold period." />
-              </div>
-              <p className="text-sm font-semibold text-brand-text">
-                {growthFor8PctIRR !== null ? `${growthFor8PctIRR.toFixed(1)}%` : '> 30%'}
-              </p>
-              {growthFor8PctIRR !== null && (
-                <p className={`text-[10px] mt-0.5 ${growth >= growthFor8PctIRR ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {growth >= growthFor8PctIRR
-                    ? 'Met at current assumption'
-                    : `Need +${(growthFor8PctIRR - growth).toFixed(1)}% pa`}
-                </p>
-              )}
-            </div>
+          <input type="range" min={300_000} max={5_000_000} step={50_000} value={handoverValue}
+            onChange={e => setHandoverValue(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">AED 300k</span>
+            <span className="text-xs text-brand-hint">AED 5M</span>
           </div>
         </div>
+
+        {/* Growth */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Annual capital growth (post-handover)</span>
+            <span className="text-sm font-semibold text-brand-text">{growth.toFixed(1)}%</span>
+          </div>
+          <input type="range" min={0} max={15} step={0.5} value={growth}
+            onChange={e => setGrowth(parseFloat(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">0%</span>
+            <span className="text-xs text-brand-hint">15%</span>
+          </div>
+        </div>
+
+        {/* Hold period */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-brand-muted">Hold period from handover</span>
+            <span className="text-sm font-semibold text-brand-text">
+              {holdPeriod === 0 ? 'Sell at handover' : `${holdPeriod} yr${holdPeriod > 1 ? 's' : ''}`}
+            </span>
+          </div>
+          <input type="range" min={0} max={15} step={1} value={holdPeriod}
+            onChange={e => setHoldPeriod(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">0 yrs = sell at handover</span>
+            <span className="text-xs text-brand-hint">15 yrs</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Payment plan ───────────────────────────────────────────────── */}
+      {yearGroups.length > 0 && (
+        <div id="payment-plan" className="bg-white rounded-xl border border-brand-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Payment plan</p>
+            <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
+              project.payment_plan_confirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+            }`}>
+              {project.payment_plan_confirmed ? 'Confirmed' : 'Indicative'}
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {yearGroups.map((g, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <span className={`text-xs ${g.isHandover ? 'font-semibold text-brand-text' : 'text-brand-muted'}`}>
+                  {g.label}
+                </span>
+                <div className="text-right">
+                  <span className={`text-xs font-semibold ${g.isHandover ? '' : 'text-brand-text'}`}
+                    style={g.isHandover ? { color: '#A0784A' } : {}}>
+                    {g.pct}%
+                  </span>
+                  {basePrice > 0 && (
+                    <span className="text-xs text-brand-hint ml-2">{fmtA(g.aed)}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 4-6. Scenarios / Financing / Exit analysis ──────────────────────── */}
+      <div className="space-y-8">
+
+        {/* ── 4. Scenarios ──────────────────────────────────────────────── */}
+        <div id="scenarios">
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Scenarios</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {([
+              { label: 'Conservative', metrics: conservative, highlighted: false },
+              { label: 'Base',         metrics: base,         highlighted: true  },
+              { label: 'Optimistic',   metrics: optimistic,   highlighted: false },
+            ] as const).map(({ label, metrics: m, highlighted }) => (
+              <div key={label}
+                className={`bg-white rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
+                style={highlighted ? { borderColor: '#A0784A' } : {}}>
+                <div className={`flex items-center justify-between mb-4 ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                  <p className="text-xs font-semibold text-brand-muted">{label}</p>
+                  {highlighted && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                      style={{ backgroundColor: '#A0784A' }}>
+                      Base case
+                    </span>
+                  )}
+                </div>
+                {m.mode === 'hold' ? (
+                  <div className="space-y-3">
+                    <div className={!isAuth && !highlighted ? 'blur-sm select-none' : ''}>
+                      <p className="text-xs text-brand-hint mb-0.5">Net yield</p>
+                      <p className="text-lg font-semibold text-brand-text">{fmtP(m.netYield)}</p>
+                    </div>
+                    <div className={!isAuth ? 'blur-sm select-none' : ''}>
+                      <p className="text-xs text-brand-hint mb-0.5">Value at exit</p>
+                      <p className="text-sm font-semibold text-brand-text">{fmtA(m.valueAtExit)}</p>
+                    </div>
+                    <div className={!isAuth ? 'blur-sm select-none' : ''}>
+                      <p className="text-xs text-brand-hint mb-0.5">Total return</p>
+                      <p className="text-sm font-semibold text-brand-text">{fmtA(m.totalReturn)}</p>
+                    </div>
+                    {m.irr !== null && (
+                      <div className={`pt-2 border-t border-brand-border ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                        <p className="text-xs text-brand-hint mb-0.5">IRR</p>
+                        <p className="text-base font-bold text-brand-text">{fmtP(m.irr)}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`space-y-3 ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                    <div>
+                      <p className="text-xs text-brand-hint mb-0.5">Gain on paper</p>
+                      <p className="text-lg font-semibold text-brand-text">{fmtA(m.gainOnPaper)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-brand-hint mb-0.5">Est. value at handover</p>
+                      <p className="text-sm font-semibold text-brand-text">{fmtA(m.scenarioHV)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-brand-hint mb-0.5">Return on capital</p>
+                      <p className="text-sm font-semibold text-brand-text">{fmtP(m.returnOnCapital)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-brand-hint mt-2.5">
+            {holdPeriod === 0
+              ? 'Conservative assumes 7.5% below estimated handover value. Optimistic assumes 7.5% above.'
+              : 'Conservative assumes 15% lower rent and growth than base estimate. Optimistic assumes 15% higher.'}
+          </p>
+        </div>
+
+        {isAuth ? (
+          <>
+            {/* ── 5. Financing ─────────────────────────────────────────── */}
+            <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
+              {financingHeader}
+              {dueAtBookingCard && <div className="mb-5">{dueAtBookingCard}</div>}
+              {financingRemainder}
+            </div>
+
+            {/* ── 6. Exit analysis ─────────────────────────────────────── */}
+            <div id="exit-analysis" className="space-y-8">
+              {exitAnalysisContent}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Full-width divider */}
+            <div className="border-t border-brand-border" />
+
+            {/* ── 5. Financing — Due at booking (visible) ─────────────────── */}
+            <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Financing</p>
+              {dueAtBookingCard}
+            </div>
+
+            {/* Full-width divider */}
+            <div className="border-t border-brand-border" />
+
+            {/* ── Lock CTA — in-flow block ─────────────────────────────────── */}
+            {lockCTA}
+
+            {/* ── Locked content: remaining financing + exit analysis ──────── */}
+            <div className="blur-sm pointer-events-none select-none space-y-8">
+              <div className="bg-white rounded-xl border border-brand-border p-5">
+                {financingHeader}
+                {financingRemainder}
+              </div>
+
+              <div id="exit-analysis" className="space-y-8">
+                {exitAnalysisContent}
+              </div>
+            </div>
+          </>
+        )}
+
       </div>
 
     </div>
@@ -1522,10 +1450,10 @@ export default function ProjectDetail({
   const isAuth = !!insight
 
   // Auth tab state
-  const [authTab, setAuthTab] = useState<'overview' | 'analysis' | 'full-analysis' | 'brochure'>('overview')
+  const [authTab, setAuthTab] = useState<'overview' | 'returns' | 'brochure'>('overview')
 
   // Public tab state
-  const [pubTab, setPubTab] = useState<'overview' | 'analysis' | 'full-analysis' | 'brochure'>('overview')
+  const [pubTab, setPubTab] = useState<'overview' | 'returns' | 'brochure'>('overview')
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
@@ -1593,16 +1521,44 @@ export default function ProjectDetail({
   const unitTypes = project.unit_types ?? []
   const firstPlan = plans[0]
 
+  const overviewNavSections = [
+    { id: 'about', label: 'About' },
+    ...(unitTypes.length > 0 ? [{ id: 'units', label: 'Units' }] : []),
+    ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
+    ...(connectivity.length > 0 ? [{ id: 'location', label: 'Location' }] : []),
+    ...(faqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
+  ]
+
   // ─── Shared section content ────────────────────────────────────────────────
 
   const aboutSection = (
     <section id="about" className="py-16">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
-      {project.description ? (
-        <p className="text-sm text-brand-muted leading-relaxed max-w-3xl">{project.description}</p>
-      ) : (
-        <p className="text-sm text-brand-hint">No description available.</p>
-      )}
+      <div className="grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
+        {/* About text — ~60% */}
+        <div className="lg:col-span-3">
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
+          {project.description ? (
+            <p className="text-sm text-brand-muted leading-relaxed">{project.description}</p>
+          ) : (
+            <p className="text-sm text-brand-hint">No description available.</p>
+          )}
+        </div>
+
+        {/* Lead gen card — ~40% */}
+        <div className="lg:col-span-2">
+          <div className="rounded-xl border border-brand-border bg-white p-6">
+            <p className="text-sm font-semibold text-brand-text mb-1">Get independent advice</p>
+            <p className="text-xs text-brand-muted mb-5">Analysis and advice from an independent buyer's agent.</p>
+            <LeadGenForm
+              projectName={project.name}
+              onSubmit={(data) => {
+                // TODO: wire to submission endpoint (Supabase insert or API route)
+                console.log('LeadGenForm submission:', data)
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </section>
   )
 
@@ -1860,10 +1816,9 @@ export default function ProjectDetail({
           <div className="sticky top-16 z-20 bg-white border-b border-brand-border">
             <div className="max-w-5xl mx-auto px-6 sm:px-10 flex items-center">
               {([
-                { key: 'overview',      label: 'Overview' },
-                { key: 'analysis',      label: 'Returns' },
-                { key: 'full-analysis', label: 'Full analysis' },
-                { key: 'brochure',      label: 'Brochure' },
+                { key: 'overview', label: 'Overview' },
+                { key: 'returns',  label: 'Return Analysis' },
+                { key: 'brochure', label: 'Brochure' },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
@@ -1883,6 +1838,7 @@ export default function ProjectDetail({
           {/* Overview tab */}
           {pubTab === 'overview' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10">
+              <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
               {unitsSection}
 
@@ -1910,39 +1866,10 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Returns tab */}
-          {pubTab === 'analysis' && (
+          {/* Return Analysis tab */}
+          {pubTab === 'returns' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-20">
-              <PublicAnalysisPanel project={project} />
-            </div>
-          )}
-
-          {/* Full analysis tab — locked gate for public users */}
-          {pubTab === 'full-analysis' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 py-16 flex justify-center">
-              <div className="max-w-md w-full rounded-2xl border border-brand-border p-8 flex flex-col items-center text-center gap-5">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: '#F4F3F0' }}>
-                  <svg className="w-6 h-6 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-brand-text mb-2">Full analysis</p>
-                  <p className="text-xs text-brand-muted leading-relaxed">
-                    IRR by exit year, equity build-up, mortgage modelling, and break-even analysis — all in one place.
-                    Available to registered clients only.
-                  </p>
-                </div>
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-colors"
-                  style={{ backgroundColor: '#A0784A' }}
-                >
-                  Enquire for access →
-                </Link>
-              </div>
+              <ReturnAnalysisPanel project={project} isAuth={false} />
             </div>
           )}
 
@@ -1957,23 +1884,6 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Sticky CTA — hidden on analysis / full-analysis tabs */}
-          {pubTab !== 'analysis' && pubTab !== 'full-analysis' && (
-            <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-              <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-6 flex justify-center">
-                <Link
-                  href="/contact"
-                  className="pointer-events-auto inline-flex items-center gap-2 bg-brand-text text-white text-sm font-medium px-6 py-3 rounded-full shadow-xl hover:bg-brand-text/90 transition-colors"
-                  style={{ backgroundColor: '#1C1B18' }}
-                >
-                  <svg className="w-4 h-4 text-brand-bronze" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#A0784A' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  Get independent advice
-                </Link>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -1985,10 +1895,9 @@ export default function ProjectDetail({
             {/* Tab row */}
             <div className={`max-w-5xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
               {([
-                { key: 'overview',      label: 'Overview' },
-                { key: 'analysis',      label: 'Returns' },
-                { key: 'full-analysis', label: 'Full analysis' },
-                { key: 'brochure',      label: 'Brochure' },
+                { key: 'overview', label: 'Overview' },
+                { key: 'returns',  label: 'Return Analysis' },
+                { key: 'brochure', label: 'Brochure' },
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
@@ -2020,6 +1929,7 @@ export default function ProjectDetail({
           {/* Overview tab */}
           {authTab === 'overview' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10">
+              <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
               {unitsSection}
               {gallerySection}
@@ -2030,13 +1940,6 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Full analysis tab */}
-          {authTab === 'full-analysis' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10">
-              <FullAnalysisPanel project={project} />
-            </div>
-          )}
-
           {/* Brochure tab */}
           {authTab === 'brochure' && (
             <div className="max-w-5xl mx-auto px-6 sm:px-10">
@@ -2044,13 +1947,11 @@ export default function ProjectDetail({
             </div>
           )}
 
-          {/* Analysis tab */}
-          {authTab === 'analysis' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 py-10 space-y-10">
+          {/* Return Analysis tab */}
+          {authTab === 'returns' && (
+            <div className="max-w-5xl mx-auto px-6 sm:px-10 space-y-10">
               {myTakeSection}
-              <div>
-                <PublicAnalysisPanel project={project} />
-              </div>
+              <ReturnAnalysisPanel project={project} isAuth={true} />
 
               {/* Documents */}
               {hasDocs && (
@@ -2101,6 +2002,24 @@ export default function ProjectDetail({
           )}
         </>
       )}
+
+      {/* ── Lead gen footer ────────────────────────────────────────────────── */}
+      <section className="border-t border-brand-border bg-white">
+        <div className="max-w-5xl mx-auto px-6 sm:px-10 py-16 sm:py-20">
+          <div className="max-w-lg">
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Independent advice</p>
+            <h2 className="text-2xl font-semibold text-brand-text mb-2">Get independent advice on this project</h2>
+            <p className="text-sm text-brand-muted mb-8">Analysis and advice from an independent buyer's agent.</p>
+            <LeadGenForm
+              projectName={project.name}
+              onSubmit={(data) => {
+                // TODO: wire to submission endpoint (Supabase insert or API route)
+                console.log('LeadGenForm submission:', data)
+              }}
+            />
+          </div>
+        </div>
+      </section>
 
     </div>
   )
