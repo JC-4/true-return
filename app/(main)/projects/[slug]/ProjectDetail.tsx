@@ -530,6 +530,89 @@ function Tooltip({ text }: { text: string }) {
   )
 }
 
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+
+function Lightbox({
+  images,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  images: string[]
+  index: number
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowLeft') onPrev()
+      else if (e.key === 'ArrowRight') onNext()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose, onPrev, onNext])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white text-2xl leading-none"
+        aria-label="Close"
+      >
+        ×
+      </button>
+
+      {/* Counter */}
+      <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/60 text-sm tabular-nums">
+        {index + 1} / {images.length}
+      </div>
+
+      {/* Prev */}
+      {images.length > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); onPrev() }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white"
+          aria-label="Previous image"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+
+      {/* Image — stopPropagation so clicking the image doesn't close */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={images[index]}
+        alt=""
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+      />
+
+      {/* Next */}
+      {images.length > 1 && (
+        <button
+          onClick={e => { e.stopPropagation(); onNext() }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white"
+          aria-label="Next image"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Return analysis panel ────────────────────────────────────────────────────
 
 function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: boolean }) {
@@ -1455,6 +1538,9 @@ export default function ProjectDetail({
   // Public tab state
   const [pubTab, setPubTab] = useState<'overview' | 'returns' | 'brochure'>('overview')
 
+  // Lightbox state
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
   // Documents tab state
@@ -1533,19 +1619,35 @@ export default function ProjectDetail({
 
   const aboutSection = (
     <section id="about" className="py-16">
-      <div className="grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
-        {/* About text — ~60% */}
-        <div className="lg:col-span-3">
+      <div className="grid md:grid-cols-5 gap-10 md:gap-16 items-start">
+        {/* Left column: About text + Units (~60%) — stacks first on mobile */}
+        <div className="md:col-span-3">
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
           {project.description ? (
             <p className="text-sm text-brand-muted leading-relaxed">{project.description}</p>
           ) : (
             <p className="text-sm text-brand-hint">No description available.</p>
           )}
+
+          {unitTypes.length > 0 && (
+            <div id="units" className="border-t border-brand-border pt-10 mt-10">
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Units</p>
+              <div className="grid grid-cols-2 gap-3">
+                {unitTypes.map(ut => (
+                  <div key={ut.id} className="bg-white border border-brand-border rounded-xl p-5">
+                    <p className="text-sm font-medium text-brand-text">{ut.type}</p>
+                    <p className="text-xl font-medium text-brand-bronze mt-1">{fmtPrice(ut.price_from)}</p>
+                    <div className="border-t border-brand-border my-3" />
+                    <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Lead gen card — ~40% */}
-        <div className="lg:col-span-2">
+        {/* Right column: Lead gen form (~40%) — stacks last on mobile */}
+        <div className="md:col-span-2 md:sticky md:top-[132px]">
           <div className="rounded-xl border border-brand-border bg-white p-6">
             <p className="text-sm font-semibold text-brand-text mb-1">Get independent advice</p>
             <p className="text-xs text-brand-muted mb-5">Analysis and advice from an independent buyer's agent.</p>
@@ -1562,33 +1664,23 @@ export default function ProjectDetail({
     </section>
   )
 
-  const unitsSection = unitTypes.length > 0 ? (
-    <section id="units" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Units</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {unitTypes.map(ut => (
-          <div key={ut.id} className="bg-white border border-brand-border rounded-xl p-5">
-            <p className="text-sm font-medium text-brand-text">{ut.type}</p>
-            <p className="text-xl font-medium text-brand-bronze mt-1">{fmtPrice(ut.price_from)}</p>
-            <div className="border-t border-brand-border my-3" />
-            <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
-            <p className="text-xs text-brand-hint mt-0.5">AED {ut.price_per_sqft.toLocaleString()}/sqft</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  ) : null
-
   const gallerySection = (
     <section id="gallery" className="py-16 border-t border-brand-border">
       <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Gallery</p>
       {images.length > 0 ? (
         <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[420px]">
-          <div className="col-span-2 row-span-2 rounded-xl overflow-hidden bg-brand-surface">
+          <div
+            className="col-span-2 row-span-2 rounded-xl overflow-hidden bg-brand-surface cursor-pointer"
+            onClick={() => setLightboxIndex(0)}
+          >
             <img src={images[0]} alt="" className="w-full h-full object-cover" />
           </div>
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="rounded-xl overflow-hidden bg-brand-surface flex items-center justify-center">
+            <div
+              key={i}
+              className={`rounded-xl overflow-hidden bg-brand-surface flex items-center justify-center ${images[i] ? 'cursor-pointer' : ''}`}
+              onClick={() => images[i] && setLightboxIndex(i)}
+            >
               {images[i] ? (
                 <img src={images[i]} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -1751,7 +1843,7 @@ export default function ProjectDetail({
   // ─── Hero ─────────────────────────────────────────────────────────────────
 
   const heroEl = (
-    <div className="relative min-h-[420px] bg-brand-text overflow-hidden flex flex-col justify-end" style={{ backgroundColor: '#1C1B18' }}>
+    <div className="relative bg-brand-text overflow-hidden flex flex-col justify-end" style={{ backgroundColor: '#1C1B18', aspectRatio: '16/9', maxHeight: 600, width: '100%' }}>
       {hero && (
         <img src={hero} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
       )}
@@ -1840,28 +1932,28 @@ export default function ProjectDetail({
             <div className="max-w-5xl mx-auto px-6 sm:px-10">
               <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
-              {unitsSection}
-
-              {/* Mid-page CTA — after Units */}
-              <div className="py-10 border-t border-brand-border">
-                <div className="bg-brand-surface rounded-2xl px-6 py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5" style={{ backgroundColor: '#F4F3F0' }}>
-                  <div>
-                    <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
-                    <p className="text-xs text-brand-muted mt-1">Buyer-side guidance only. No developer fees, no pressure.</p>
-                  </div>
-                  <Link
-                    href="/contact"
-                    className="flex-shrink-0 bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-                    style={{ backgroundColor: '#A0784A' }}
-                  >
-                    Get independent advice →
-                  </Link>
-                </div>
-              </div>
 
               {gallerySection}
               {paymentPlanSection}
               {locationSection}
+
+              {/* Mid-page CTA — between Location and FAQ */}
+              <div className="py-10 border-t border-brand-border">
+                <div className="bg-brand-surface rounded-2xl px-6 py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5" style={{ backgroundColor: '#F4F3F0' }}>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
+                    <p className="text-xs text-brand-muted mt-1">Analysis and advice from an independent buyer's agent.</p>
+                  </div>
+                  <button
+                    onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex-shrink-0 bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+                    style={{ backgroundColor: '#A0784A' }}
+                  >
+                    Get independent advice →
+                  </button>
+                </div>
+              </div>
+
               {faqSection}
             </div>
           )}
@@ -1931,7 +2023,6 @@ export default function ProjectDetail({
             <div className="max-w-5xl mx-auto px-6 sm:px-10">
               <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
-              {unitsSection}
               {gallerySection}
               {paymentPlanSection}
               {locationSection}
@@ -2004,7 +2095,7 @@ export default function ProjectDetail({
       )}
 
       {/* ── Lead gen footer ────────────────────────────────────────────────── */}
-      <section className="border-t border-brand-border bg-white">
+      <section id="lead-gen-form" className="border-t border-brand-border bg-white">
         <div className="max-w-5xl mx-auto px-6 sm:px-10 py-16 sm:py-20">
           <div className="max-w-lg">
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Independent advice</p>
@@ -2021,6 +2112,15 @@ export default function ProjectDetail({
         </div>
       </section>
 
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={images}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={() => setLightboxIndex(i => i !== null ? (i - 1 + images.length) % images.length : null)}
+          onNext={() => setLightboxIndex(i => i !== null ? (i + 1) % images.length : null)}
+        />
+      )}
     </div>
   )
 }

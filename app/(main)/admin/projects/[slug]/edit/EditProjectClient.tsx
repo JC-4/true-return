@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
+import imageCompression from 'browser-image-compression'
 import type { Project, PaymentSegment } from '@/lib/types'
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
@@ -99,7 +100,8 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
-const YEARS = Array.from({ length: 12 }, (_, i) => 2024 + i) // 2024–2035
+const THIS_YEAR = new Date().getFullYear()
+const YEARS = Array.from({ length: 16 }, (_, i) => THIS_YEAR + i)
 
 function isoToMMYYYY(iso: string | null): string {
   if (!iso) return ''
@@ -117,75 +119,212 @@ function parseDateValue(
   if (date === 'On booking') return { mode: 'on-booking', month: '', year: '' }
   if ((handoverMMYYYY && date === handoverMMYYYY) || date === 'Handover')
     return { mode: 'handover', month: '', year: '' }
-  // Complete MM/YYYY
   const mmyyyy = date.match(/^(\d{1,2})\/(\d{4})$/)
   if (mmyyyy) return { mode: 'month-year', month: mmyyyy[1].padStart(2, '0'), year: mmyyyy[2] }
-  // Bare year → default to January
   const bareYear = date.match(/^(\d{4})$/)
   if (bareYear) return { mode: 'month-year', month: '01', year: bareYear[1] }
-  // Partial "MM/" (month set, year not yet)
   const mmOnly = date.match(/^(\d{1,2})\/$/)
   if (mmOnly) return { mode: 'month-year', month: mmOnly[1].padStart(2, '0'), year: '' }
-  // Partial "/YYYY" (year set, month not yet)
   const yyyyOnly = date.match(/^\/(\d{4})$/)
   if (yyyyOnly) return { mode: 'month-year', month: '', year: yyyyOnly[1] }
-  // Empty or unrecognised → month-year with blank selects (not "On booking")
   return { mode: 'month-year', month: '', year: '' }
 }
 
-function SlabDatePicker({
-  value,
-  onChange,
-  handoverMMYYYY,
-}: {
-  value: string
-  onChange: (v: string) => void
-  handoverMMYYYY: string
-}) {
-  // Fully controlled — derive display state from value prop every render.
-  // No local useState: avoids stale-closure sync bugs.
-  const { mode, month, year } = parseDateValue(value, handoverMMYYYY)
+// ─── Image section ───────────────────────────────────────────────────────────
 
-  function handleModeChange(newMode: DateMode) {
-    if (newMode === 'on-booking') onChange('On booking')
-    else if (newMode === 'handover') onChange(handoverMMYYYY || 'Handover')
-    else onChange(`${month}/${year}`)
+type UploadStatus = {
+  filename: string
+  fileNum: number
+  total: number
+  phase: 'compressing' | 'uploading'
+  pct: number
+}
+
+function ImageSection({ slug, initialImages }: { slug: string; initialImages: string[] }) {
+  const [images, setImages] = useState<string[]>(initialImages)
+  const [status, setStatus] = useState<UploadStatus | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function persistImages(updated: string[]) {
+    const res = await fetch(`/api/projects/${slug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: { images: updated }, unit_types: [] }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string }
+      console.error('[ImageSection] persistImages failed:', body.error ?? res.status)
+    }
   }
 
+  async function handleFiles(files: FileList | File[]) {
+    const accepted = Array.from(files).filter(f =>
+      ['image/jpeg', 'image/png', 'image/webp'].includes(f.type)
+    )
+    if (!accepted.length) return
+
+    setUploadError(null)
+    const newImages = [...images]
+
+    for (let i = 0; i < accepted.length; i++) {
+      const file = accepted[i]
+
+      setStatus({ filename: file.name, fileNum: i + 1, total: accepted.length, phase: 'compressing', pct: 0 })
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        onProgress: pct => setStatus(s => s ? { ...s, pct } : s),
+      })
+
+      setStatus(s => s ? { ...s, phase: 'uploading', pct: 0 } : s)
+
+      const form = new FormData()
+      form.append('file', compressed, file.name)
+
+      const res = await fetch(`/api/projects/${slug}/images`, { method: 'POST', body: form })
+      const body = await res.json() as { publicUrl?: string; error?: string }
+
+      if (!res.ok || !body.publicUrl) {
+        console.error('[ImageSection] Upload failed for', file.name, '—', body.error ?? res.status)
+        setUploadError(`Upload failed: ${body.error ?? 'unknown error'}`)
+        continue
+      }
+
+      console.log('[ImageSection] Uploaded', file.name, '→', body.publicUrl)
+      newImages.push(body.publicUrl)
+      setImages([...newImages])
+      await persistImages([...newImages])
+    }
+
+    setStatus(null)
+  }
+
+  async function deleteImage(url: string, index: number) {
+    const pathMatch = url.match(/\/project-images\/(.+?)(?:\?|$)/)
+    if (pathMatch) {
+      const res = await fetch(`/api/projects/${slug}/images`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: decodeURIComponent(pathMatch[1]) }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        console.error('[ImageSection] Delete failed:', body.error ?? res.status)
+      }
+    }
+    const updated = images.filter((_, i) => i !== index)
+    setImages(updated)
+    await persistImages(updated)
+  }
+
+  async function move(index: number, dir: 'up' | 'down') {
+    const to = dir === 'up' ? index - 1 : index + 1
+    if (to < 0 || to >= images.length) return
+    const updated = [...images]
+    ;[updated[index], updated[to]] = [updated[to], updated[index]]
+    setImages(updated)
+    await persistImages(updated)
+  }
+
+  const uploading = status !== null
+
   return (
-    <div className="flex gap-2 items-center min-w-0">
-      <select
-        value={mode}
-        onChange={e => handleModeChange(e.target.value as DateMode)}
-        className={`${inputCls} ${mode !== 'month-year' ? 'flex-1' : 'shrink-0 w-auto'}`}
+    <div className="bg-white rounded-xl border border-gray-100 p-6">
+      <SectionHeader label="Images" />
+
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          {images.map((url, i) => (
+            <div key={url} className="relative group aspect-video rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="w-full h-full object-cover" />
+              {i === 0 && (
+                <span className="absolute top-1.5 left-1.5 text-[10px] font-bold bg-[#18181b] text-white px-1.5 py-0.5 rounded">
+                  Hero
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => void deleteImage(url, i)}
+                className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center bg-black/60 hover:bg-red-500 text-white rounded text-sm leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Delete image"
+              >
+                ×
+              </button>
+              <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  disabled={i === 0}
+                  onClick={() => void move(i, 'up')}
+                  className="w-6 h-6 flex items-center justify-center bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded text-xs"
+                  title="Move up"
+                >↑</button>
+                <button
+                  type="button"
+                  disabled={i === images.length - 1}
+                  onClick={() => void move(i, 'down')}
+                  className="w-6 h-6 flex items-center justify-center bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded text-xs"
+                  title="Move down"
+                >↓</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); void handleFiles(e.dataTransfer.files) }}
+        onClick={() => !uploading && inputRef.current?.click()}
+        className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+          uploading
+            ? 'border-gray-200 opacity-70 cursor-default'
+            : dragOver
+            ? 'border-[#18181b] bg-gray-50 cursor-pointer'
+            : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+        }`}
       >
-        <option value="on-booking">On booking</option>
-        <option value="handover">Handover</option>
-        <option value="month-year">Month / year…</option>
-      </select>
-      {mode === 'month-year' && (
-        <>
-          <select
-            value={month}
-            onChange={e => onChange(`${e.target.value}/${year}`)}
-            className={`${inputCls} flex-1`}
-          >
-            <option value="">— month —</option>
-            {MONTHS.map((lbl, idx) => (
-              <option key={lbl} value={String(idx + 1).padStart(2, '0')}>{lbl}</option>
-            ))}
-          </select>
-          <select
-            value={year}
-            onChange={e => onChange(`${month}/${e.target.value}`)}
-            className={`${inputCls} w-24`}
-          >
-            <option value="">— year —</option>
-            {YEARS.map(y => (
-              <option key={y} value={String(y)}>{y}</option>
-            ))}
-          </select>
-        </>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={e => { void handleFiles(e.target.files ?? []); e.target.value = '' }}
+        />
+        {uploading && status ? (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-600">
+              {status.phase === 'compressing' ? 'Compressing' : 'Uploading'}{' '}
+              <span className="font-medium text-[#18181b]">{status.filename}</span>
+              {status.total > 1 && <span className="text-gray-400"> ({status.fileNum} of {status.total})</span>}
+            </p>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-xs mx-auto">
+              {status.phase === 'compressing' ? (
+                <div
+                  className="h-full bg-[#18181b] rounded-full transition-all duration-100"
+                  style={{ width: `${status.pct}%` }}
+                />
+              ) : (
+                <div className="h-full bg-[#18181b] rounded-full animate-pulse" style={{ width: '40%' }} />
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500">
+              Drop images here or{' '}
+              <span className="text-[#18181b] font-medium">click to browse</span>
+            </p>
+            <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP · Compressed to max 1 MB</p>
+          </>
+        )}
+      </div>
+      {uploadError && (
+        <p className="mt-3 text-xs text-red-500">{uploadError}</p>
       )}
     </div>
   )
@@ -507,6 +646,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
             </div>
           </div>
 
+          {/* ── Images ───────────────────────────────────────────────────── */}
+          <ImageSection slug={project.slug} initialImages={project.images ?? []} />
+
           {/* ── Payment plan options ─────────────────────────────────────── */}
           <div className="space-y-4">
             <div>
@@ -562,44 +704,90 @@ export default function EditProjectClient({ project }: { project: Project }) {
                     {plan.segments.length === 0 && (
                       <p className="text-sm text-gray-400 py-2">No segments yet — add one below.</p>
                     )}
-                    {plan.segments.map((seg, si) => (
-                      <div key={si} className="flex flex-wrap gap-2 items-center">
-                        <input
-                          type="text"
-                          value={seg.label}
-                          onChange={e => updateSegment(pi, si, 'label', e.target.value)}
-                          placeholder="Label (e.g. Booking)"
-                          className={`${inputCls} flex-1 min-w-[120px]`}
-                        />
-                        <div className="relative w-20 shrink-0">
+                    {plan.segments.map((seg, si) => {
+                      const hmmy = isoToMMYYYY(handoverDate)
+                      const now = new Date()
+                      const todayM = String(now.getMonth() + 1).padStart(2, '0')
+                      const todayY = String(now.getFullYear())
+                      const { mode, month, year } = parseDateValue(seg.date, hmmy)
+                      const [hM = '', hY = ''] = hmmy ? hmmy.split('/') : []
+                      const dispMonth = mode === 'on-booking' ? todayM : mode === 'handover' ? hM : month
+                      const dispYear  = mode === 'on-booking' ? todayY  : mode === 'handover' ? hY  : year
+                      const locked = mode !== 'month-year'
+
+                      function handleMode(newMode: DateMode) {
+                        if (newMode === 'on-booking') updateSegment(pi, si, 'date', 'On booking')
+                        else if (newMode === 'handover') updateSegment(pi, si, 'date', hmmy || 'Handover')
+                        else updateSegment(pi, si, 'date', `${dispMonth}/${dispYear}`)
+                      }
+
+                      return (
+                        <div key={si} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <input
+                            type="text"
+                            value={seg.label}
+                            onChange={e => updateSegment(pi, si, 'label', e.target.value)}
+                            placeholder="Label (e.g. Booking)"
+                            style={{ width: 240, flexShrink: 0 }}
+                            className={inputCls}
+                          />
                           <input
                             type="number"
                             value={seg.percent}
                             onChange={e => updateSegment(pi, si, 'percent', e.target.value)}
                             placeholder="0"
-                            className={`${inputCls} pr-6`}
+                            style={{ width: 60, flexShrink: 0 }}
+                            className={inputCls}
                           />
-                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
+                          <span style={{ width: 16, flexShrink: 0, fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>%</span>
+                          <select
+                            value={mode}
+                            onChange={e => handleMode(e.target.value as DateMode)}
+                            style={{ width: 160, flexShrink: 0 }}
+                            className={inputCls}
+                          >
+                            <option value="on-booking">On booking</option>
+                            <option value="handover">Handover</option>
+                            <option value="month-year">Month / year</option>
+                          </select>
+                          <select
+                            value={dispMonth}
+                            disabled={locked}
+                            onChange={e => updateSegment(pi, si, 'date', `${e.target.value}/${dispYear}`)}
+                            style={{ width: 130, flexShrink: 0, opacity: locked ? 0.45 : 1 }}
+                            className={inputCls}
+                          >
+                            <option value="">— month —</option>
+                            {MONTHS.map((lbl, idx) => (
+                              <option key={lbl} value={String(idx + 1).padStart(2, '0')}>{lbl}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={dispYear}
+                            disabled={locked}
+                            onChange={e => updateSegment(pi, si, 'date', `${dispMonth}/${e.target.value}`)}
+                            style={{ width: 100, flexShrink: 0, opacity: locked ? 0.45 : 1 }}
+                            className={inputCls}
+                          >
+                            <option value="">— year —</option>
+                            {YEARS.map(y => (
+                              <option key={y} value={String(y)}>{y}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => removeSegment(pi, si)}
+                            style={{ width: 32, height: 32, flexShrink: 0 }}
+                            className="flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                            title="Remove row"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
-                        <div className="flex-1 min-w-[220px]">
-                          <SlabDatePicker
-                            value={seg.date}
-                            onChange={v => updateSegment(pi, si, 'date', v)}
-                            handoverMMYYYY={isoToMMYYYY(handoverDate)}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeSegment(pi, si)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors shrink-0"
-                          title="Remove row"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   <button
