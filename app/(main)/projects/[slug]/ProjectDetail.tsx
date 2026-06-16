@@ -522,6 +522,8 @@ function SecondaryPillNav({ sections }: { sections: { id: string; label: string;
 
 function Tooltip({ text }: { text: string }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
   const tipRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -537,13 +539,22 @@ function Tooltip({ text }: { text: string }) {
     }
   }, [open])
 
+  function openTip() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.top, left: r.left + r.width / 2 })
+    }
+    setOpen(true)
+  }
+
   return (
-    <div ref={tipRef} className="relative inline-flex items-center">
+    <div className="relative inline-flex items-center">
       <button
+        ref={btnRef}
         type="button"
-        onMouseEnter={() => setOpen(true)}
+        onMouseEnter={openTip}
         onMouseLeave={() => setOpen(false)}
-        onClick={() => setOpen(v => !v)}
+        onClick={() => { if (open) setOpen(false); else openTip() }}
         className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0 leading-none border"
         style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC', color: '#9B9589' }}
         aria-label="More info"
@@ -552,8 +563,18 @@ function Tooltip({ text }: { text: string }) {
       </button>
       {open && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 text-xs rounded-lg px-3 py-2.5 shadow-xl z-50 leading-relaxed"
-          style={{ backgroundColor: '#1C1B18', color: 'rgba(255,255,255,0.8)', pointerEvents: 'none' }}
+          ref={tipRef}
+          className="w-52 text-xs rounded-lg px-3 py-2.5 shadow-xl leading-relaxed"
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            transform: 'translate(-50%, calc(-100% - 8px))',
+            zIndex: 9999,
+            backgroundColor: '#1C1B18',
+            color: 'rgba(255,255,255,0.8)',
+            pointerEvents: 'none',
+          }}
         >
           {text}
           <div
@@ -854,6 +875,10 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   const gainOnPaperPct = metrics?.gainOnPaperPct ?? (basePrice > 0 ? (gainOnPaper / basePrice) * 100 : 0)
   const handoverIRR    = exitScenarios[0].irr
 
+  const preHandoverPct     = planRows.filter(r => !r.handover).reduce((s, r) => s + r.pct, 0)
+  const totalPaidBeforeHO  = (preHandoverPct / 100) * basePrice
+  const returnOnEquity     = totalPaidBeforeHO > 0 ? (gainOnPaper / totalPaidBeforeHO) * 100 : null
+
   // ── Financing card details ─────────────────────────────────────────────────
   const dldFee             = basePrice * 0.04
   const adminFee           = 4_200
@@ -865,6 +890,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   const monthlyPayment     = metrics?.monthlyPayment     ?? 0
   const annualMortgageCost = metrics?.annualMortgageCost ?? 0
   const totalInterest      = monthlyPayment * 25 * 12 - loanAmount
+  const netMonthly         = Math.round(rent / 12 - serviceCharge / 12 - monthlyPayment)
 
   const mRate = mortgageRate / 100 / 12
   function balanceAt(years: number): number {
@@ -967,8 +993,6 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   function fmtA(n: number): string {
     const abs  = Math.abs(n)
     const sign = n < 0 ? '-' : ''
-    if (abs >= 1_000_000) return `${sign}AED ${(abs / 1_000_000).toFixed(2)}M`
-    if (abs >= 1_000)     return `${sign}AED ${Math.round(abs / 1_000)}k`
     return `${sign}AED ${Math.round(abs).toLocaleString()}`
   }
   function fmtP(n: number | null): string {
@@ -1005,8 +1029,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   }
 
   const secondaryNavSections = [
-    { id: 'inputs',         label: 'Inputs' },
-    ...(yearGroups.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
+    { id: 'inputs',        label: 'Inputs' },
     { id: 'scenarios',     label: 'Scenarios',     locked: !isAuth },
     { id: 'financing',     label: 'Financing',     locked: !isAuth },
     { id: 'exit-analysis', label: 'Exit analysis', locked: !isAuth },
@@ -1014,186 +1037,205 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
 
   // ── Shared Return Analysis content blocks ───────────────────────────────────
   const financingHeader = (
-    <div className="flex items-center justify-between mb-5">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Financing</p>
-      <div className="flex rounded-lg border border-brand-border overflow-hidden text-xs font-medium">
-        <button
-          onClick={() => setFinancing('cash')}
-          className={`px-4 py-2 transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
-          style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
-        >
-          Cash
-        </button>
-        <button
-          onClick={() => setFinancing('mortgage')}
-          className={`px-4 py-2 transition-colors border-l border-brand-border ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted hover:text-brand-text'}`}
-          style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
-        >
-          Mortgage
-        </button>
-      </div>
-    </div>
+    <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-5">Financing</p>
   )
 
-  const dueAtBookingCard = firstSlab && basePrice > 0 ? (
-    <div className="rounded-lg p-4 space-y-2" style={{ backgroundColor: '#F4F3F0' }}>
-      <p className="text-xs font-semibold text-brand-text mb-2">Due at booking</p>
-      <div className="flex justify-between text-xs">
-        <span className="text-brand-muted">{firstSlab.label} ({firstSlab.pct}%)</span>
-        <span className="font-medium text-brand-text">{fmtA((firstSlab.pct / 100) * basePrice)}</span>
+  const paymentPlanSubSection = yearGroups.length > 0 ? (
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-brand-muted">Payment plan</p>
+        <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
+          project.payment_plan_confirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+        }`}>
+          {project.payment_plan_confirmed ? 'Confirmed' : 'Indicative'}
+        </span>
       </div>
-      <div className="flex justify-between text-xs">
-        <span className="text-brand-muted">DLD (4%)</span>
-        <span className="font-medium text-brand-text">{fmtA(dldFee)}</span>
-      </div>
-      <div className="flex justify-between text-xs">
-        <span className="text-brand-muted">Admin fee</span>
-        <span className="font-medium text-brand-text">{fmtA(adminFee)}</span>
-      </div>
-      <div className="border-t border-brand-border pt-2 flex justify-between text-xs font-semibold">
-        <span className="text-brand-text">Total due now</span>
-        <span className="text-brand-text">{fmtA(dueAtBooking)}</span>
+      <div className="space-y-2.5">
+        {yearGroups.map((g, i) => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${g.isHandover ? 'font-semibold text-brand-text' : 'text-brand-muted'}`}>
+                {g.label}
+              </span>
+              {g.isHandover && (
+                <div className="flex items-center rounded-full border border-brand-border overflow-hidden" style={{ fontSize: 10 }}>
+                  <button
+                    onClick={() => setFinancing('cash')}
+                    className={`px-2.5 py-0.5 font-medium transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted'}`}
+                    style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
+                  >Cash</button>
+                  <button
+                    onClick={() => setFinancing('mortgage')}
+                    className={`px-2.5 py-0.5 font-medium border-l border-brand-border transition-colors ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted'}`}
+                    style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
+                  >Mortgage</button>
+                </div>
+              )}
+            </div>
+            <div className="text-right">
+              <span className={`text-sm font-semibold ${g.isHandover ? '' : 'text-brand-text'}`}
+                style={g.isHandover ? { color: '#A0784A' } : {}}>
+                {g.pct}%
+              </span>
+              {basePrice > 0 && (
+                <span className="text-sm text-brand-hint ml-2">{fmtA(g.aed)}</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   ) : null
 
-  const financingRemainder = (
-    <>
-      {remainingInstals.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-medium text-brand-muted mb-2">Remaining instalments</p>
-          <div className="space-y-1.5">
-            {remainingInstals.map((row, i) => (
-              <div key={i} className="flex justify-between text-xs">
-                <span className="text-brand-hint">{row.label} · {row.date}</span>
-                <span className="font-medium text-brand-text">{fmtA((row.pct / 100) * basePrice)} ({row.pct}%)</span>
-              </div>
-            ))}
+  const mortgageModellingSection = mortgageOn ? (
+    <div className="mb-5">
+      <p className="text-xs font-medium text-brand-muted mb-4">Mortgage modelling</p>
+      <div className="space-y-5">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-brand-muted">LTV (loan to value)</span>
+              <Tooltip text="Percentage of the property value financed by the mortgage. UAE max is typically 75% for expats." />
+            </div>
+            <span className="text-sm font-semibold text-brand-text">{ltvPct}%</span>
+          </div>
+          <input type="range" min={20} max={80} step={5} value={ltvPct}
+            onChange={e => setLtvPct(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">20%</span>
+            <span className="text-xs text-brand-hint">80%</span>
           </div>
         </div>
-      )}
 
-      {mortgageOn && (
-        <div className="space-y-5 border-t border-brand-border pt-5">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-brand-muted">LTV (loan to value)</span>
-                <Tooltip text="Percentage of the property value financed by the mortgage. UAE max is typically 75% for expats." />
-              </div>
-              <span className="text-sm font-semibold text-brand-text">{ltvPct}%</span>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-brand-muted">Interest rate</span>
+              <Tooltip text="Annual mortgage interest rate. UAE rates typically range from 3.5% to 6%." />
             </div>
-            <input type="range" min={20} max={80} step={5} value={ltvPct}
-              onChange={e => setLtvPct(parseInt(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-            <div className="flex justify-between mt-1">
-              <span className="text-xs text-brand-hint">20%</span>
-              <span className="text-xs text-brand-hint">80%</span>
-            </div>
+            <span className="text-sm font-semibold text-brand-text">{mortgageRate.toFixed(1)}%</span>
           </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-brand-muted">Interest rate</span>
-                <Tooltip text="Annual mortgage interest rate. UAE rates typically range from 3.5% to 6%." />
-              </div>
-              <span className="text-sm font-semibold text-brand-text">{mortgageRate.toFixed(1)}%</span>
-            </div>
-            <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
-              onChange={e => setMortgageRate(parseFloat(e.target.value))}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
-            <div className="flex justify-between mt-1">
-              <span className="text-xs text-brand-hint">2%</span>
-              <span className="text-xs text-brand-hint">10%</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
-              <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
-            </div>
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
-              <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
-            </div>
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
-              <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
-            </div>
-            <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-              <p className="text-[10px] text-brand-hint mb-1">Total interest (25yr)</p>
-              <p className="text-sm font-semibold text-brand-text">{totalInterest > 0 ? fmtA(totalInterest) : '—'}</p>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-brand-muted mb-2">Equity build-up</p>
-            <div className="rounded-lg overflow-hidden border border-brand-border">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr style={{ backgroundColor: '#F4F3F0' }}>
-                    <th className="text-left px-3 py-2 text-brand-hint font-medium">Period</th>
-                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Value</th>
-                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Loan</th>
-                    <th className="text-right px-3 py-2 text-brand-hint font-medium">Equity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border">
-                  {equityRows.map((r, i) => (
-                    <tr key={i} className="bg-white">
-                      <td className="px-3 py-2 text-brand-muted">{r.label}</td>
-                      <td className="px-3 py-2 text-right text-brand-text font-medium">{fmtA(r.propValue)}</td>
-                      <td className="px-3 py-2 text-right text-brand-hint">{fmtA(r.loanBal)}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-emerald-600">{fmtA(r.equity)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
+            onChange={e => setMortgageRate(parseFloat(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">2%</span>
+            <span className="text-xs text-brand-hint">10%</span>
           </div>
         </div>
-      )}
 
-      <div className={`border-t border-brand-border pt-5${mortgageOn ? '' : ' mt-0'}`}>
-        <p className="text-xs font-medium text-brand-muted mb-3">Break-even analysis</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[10px] text-brand-hint">Min. annual rent</p>
-              <Tooltip text={mortgageOn
-                ? 'Minimum rent to cover service charge and annual mortgage payments.'
-                : 'Minimum rent to cover the service charge (net income = 0).'} />
-            </div>
-            <p className="text-sm font-semibold text-brand-text">{minRent > 0 ? fmtA(minRent) : '—'}</p>
-            {minRent > 0 && rent > 0 && (
-              <p className={`text-[10px] mt-0.5 ${rent >= minRent ? 'text-emerald-600' : 'text-red-500'}`}>
-                {rent >= minRent
-                  ? `AED ${(rent - minRent).toLocaleString()} headroom`
-                  : `AED ${(minRent - rent).toLocaleString()} shortfall`}
-              </p>
-            )}
+            <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
+            <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
           </div>
           <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[10px] text-brand-hint">Growth for 8% IRR</p>
-              <Tooltip text="Annual capital growth needed to achieve an 8% IRR over your selected hold period." />
-            </div>
-            <p className="text-sm font-semibold text-brand-text">
-              {growthFor8PctIRR !== null ? `${growthFor8PctIRR.toFixed(1)}%` : '> 30%'}
-            </p>
-            {growthFor8PctIRR !== null && (
-              <p className={`text-[10px] mt-0.5 ${growth >= growthFor8PctIRR ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {growth >= growthFor8PctIRR
-                  ? 'Met at current assumption'
-                  : `Need +${(growthFor8PctIRR - growth).toFixed(1)}% pa`}
-              </p>
-            )}
+            <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
+            <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
+          </div>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+            <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
+            <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
           </div>
         </div>
+
+        {basePrice > 0 && (
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+            <p className="text-xs font-medium text-brand-muted mb-3">Net monthly cash flow (post-handover)</p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-brand-hint">Monthly rent</span>
+                <span className="font-medium text-brand-text">{fmtA(Math.round(rent / 12))}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-brand-hint">Service charge</span>
+                <span className="text-brand-text">−{fmtA(Math.round(serviceCharge / 12))}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-brand-hint">Mortgage payment</span>
+                <span className="text-brand-text">−{fmtA(monthlyPayment)}</span>
+              </div>
+              <div className="border-t border-brand-border pt-1.5 flex justify-between text-xs font-semibold">
+                <span className="text-brand-text">Net monthly</span>
+                <span style={{ color: netMonthly >= 0 ? '#059669' : '#EF4444' }}>
+                  {netMonthly >= 0 ? '+' : ''}{fmtA(Math.abs(netMonthly))}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
+  ) : null
+
+  const grossYield   = basePrice > 0 ? (rent / basePrice) * 100 : null
+  const netYield     = basePrice > 0 ? ((rent - serviceCharge) / basePrice) * 100 : null
+  const cashOnCash   = totalPaidBeforeHO > 0 ? (netIncome / totalPaidBeforeHO) * 100 : null
+
+  const breakEvenSection = (
+    <div className="border-t border-brand-border pt-5">
+      <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--color-text-primary)' }}>Key return metrics</p>
+      <p className="text-[11px] mb-4" style={{ color: 'var(--color-text-secondary)' }}>Based on current assumptions and total cash invested to handover</p>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+
+        {/* Gross yield */}
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+          <div className="flex items-center gap-1 mb-1">
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Gross yield</p>
+            <Tooltip text="Annual rent as a percentage of purchase price." />
+          </div>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+            {grossYield !== null ? `${grossYield.toFixed(1)}%` : '—'}
+          </p>
+        </div>
+
+        {/* Net yield */}
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+          <div className="flex items-center gap-1 mb-1">
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Net yield</p>
+            <Tooltip text="Annual rent minus service charge, as a percentage of purchase price." />
+          </div>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+            {netYield !== null ? `${netYield.toFixed(1)}%` : '—'}
+          </p>
+        </div>
+
+        {/* Cash-on-cash return */}
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+          <div className="flex items-center gap-1 mb-1">
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Cash-on-cash return</p>
+            <Tooltip text="Net annual income as a percentage of cash invested before handover." />
+          </div>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+            {cashOnCash !== null ? `${cashOnCash.toFixed(1)}%` : '—'}
+          </p>
+        </div>
+
+        {/* Annual cash flow */}
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+          <div className="flex items-center gap-1 mb-1">
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Annual cash flow</p>
+            <Tooltip text={mortgageOn ? 'Net annual rent minus service charge and annual mortgage cost.' : 'Net annual rent after service charge deduction.'} />
+          </div>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+            {(() => { const v = Math.round(netIncome - (mortgageOn ? annualMortgageCost : 0)); return `AED ${v.toLocaleString()}` })()}
+          </p>
+        </div>
+
+        {/* Min. annual rent */}
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+          <div className="flex items-center gap-1 mb-1">
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Min. annual rent</p>
+            <Tooltip text="Minimum rent needed to cover service charge (and mortgage if applicable)." />
+          </div>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+            {minRent > 0 ? `AED ${Math.round(minRent).toLocaleString()}` : '—'}
+          </p>
+        </div>
+
+      </div>
+    </div>
   )
 
   const exitAnalysisContent = (
@@ -1213,11 +1255,11 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             </div>
             <div className="bg-white rounded-xl border border-brand-border p-5">
               <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-xs text-brand-muted">vs. purchase price</span>
-                <Tooltip text="Gain on paper as a percentage of your purchase price." />
+                <span className="text-xs text-brand-muted">Return on equity</span>
+                <Tooltip text="Gain as a % of cash paid before handover." />
               </div>
-              <p className={`text-lg font-bold ${gainOnPaperPct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                {gainOnPaperPct >= 0 ? '+' : ''}{fmtP(gainOnPaperPct)}
+              <p className={`text-lg font-bold ${(returnOnEquity ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {returnOnEquity !== null ? `${returnOnEquity >= 0 ? '+' : ''}${fmtP(returnOnEquity)}` : '—'}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-brand-border p-5">
@@ -1354,7 +1396,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
                   style={active ? { backgroundColor: '#8B6914' } : {}}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{ut.typology ?? ut.type}</span>
                   <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 12 }}>
-                    From {fmtPrice(ut.price_from)}
+                    From {fmtA(ut.price_from)}
                   </span>
                   {ut.internal_sqft != null && (
                     <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 11 }}>
@@ -1389,8 +1431,8 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             onChange={e => setRent(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 20k</span>
-            <span className="text-xs text-brand-hint">AED 300k</span>
+            <span className="text-xs text-brand-hint">AED 20,000</span>
+            <span className="text-xs text-brand-hint">AED 300,000</span>
           </div>
         </div>
 
@@ -1404,8 +1446,8 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             onChange={e => setHandoverValue(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 300k</span>
-            <span className="text-xs text-brand-hint">AED 5M</span>
+            <span className="text-xs text-brand-hint">AED 300,000</span>
+            <span className="text-xs text-brand-hint">AED 5,000,000</span>
           </div>
         </div>
 
@@ -1442,39 +1484,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
         </div>
       </div>
 
-      {/* ── 3. Payment plan ───────────────────────────────────────────────── */}
-      {yearGroups.length > 0 && (
-        <div id="payment-plan" className="bg-white rounded-xl border border-brand-border p-5">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Payment plan</p>
-            <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
-              project.payment_plan_confirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-            }`}>
-              {project.payment_plan_confirmed ? 'Confirmed' : 'Indicative'}
-            </span>
-          </div>
-          <div className="space-y-2.5">
-            {yearGroups.map((g, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className={`text-xs ${g.isHandover ? 'font-semibold text-brand-text' : 'text-brand-muted'}`}>
-                  {g.label}
-                </span>
-                <div className="text-right">
-                  <span className={`text-xs font-semibold ${g.isHandover ? '' : 'text-brand-text'}`}
-                    style={g.isHandover ? { color: '#A0784A' } : {}}>
-                    {g.pct}%
-                  </span>
-                  {basePrice > 0 && (
-                    <span className="text-xs text-brand-hint ml-2">{fmtA(g.aed)}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 4-6. Scenarios / Financing / Exit analysis ──────────────────────── */}
+      {/* ── 3-5. Scenarios / Financing / Exit analysis ──────────────────────── */}
       <div className="space-y-8">
 
         {/* ── 4. Scenarios ──────────────────────────────────────────────── */}
@@ -1547,11 +1557,12 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
 
         {isAuth ? (
           <>
-            {/* ── 5. Financing ─────────────────────────────────────────── */}
+            {/* ── 4. Financing ─────────────────────────────────────────── */}
             <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
               {financingHeader}
-              {dueAtBookingCard && <div className="mb-5">{dueAtBookingCard}</div>}
-              {financingRemainder}
+              {paymentPlanSubSection}
+              {mortgageModellingSection}
+              {breakEvenSection}
             </div>
 
             {/* ── 6. Exit analysis ─────────────────────────────────────── */}
@@ -1564,10 +1575,10 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             {/* Full-width divider */}
             <div className="border-t border-brand-border" />
 
-            {/* ── 5. Financing — Due at booking (visible) ─────────────────── */}
+            {/* ── 4. Financing — payment plan (visible) ────────────────── */}
             <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Financing</p>
-              {dueAtBookingCard}
+              {financingHeader}
+              {paymentPlanSubSection}
             </div>
 
             {/* Full-width divider */}
@@ -1576,11 +1587,11 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             {/* ── Lock CTA — in-flow block ─────────────────────────────────── */}
             {lockCTA}
 
-            {/* ── Locked content: remaining financing + exit analysis ──────── */}
+            {/* ── Locked content: mortgage modelling + break-even + exit analysis ── */}
             <div className="blur-sm pointer-events-none select-none space-y-8">
               <div className="bg-white rounded-xl border border-brand-border p-5">
-                {financingHeader}
-                {financingRemainder}
+                {mortgageModellingSection}
+                {breakEvenSection}
               </div>
 
               <div id="exit-analysis" className="space-y-8">
