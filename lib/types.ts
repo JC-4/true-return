@@ -23,6 +23,7 @@ export type UnitType = {
   balcony_sqft?: number | null
   expected_rent?: number | null
   expected_handover_value?: number | null
+  floor_plan_url?: string | null
 }
 
 export type ConnectivityItem = {
@@ -69,6 +70,7 @@ export type Project = {
   service_charge_rate?: number | null
   downpayment_pct?: number | null
   payment_plan_confirmed?: boolean | null
+  map_embed_html?: string | null
 }
 
 export type DeveloperWithCount = Developer & { project_count: number }

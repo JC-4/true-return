@@ -355,6 +355,8 @@ type EditUnitType = {
   balcony_sqft: string
   expected_rent: string
   expected_handover_value: string
+  floor_plan_url: string | null
+  floor_plan_uploading: boolean
 }
 
 // ─── Live calculations ────────────────────────────────────────────────────────
@@ -393,6 +395,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
   const [paymentPlanConfirmed, setPaymentPlanConfirmed] = useState(
     project.payment_plan_confirmed ?? false
   )
+  const [mapEmbedHtml, setMapEmbedHtml] = useState(project.map_embed_html ?? '')
 
   // Payment plans (all of them)
   const [plans, setPlans] = useState<EditPlan[]>(
@@ -418,6 +421,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
       balcony_sqft: ut.balcony_sqft?.toString() ?? '',
       expected_rent: ut.expected_rent?.toString() ?? '',
       expected_handover_value: ut.expected_handover_value?.toString() ?? '',
+      floor_plan_url: ut.floor_plan_url ?? null,
+      floor_plan_uploading: false,
     }))
   )
 
@@ -475,6 +480,63 @@ export default function EditProjectClient({ project }: { project: Project }) {
     setUnitTypes(prev => prev.map((ut, i) => (i === index ? { ...ut, [key]: value } : ut)))
   }
 
+  async function addUnitType() {
+    const res = await fetch(`/api/projects/${project.slug}/unit-types`, { method: 'POST' })
+    if (!res.ok) { setError('Failed to add unit type'); return }
+    const created = await res.json()
+    setUnitTypes(prev => [...prev, {
+      id: created.id,
+      type: created.type,
+      bedrooms: created.bedrooms,
+      price_from: '',
+      internal_sqft: '',
+      balcony_sqft: '',
+      expected_rent: '',
+      expected_handover_value: '',
+      floor_plan_url: null,
+      floor_plan_uploading: false,
+    }])
+  }
+
+  async function deleteUnitType(id: string) {
+    if (!window.confirm('Remove this unit type?')) return
+    const res = await fetch(`/api/projects/${project.slug}/unit-types`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (!res.ok) { setError('Failed to delete unit type'); return }
+    setUnitTypes(prev => prev.filter(ut => ut.id !== id))
+  }
+
+  async function uploadFloorPlan(index: number, file: File) {
+    setUnitTypes(prev => prev.map((ut, i) => i === index ? { ...ut, floor_plan_uploading: true } : ut))
+    try {
+      const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 2000, useWebWorker: true })
+      const fd = new FormData()
+      fd.append('file', compressed, file.name)
+      fd.append('unitTypeId', unitTypes[index].id)
+      const res = await fetch(`/api/projects/${project.slug}/floor-plans`, { method: 'POST', body: fd })
+      if (!res.ok) { setError('Floor plan upload failed'); return }
+      const { publicUrl } = await res.json()
+      setUnitTypes(prev => prev.map((ut, i) => i === index ? { ...ut, floor_plan_url: publicUrl, floor_plan_uploading: false } : ut))
+    } catch {
+      setError('Floor plan upload failed')
+      setUnitTypes(prev => prev.map((ut, i) => i === index ? { ...ut, floor_plan_uploading: false } : ut))
+    }
+  }
+
+  async function deleteFloorPlan(index: number) {
+    const id = unitTypes[index].id
+    const res = await fetch(`/api/projects/${project.slug}/floor-plans`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unitTypeId: id }),
+    })
+    if (!res.ok) { setError('Failed to remove floor plan'); return }
+    setUnitTypes(prev => prev.map((ut, i) => i === index ? { ...ut, floor_plan_url: null } : ut))
+  }
+
   function calcPricePerSqft(ut: EditUnitType): string {
     const price = parseFloat(ut.price_from)
     const internal = parseInt(ut.internal_sqft)
@@ -511,6 +573,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
       service_charge_rate: serviceChargeRate ? parseFloat(serviceChargeRate) : null,
       payment_plan_confirmed: paymentPlanConfirmed,
       payment_plans: updatedPlans,
+      map_embed_html: mapEmbedHtml.trim() || null,
     }
 
     const unitTypesPayload = unitTypes.map(ut => ({
@@ -630,6 +693,22 @@ export default function EditProjectClient({ project }: { project: Project }) {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Community" value={community} onChange={setCommunity} placeholder="e.g. Dubai Creek Harbour" />
               <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. Dubai, UAE" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Google Maps embed
+              </label>
+              <textarea
+                value={mapEmbedHtml}
+                onChange={e => setMapEmbedHtml(e.target.value)}
+                placeholder='<iframe src="https://www.google.com/maps/embed?..." ...></iframe>'
+                rows={3}
+                className={`${inputCls} resize-y font-mono text-xs`}
+              />
+              <p className="mt-1.5 text-xs text-gray-400">
+                In Google Maps, find the location → Share → Embed a map → Copy HTML → paste here.
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -818,25 +897,34 @@ export default function EditProjectClient({ project }: { project: Project }) {
           </div>
 
           {/* ── Unit types ───────────────────────────────────────────────── */}
-          {unitTypes.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <SectionHeader label="Unit types" />
-              <div className="space-y-6">
-                {unitTypes.map((ut, i) => {
-                  const ppsq = calcPricePerSqft(ut)
-                  const yieldCalc = calcYield(ut, serviceChargeRate)
-                  const bedroomLabel =
-                    ut.bedrooms === null
-                      ? 'Commercial'
-                      : ut.bedrooms === 0
-                      ? 'Studio'
-                      : `${ut.bedrooms} BR`
-                  return (
-                    <div key={ut.id} className="border border-gray-100 rounded-lg p-4 space-y-4">
-                      <div className="flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <SectionHeader label="Unit types" />
+            <div className="space-y-6">
+              {unitTypes.map((ut, i) => {
+                const ppsq = calcPricePerSqft(ut)
+                const yieldCalc = calcYield(ut, serviceChargeRate)
+                const bedroomLabel =
+                  ut.bedrooms === null
+                    ? 'Commercial'
+                    : ut.bedrooms === 0
+                    ? 'Studio'
+                    : `${ut.bedrooms} BR`
+                return (
+                  <div key={ut.id} className="border border-gray-100 rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-[#18181b]">{ut.type}</p>
                         <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{bedroomLabel}</span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => deleteUnitType(ut.id)}
+                        className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none"
+                        title="Remove unit type"
+                      >
+                        ×
+                      </button>
+                    </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <MoneyField
@@ -910,12 +998,81 @@ export default function EditProjectClient({ project }: { project: Project }) {
                           })()}
                         </div>
                       </div>
+
+                      {/* Floor plan */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                          Floor plan
+                        </label>
+                        {ut.floor_plan_url ? (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={ut.floor_plan_url}
+                              alt="Floor plan"
+                              className="w-16 h-16 object-contain rounded border border-gray-100 bg-gray-50 cursor-pointer"
+                              onClick={() => document.getElementById(`fp-input-${ut.id}`)?.click()}
+                            />
+                            <div className="flex flex-col gap-1">
+                              <button
+                                type="button"
+                                onClick={() => document.getElementById(`fp-input-${ut.id}`)?.click()}
+                                className="text-xs text-gray-500 hover:text-[#18181b] transition-colors text-left"
+                              >
+                                Change image
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteFloorPlan(i)}
+                                className="text-xs text-red-400 hover:text-red-600 transition-colors text-left"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById(`fp-input-${ut.id}`)?.click()}
+                            disabled={ut.floor_plan_uploading}
+                            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-[#18181b] border border-dashed border-gray-200 rounded-lg px-3 py-2 transition-colors disabled:opacity-50"
+                          >
+                            {ut.floor_plan_uploading ? 'Uploading…' : (
+                              <>
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                  <path d="M6 1v7M3 4l3-3 3 3" /><path d="M1 9v1a1 1 0 001 1h8a1 1 0 001-1V9" />
+                                </svg>
+                                Upload floor plan
+                              </>
+                            )}
+                          </button>
+                        )}
+                        <input
+                          id={`fp-input-${ut.id}`}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) uploadFloorPlan(i, file)
+                            e.target.value = ''
+                          }}
+                        />
+                      </div>
                     </div>
                   )
                 })}
-              </div>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={addUnitType}
+              className="mt-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#18181b] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                <path d="M7 1v12M1 7h12" />
+              </svg>
+              Add unit type
+            </button>
+          </div>
 
           {/* ── Save ─────────────────────────────────────────────────────── */}
           <div className="flex items-center gap-4 pt-2">

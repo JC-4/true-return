@@ -37,6 +37,42 @@ function segmentBg(color: PaymentSegment['color']) {
   return 'var(--brand-bronze-light)'
 }
 
+// ── Payment plan colour scale (by segment type, not slab colour) ──────────────
+
+const PLAN_COLORS = {
+  downpayment:   '#3D2008',
+  construction:  '#8B5E2A',
+  handover:      '#C9A96E',
+  'post-handover': '#E8D5B0',
+} as const
+
+type PlanSegType = keyof typeof PLAN_COLORS
+
+const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
+  downpayment:   'Downpayment',
+  construction:  'During construction',
+  handover:      'Handover',
+  'post-handover': 'Post-handover',
+}
+
+function classifyPlanSeg(label: string): PlanSegType {
+  const l = label.toLowerCase()
+  if (l.includes('post') || (l.includes('after') && l.includes('handover'))) return 'post-handover'
+  if (l.includes('handover')) return 'handover'
+  if (l.includes('booking') || l.includes('down') || l.includes('reservation')) return 'downpayment'
+  return 'construction'
+}
+
+function mergedPlanSegs(segments: PaymentSegment[]): Array<{ type: PlanSegType; pct: number }> {
+  const totals: Partial<Record<PlanSegType, number>> = {}
+  for (const seg of segments) {
+    const t = classifyPlanSeg(seg.label)
+    totals[t] = (totals[t] ?? 0) + seg.percent
+  }
+  const order: PlanSegType[] = ['downpayment', 'construction', 'handover', 'post-handover']
+  return order.filter(t => totals[t]).map(t => ({ type: t, pct: totals[t]! }))
+}
+
 const WHATSAPP = 'https://wa.me/971000000000'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -613,10 +649,47 @@ function Lightbox({
   )
 }
 
+// ─── Floor plan lightbox ──────────────────────────────────────────────────────
+
+function FloorPlanLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white text-2xl leading-none"
+        aria-label="Close"
+      >
+        ×
+      </button>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="Floor plan"
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+      />
+    </div>
+  )
+}
+
 // ─── Return analysis panel ────────────────────────────────────────────────────
 
 function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: boolean }) {
-  const unitTypes = project.unit_types ?? []
+  const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
+    if (a.bedrooms === null) return 1
+    if (b.bedrooms === null) return -1
+    return a.bedrooms - b.bedrooms
+  })
   const scRate    = project.service_charge_rate ?? 0
   const planRows  = adaptPaymentPlan(project.payment_plans, project.handover_date)
   const completionStr = formatHandoverDate(project.handover_date)
@@ -908,11 +981,8 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
     return `${b} Bed`
   }
 
-  const PILL      = 'px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border flex flex-col items-center leading-none'
-  const PILL_ON   = `${PILL} bg-[#18181b] text-white border-[#18181b]`
-  const PILL_OFF  = `${PILL} bg-white text-brand-muted border-brand-border hover:border-brand-text hover:text-brand-text`
-  const SPILL_ON  = `${PILL} text-[11px] border-brand-bronze text-white`
-  const SPILL_OFF = `${PILL} text-[11px] bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text`
+  const SPILL_ON  = 'px-3.5 py-1.5 rounded-full text-[11px] font-medium transition-colors border flex flex-col items-center leading-none border-brand-bronze text-white'
+  const SPILL_OFF = 'px-3.5 py-1.5 rounded-full text-[11px] font-medium transition-colors border flex flex-col items-center leading-none bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text'
 
   // Lowest price per bedroom group, for display in each group pill
   const minPriceByGroup = new Map<number | null, number | null>()
@@ -935,7 +1005,6 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   }
 
   const secondaryNavSections = [
-    { id: 'unit-selection', label: 'Unit Selection' },
     { id: 'inputs',         label: 'Inputs' },
     ...(yearGroups.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
     { id: 'scenarios',     label: 'Scenarios',     locked: !isAuth },
@@ -1246,17 +1315,27 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
         <div className="flex flex-wrap gap-2 mb-2">
           {bedroomGroups.map(b => {
             const active = selectedBedrooms === b
-            const muted = active ? 'text-white/60' : 'text-brand-hint'
+            const price = minPriceByGroup.get(b)
             const sqft = minSqftByGroup.get(b)
             return (
-              <button key={String(b)} onClick={() => setSelectedBedrooms(b)}
-                className={active ? PILL_ON : PILL_OFF}>
-                <span>{bedroomLabel(b)}</span>
-                <span className={`text-[10px] font-normal mt-0.5 ${muted}`}>
-                  From {fmtPrice(minPriceByGroup.get(b) ?? null)}
+              <button
+                key={String(b)}
+                onClick={() => setSelectedBedrooms(b)}
+                style={active
+                  ? { borderRadius: 'var(--border-radius-lg)', border: '1.5px solid #1a1a1a', padding: '12px 16px', background: 'var(--color-background-secondary)', transition: 'border-color 0.15s, background 0.15s' }
+                  : { borderRadius: 'var(--border-radius-lg)', border: '0.5px solid #E5E3DE', padding: '12px 16px', background: 'white', transition: 'border-color 0.15s, background 0.15s' }}
+                className="flex flex-col items-start text-left"
+              >
+                <span style={{ fontSize: 13, fontWeight: 500, color: active ? '#1a1a1a' : '#3D3D3D', lineHeight: 1.2 }}>
+                  {bedroomLabel(b)}
                 </span>
+                {price != null && (
+                  <span style={{ fontSize: 13, color: '#8B6914', marginTop: 3, lineHeight: 1.2 }}>
+                    From AED {price.toLocaleString()}
+                  </span>
+                )}
                 {sqft != null && (
-                  <span className={`text-[9px] font-normal mt-0.5 ${muted}`}>
+                  <span style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2, lineHeight: 1.2 }}>
                     {sqft.toLocaleString()} sqft
                   </span>
                 )}
@@ -1272,13 +1351,13 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
               return (
                 <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
                   className={active ? SPILL_ON : SPILL_OFF}
-                  style={active ? { backgroundColor: '#A0784A' } : {}}>
-                  <span>{ut.typology ?? ut.type}</span>
-                  <span className={`text-[10px] font-normal mt-0.5 ${muted}`}>
+                  style={active ? { backgroundColor: '#8B6914' } : {}}>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{ut.typology ?? ut.type}</span>
+                  <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 12 }}>
                     From {fmtPrice(ut.price_from)}
                   </span>
                   {ut.internal_sqft != null && (
-                    <span className={`text-[9px] font-normal mt-0.5 ${muted}`}>
+                    <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 11 }}>
                       {ut.internal_sqft.toLocaleString()} sqft
                     </span>
                   )}
@@ -1540,6 +1619,7 @@ export default function ProjectDetail({
 
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [floorPlanUrl, setFloorPlanUrl] = useState<string | null>(null)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
@@ -1604,14 +1684,39 @@ export default function ProjectDetail({
   const connectivity = project.connectivity ?? []
   const amenities = project.amenities ?? []
   const faqs = project.faqs ?? []
-  const unitTypes = project.unit_types ?? []
+  const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
+    if (a.bedrooms === null) return 1
+    if (b.bedrooms === null) return -1
+    return a.bedrooms - b.bedrooms
+  })
   const firstPlan = plans[0]
+  const firstPlanLabel = (() => {
+    if (!firstPlan?.segments?.length) return null
+    const segs = firstPlan.segments
+    const hasPost = segs.some(s => classifyPlanSeg(s.label) === 'post-handover')
+    if (hasPost) {
+      const y = segs.filter(s => classifyPlanSeg(s.label) === 'post-handover').reduce((sum, s) => sum + s.percent, 0)
+      const x = 100 - y
+      return `${Math.round(x)}/${Math.round(y)} payment plan`
+    } else {
+      const y = segs.filter(s => classifyPlanSeg(s.label) === 'handover').reduce((sum, s) => sum + s.percent, 0)
+      const x = segs.filter(s => classifyPlanSeg(s.label) !== 'handover').reduce((sum, s) => sum + s.percent, 0)
+      return `${Math.round(x)}/${Math.round(y)} payment plan`
+    }
+  })()
+
+  const mapEmbedSrc = (() => {
+    const html = project.map_embed_html
+    if (!html) return null
+    const match = html.match(/src="([^"]+)"/)
+    return match ? match[1] : null
+  })()
 
   const overviewNavSections = [
-    { id: 'about', label: 'About' },
-    ...(unitTypes.length > 0 ? [{ id: 'units', label: 'Units' }] : []),
+    ...(unitTypes.length > 0 ? [{ id: 'units', label: 'Unit Types' }] : []),
+    ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
     ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
-    ...(connectivity.length > 0 ? [{ id: 'location', label: 'Location' }] : []),
+    ...((connectivity.length > 0 || mapEmbedSrc) ? [{ id: 'location', label: 'Location' }] : []),
     ...(faqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
   ]
 
@@ -1631,17 +1736,34 @@ export default function ProjectDetail({
 
           {unitTypes.length > 0 && (
             <div id="units" className="border-t border-brand-border pt-10 mt-10">
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Units</p>
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Unit Types</p>
               <div className="grid grid-cols-2 gap-3">
                 {unitTypes.map(ut => (
-                  <div key={ut.id} className="bg-white border border-brand-border rounded-xl p-5">
+                  <div
+                    key={ut.id}
+                    className="bg-white border border-brand-border rounded-xl p-5"
+                    onClick={ut.floor_plan_url ? () => setFloorPlanUrl(ut.floor_plan_url!) : undefined}
+                    style={ut.floor_plan_url ? { cursor: 'pointer' } : undefined}
+                  >
                     <p className="text-sm font-medium text-brand-text">{ut.type}</p>
                     <p className="text-xl font-medium text-brand-bronze mt-1">{fmtPrice(ut.price_from)}</p>
                     <div className="border-t border-brand-border my-3" />
-                    <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
+                    {ut.floor_plan_url ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
+                        <span style={{ fontSize: 11, borderRadius: 999, border: '0.5px solid var(--color-border-tertiary)', padding: '2px 10px', color: 'var(--color-text-secondary)', background: 'var(--color-background-secondary)' }}>
+                          View floor plan
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
+                    )}
                   </div>
                 ))}
               </div>
+              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 10 }}>
+                Prices and sizes are indicative and vary by floor, view, and layout.
+              </p>
             </div>
           )}
         </div>
@@ -1702,48 +1824,113 @@ export default function ProjectDetail({
     </section>
   )
 
-  const paymentPlanSection = plans.length > 0 ? (
+  const paymentAndDevSection = (plans.length > 0 || project.developer) ? (
     <section id="payment-plan" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Payment plan</p>
-      <div className="space-y-4">
-        {plans.map((plan, i) => (
-          <div key={i} className="bg-white border border-brand-border rounded-xl p-5">
-            <p className="text-sm font-medium text-brand-text mb-3">{plan.name}</p>
-            <div className="h-1.5 rounded-full overflow-hidden flex mb-3">
-              {plan.segments.map((seg, j) => (
-                <div
-                  key={j}
-                  style={{ width: `${seg.percent}%`, backgroundColor: segmentBg(seg.color) }}
-                />
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-4">
-              {plan.segments.map((seg, j) => (
-                <div key={j} className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: segmentBg(seg.color) }} />
-                  <span className="text-xs text-brand-hint">{seg.label} · {seg.percent}%</span>
-                </div>
-              ))}
+      <div className="grid md:grid-cols-2 gap-6 items-start">
+
+        {/* Left: payment plans */}
+        {plans.length > 0 && (
+          <div>
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Payment plan</p>
+            <div className="space-y-4">
+              {plans.map((plan, i) => {
+                const merged = mergedPlanSegs(plan.segments)
+                return (
+                  <div key={i} className="bg-white border border-brand-border rounded-xl p-5">
+                    <p className="text-sm font-medium text-brand-text mb-3">{plan.name}</p>
+                    <div className="h-1.5 rounded-full overflow-hidden flex mb-3">
+                      {merged.map((s, j) => (
+                        <div key={j} style={{ width: `${s.pct}%`, backgroundColor: PLAN_COLORS[s.type] }} />
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {merged.map((s, j) => (
+                        <div key={j} className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PLAN_COLORS[s.type] }} />
+                          <span className="text-xs text-brand-hint">{PLAN_SEG_LABELS[s.type]} · {s.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-        ))}
+        )}
+
+        {/* Right: developer */}
+        {project.developer && (
+          <div>
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Developer</p>
+            <div className="bg-white border border-brand-border rounded-xl p-5 flex gap-4 items-start">
+              <div className="w-10 h-10 rounded-lg bg-brand-text flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
+                {project.developer.logo_url ? (
+                  <img src={project.developer.logo_url} alt={project.developer.name} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
+                {project.developer.description && (
+                  <p className="text-xs text-brand-hint leading-relaxed mt-1">{project.developer.description}</p>
+                )}
+                <div className="flex flex-wrap gap-5 mt-3">
+                  {project.developer.founded_year && (
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-brand-hint">Founded</p>
+                      <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.founded_year}</p>
+                    </div>
+                  )}
+                  {project.developer.portfolio_value && (
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-brand-hint">Portfolio</p>
+                      <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.portfolio_value}</p>
+                    </div>
+                  )}
+                </div>
+                <Link
+                  href={`/developers/${project.developer.slug}`}
+                  className="text-xs text-brand-bronze hover:underline mt-2 inline-block"
+                >
+                  View all projects →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </section>
   ) : null
 
-  const locationSection = connectivity.length > 0 ? (
+  const locationSection = (connectivity.length > 0 || mapEmbedSrc) ? (
     <section id="location" className="py-16 border-t border-brand-border">
       <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Location</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {connectivity.map((item, i) => (
-          <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-            <ConnectivityIcon label={item.label} />
-            <span className="text-sm text-brand-muted truncate">{item.label}</span>
-            <span className="ml-auto text-xs font-medium text-brand-bronze flex-shrink-0">{item.time}</span>
-          </div>
-        ))}
-      </div>
-      {/* Amenities inline */}
+      {mapEmbedSrc && (
+        <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: connectivity.length > 0 ? 24 : 0 }}>
+          <iframe
+            src={mapEmbedSrc}
+            width="100%"
+            height="380"
+            style={{ border: 'none', display: 'block' }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      )}
+      {connectivity.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {connectivity.map((item, i) => (
+            <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+              <ConnectivityIcon label={item.label} />
+              <span className="text-sm text-brand-muted truncate">{item.label}</span>
+              <span className="ml-auto text-xs font-medium text-brand-bronze flex-shrink-0">{item.time}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {amenities.length > 0 && (
         <div className="mt-8">
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
@@ -1766,46 +1953,6 @@ export default function ProjectDetail({
     </section>
   ) : null
 
-  const developerSection = project.developer ? (
-    <section className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Developer</p>
-      <div className="bg-white border border-brand-border rounded-xl p-5 flex gap-4 items-start">
-        <div className="w-10 h-10 rounded-lg bg-brand-text flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-          {project.developer.logo_url ? (
-            <img src={project.developer.logo_url} alt={project.developer.name} className="w-full h-full object-contain" />
-          ) : (
-            <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
-          {project.developer.description && (
-            <p className="text-xs text-brand-hint leading-relaxed mt-1">{project.developer.description}</p>
-          )}
-          <div className="flex flex-wrap gap-5 mt-3">
-            {project.developer.founded_year && (
-              <div>
-                <p className="text-xs uppercase tracking-widest text-brand-hint">Founded</p>
-                <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.founded_year}</p>
-              </div>
-            )}
-            {project.developer.portfolio_value && (
-              <div>
-                <p className="text-xs uppercase tracking-widest text-brand-hint">Portfolio</p>
-                <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.portfolio_value}</p>
-              </div>
-            )}
-          </div>
-          <Link
-            href={`/developers/${project.developer.slug}`}
-            className="text-xs text-brand-bronze hover:underline mt-2 inline-block"
-          >
-            View all projects →
-          </Link>
-        </div>
-      </div>
-    </section>
-  ) : null
 
   // ─── My Take section (auth) ───────────────────────────────────────────────
 
@@ -1861,7 +2008,7 @@ export default function ProjectDetail({
       )}
 
       {/* Title block */}
-      <div className="relative px-6 sm:px-10 pb-6 max-w-5xl mx-auto w-full">
+      <div className="relative px-6 sm:px-10 pb-6 max-w-6xl mx-auto w-full">
         <p className="hidden md:block text-brand-bronze-mid text-xs tracking-widest uppercase mb-2">{project.developer?.name}</p>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-medium text-white leading-tight mb-3">{project.name}</h1>
         {project.location && (
@@ -1880,9 +2027,9 @@ export default function ProjectDetail({
               Handover {fmtHandover(project.handover_date)}
             </span>
           )}
-          {firstPlan && (
+          {firstPlanLabel && (
             <span className="bg-white/10 border border-white/15 text-white/80 text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-              {firstPlan.name}
+              {firstPlanLabel}
             </span>
           )}
         </div>
@@ -1903,7 +2050,7 @@ export default function ProjectDetail({
         <>
           {/* Tab bar */}
           <div className="sticky top-16 z-20 bg-white border-b border-brand-border">
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 flex items-center">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10 flex items-center">
               {([
                 { key: 'overview', label: 'Overview' },
                 { key: 'returns',  label: 'Return Analysis' },
@@ -1926,12 +2073,12 @@ export default function ProjectDetail({
 
           {/* Overview tab */}
           {pubTab === 'overview' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10">
               <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
 
               {gallerySection}
-              {paymentPlanSection}
+              {paymentAndDevSection}
               {locationSection}
 
               {/* Mid-page CTA — between Location and FAQ */}
@@ -1957,14 +2104,14 @@ export default function ProjectDetail({
 
           {/* Return Analysis tab */}
           {pubTab === 'returns' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 pb-20">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-20">
               <ReturnAnalysisPanel project={project} isAuth={false} />
             </div>
           )}
 
           {/* Brochure tab */}
           {pubTab === 'brochure' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 py-12">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10 py-12">
               <div className="max-w-lg">
                 <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Download brochure</p>
                 <p className="text-sm text-brand-muted mb-6">Verify your email to access floor plans, renders and payment schedule.</p>
@@ -1982,7 +2129,7 @@ export default function ProjectDetail({
           {/* Two-tab bar + scroll nav for overview */}
           <div ref={scrollNavRef} className="sticky top-16 z-20 bg-white border-b border-brand-border">
             {/* Tab row */}
-            <div className={`max-w-5xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
+            <div className={`max-w-6xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
               {([
                 { key: 'overview', label: 'Overview' },
                 { key: 'returns',  label: 'Return Analysis' },
@@ -2017,27 +2164,26 @@ export default function ProjectDetail({
 
           {/* Overview tab */}
           {authTab === 'overview' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10">
               <SecondaryPillNav sections={overviewNavSections} />
               {aboutSection}
               {gallerySection}
-              {paymentPlanSection}
+              {paymentAndDevSection}
               {locationSection}
-              {developerSection}
               {faqSection}
             </div>
           )}
 
           {/* Brochure tab */}
           {authTab === 'brochure' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10">
               <BrochureTab slug={project.slug} />
             </div>
           )}
 
           {/* Return Analysis tab */}
           {authTab === 'returns' && (
-            <div className="max-w-5xl mx-auto px-6 sm:px-10 space-y-10">
+            <div className="max-w-6xl mx-auto px-6 sm:px-10 space-y-10">
               {myTakeSection}
               <ReturnAnalysisPanel project={project} isAuth={true} />
 
@@ -2093,15 +2239,14 @@ export default function ProjectDetail({
 
       {/* ── Lead gen footer ────────────────────────────────────────────────── */}
       <section id="lead-gen-form" className="border-t border-brand-border bg-white">
-        <div className="max-w-5xl mx-auto px-6 sm:px-10 py-16 sm:py-20">
-          <div className="max-w-lg">
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Independent advice</p>
-            <h2 className="text-2xl font-semibold text-brand-text mb-2">Get independent advice on this project</h2>
-            <p className="text-sm text-brand-muted mb-8">Analysis and advice from an independent buyer's agent.</p>
+        <div className="px-6 sm:px-10 py-16 sm:py-20">
+          <div style={{ maxWidth: 600, margin: '0 auto' }}>
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
+            <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get independent advice on this project</h2>
+            <p className="text-sm text-brand-muted mb-8 text-center">Analysis and advice from an independent buyer's agent.</p>
             <LeadGenForm
               projectName={project.name}
               onSubmit={(data) => {
-                // TODO: wire to submission endpoint (Supabase insert or API route)
                 console.log('LeadGenForm submission:', data)
               }}
             />
@@ -2117,6 +2262,10 @@ export default function ProjectDetail({
           onPrev={() => setLightboxIndex(i => i !== null ? (i - 1 + images.length) % images.length : null)}
           onNext={() => setLightboxIndex(i => i !== null ? (i + 1) % images.length : null)}
         />
+      )}
+
+      {floorPlanUrl !== null && (
+        <FloorPlanLightbox url={floorPlanUrl} onClose={() => setFloorPlanUrl(null)} />
       )}
     </div>
   )
