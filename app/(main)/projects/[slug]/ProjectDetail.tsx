@@ -1664,25 +1664,27 @@ export default function ProjectDetail({
     </section>
   )
 
+  const galleryImages = images.slice(1)
+
   const gallerySection = (
     <section id="gallery" className="py-16 border-t border-brand-border">
       <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Gallery</p>
-      {images.length > 0 ? (
-        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[420px]">
+      {galleryImages.length > 0 ? (
+        <div className="grid grid-cols-4 grid-rows-[200px_200px] gap-2">
           <div
             className="col-span-2 row-span-2 rounded-xl overflow-hidden bg-brand-surface cursor-pointer"
-            onClick={() => setLightboxIndex(0)}
+            onClick={() => setLightboxIndex(1)}
           >
-            <img src={images[0]} alt="" className="w-full h-full object-cover" />
+            <img src={galleryImages[0]} alt="" className="w-full h-full object-cover object-center" />
           </div>
           {[1, 2, 3, 4].map(i => (
             <div
               key={i}
-              className={`rounded-xl overflow-hidden bg-brand-surface flex items-center justify-center ${images[i] ? 'cursor-pointer' : ''}`}
-              onClick={() => images[i] && setLightboxIndex(i)}
+              className={`rounded-xl overflow-hidden bg-brand-surface flex items-center justify-center ${galleryImages[i] ? 'cursor-pointer' : ''}`}
+              onClick={() => galleryImages[i] && setLightboxIndex(i + 1)}
             >
-              {images[i] ? (
-                <img src={images[i]} alt="" className="w-full h-full object-cover" />
+              {galleryImages[i] ? (
+                <img src={galleryImages[i]} alt="" className="w-full h-full object-cover object-center" />
               ) : (
                 <svg className="w-5 h-5 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
@@ -1849,26 +1851,21 @@ export default function ProjectDetail({
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-      {/* Top badges */}
-      <div className="absolute top-6 left-6 sm:left-10 right-6 sm:right-10 flex items-start justify-between gap-2">
-        {project.status ? (
+      {/* Status badge */}
+      {project.status && (
+        <div className="absolute top-6 left-6 sm:left-10">
           <span className="bg-brand-bronze text-white text-xs font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#A0784A' }}>
             {statusLabel(project.status)}
           </span>
-        ) : <span />}
-        {project.handover_date && (
-          <span className="bg-white/10 border border-white/20 text-white/75 text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-            Handover {fmtHandover(project.handover_date)}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Title block */}
       <div className="relative px-6 sm:px-10 pb-6 max-w-5xl mx-auto w-full">
-        <p className="text-brand-bronze-mid text-xs tracking-widest uppercase mb-2">{project.developer?.name}</p>
-        <h1 className="text-4xl sm:text-5xl font-medium text-white leading-tight mb-3">{project.name}</h1>
+        <p className="hidden md:block text-brand-bronze-mid text-xs tracking-widest uppercase mb-2">{project.developer?.name}</p>
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-medium text-white leading-tight mb-3">{project.name}</h1>
         {project.location && (
-          <p className="text-sm text-white/50 mb-5">{project.location}{project.community ? ` · ${project.community}` : ''}</p>
+          <p className="text-xs sm:text-sm text-white/50 mb-4">{project.location}{project.community ? ` · ${project.community}` : ''}</p>
         )}
 
         {/* Stat pills */}
