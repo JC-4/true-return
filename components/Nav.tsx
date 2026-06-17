@@ -28,7 +28,7 @@ function NavLink({ href, label, pathname, onClick }: { href: string; label: stri
       href={href}
       onClick={onClick}
       className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-        active ? 'text-[#18181b] bg-[#e4e4e7]' : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+        active ? 'text-white bg-[#2E2D2A]' : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
       }`}
     >
       {label}
@@ -60,10 +60,10 @@ export default function Nav() {
   const calcActive = pathname.startsWith('/calculators')
 
   return (
-    <nav className="bg-white border-b border-[#e4e4e7] sticky top-0 z-50">
+    <nav className="bg-[#1C1B18] border-b border-[#2E2D2A] sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="text-[#18181b] font-semibold text-lg tracking-tight">
+          <Link href="/" className="text-white font-semibold text-lg tracking-tight">
             TrueReturn
           </Link>
 
@@ -81,8 +81,8 @@ export default function Nav() {
                     onClick={() => setDropdownOpen(v => !v)}
                     className={`flex items-center gap-1 px-4 py-2 rounded text-sm font-medium transition-colors ${
                       calcActive
-                        ? 'text-[#18181b] bg-[#e4e4e7]'
-                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                        ? 'text-white bg-[#2E2D2A]'
+                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
                     }`}
                   >
                     Calculators
@@ -94,7 +94,7 @@ export default function Nav() {
                     </svg>
                   </button>
                   {dropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-52 bg-white rounded-lg shadow-lg border border-[#e4e4e7] py-1 z-50">
+                    <div className="absolute top-full left-0 mt-1 w-52 bg-[#1C1B18] rounded-lg shadow-lg border border-[#2E2D2A] py-1 z-50">
                       {calculatorLinks.map(({ href, label }) => (
                         <Link
                           key={href}
@@ -102,8 +102,8 @@ export default function Nav() {
                           onClick={() => setDropdownOpen(false)}
                           className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                             pathname === href
-                              ? 'text-[#18181b] bg-[#e4e4e7]'
-                              : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                              ? 'text-white bg-[#2E2D2A]'
+                              : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
                           }`}
                         >
                           {label}
@@ -119,7 +119,7 @@ export default function Nav() {
 
                 <button
                   onClick={() => signOut({ callbackUrl: '/', redirect: true })}
-                  className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] transition-colors"
+                  className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#9B9589] hover:text-white hover:bg-[#2E2D2A] transition-colors"
                 >
                   Sign out
                 </button>
@@ -129,7 +129,7 @@ export default function Nav() {
             {!isAdmin && (
               <Link
                 href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
-                className="ml-2 px-3 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] transition-colors"
+                className="ml-2 px-3 py-2 text-sm text-[#9B9589] hover:text-white transition-colors"
               >
                 Sign in
               </Link>
@@ -138,7 +138,7 @@ export default function Nav() {
 
           {/* Mobile hamburger */}
           <button
-            className="sm:hidden text-[#71717a] hover:text-[#18181b] p-2"
+            className="sm:hidden text-[#9B9589] hover:text-white p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -154,7 +154,7 @@ export default function Nav() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="sm:hidden border-t border-[#e4e4e7] py-2 space-y-0.5">
+          <div className="sm:hidden border-t border-[#2E2D2A] py-2 space-y-0.5">
             {publicLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -162,8 +162,8 @@ export default function Nav() {
                 onClick={() => setMobileOpen(false)}
                 className={`block px-4 py-2 text-sm font-medium rounded ${
                   pathname.startsWith(href)
-                    ? 'text-[#18181b] bg-[#e4e4e7]'
-                    : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                    ? 'text-white bg-[#2E2D2A]'
+                    : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
                 }`}
               >
                 {label}
@@ -171,8 +171,8 @@ export default function Nav() {
             ))}
 
             {isAdmin && (
-              <div className="border-t border-[#e4e4e7] pt-2 mt-1 space-y-0.5">
-                <p className="px-4 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#a1a1aa]">
+              <div className="border-t border-[#2E2D2A] pt-2 mt-1 space-y-0.5">
+                <p className="px-4 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#9B9589]">
                   Calculators
                 </p>
                 {calculatorLinks.map(({ href, label }) => (
@@ -182,8 +182,8 @@ export default function Nav() {
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-2 text-sm font-medium rounded ${
                       pathname === href
-                        ? 'text-[#18181b] bg-[#e4e4e7]'
-                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                        ? 'text-white bg-[#2E2D2A]'
+                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
                     }`}
                   >
                     {label}
@@ -196,8 +196,8 @@ export default function Nav() {
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-2 text-sm font-medium rounded ${
                       pathname.startsWith(href)
-                        ? 'text-[#18181b] bg-[#e4e4e7]'
-                        : 'text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7]'
+                        ? 'text-white bg-[#2E2D2A]'
+                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
                     }`}
                   >
                     {label}
@@ -205,7 +205,7 @@ export default function Nav() {
                 ))}
                 <button
                   onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/', redirect: true }) }}
-                  className="w-full text-left px-4 py-2 text-sm font-medium text-[#71717a] hover:text-[#18181b] hover:bg-[#e4e4e7] rounded"
+                  className="w-full text-left px-4 py-2 text-sm font-medium text-[#9B9589] hover:text-white hover:bg-[#2E2D2A] rounded"
                 >
                   Sign out
                 </button>
@@ -213,11 +213,11 @@ export default function Nav() {
             )}
 
             {!isAdmin && (
-              <div className="border-t border-[#e4e4e7] mt-1 pt-2">
+              <div className="border-t border-[#2E2D2A] mt-1 pt-2">
                 <Link
                   href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
                   onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2 text-sm text-[#a1a1aa] hover:text-[#71717a] rounded"
+                  className="block px-4 py-2 text-sm text-[#9B9589] hover:text-white rounded"
                 >
                   Sign in
                 </Link>

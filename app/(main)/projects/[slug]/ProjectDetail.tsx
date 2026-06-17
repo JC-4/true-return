@@ -758,6 +758,17 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
     if (first) setSelectedUnitId(first.id)
   }, [selectedBedrooms]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Mobile scroll refs ────────────────────────────────────────────────────
+  const scenarioScrollRef = useRef<HTMLDivElement | null>(null)
+  const exitScrollRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const el = scenarioScrollRef.current
+    if (!el) return
+    const card = el.children[1] as HTMLElement
+    if (card) el.scrollLeft = card.offsetLeft - el.offsetWidth / 2 + card.offsetWidth / 2
+  }, [])
+
   // ── Financing state ────────────────────────────────────────────────────────
   const [financing,    setFinancing]    = useState<'cash' | 'mortgage'>('cash')
   const handoverRow = planRows.find(r => r.handover) ?? planRows[planRows.length - 1]
@@ -874,6 +885,14 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   const gainOnPaper    = metrics?.gainOnPaper    ?? (handoverValue > basePrice ? handoverValue - basePrice : 0)
   const gainOnPaperPct = metrics?.gainOnPaperPct ?? (basePrice > 0 ? (gainOnPaper / basePrice) * 100 : 0)
   const handoverIRR    = exitScenarios[0].irr
+
+  useEffect(() => {
+    const el = exitScrollRef.current
+    if (!el) return
+    const activeIdx = exitScenarios.findIndex(s => s.holdYrs === holdPeriod)
+    const card = el.children[activeIdx] as HTMLElement
+    if (card) el.scrollLeft = card.offsetLeft - el.offsetWidth / 2 + card.offsetWidth / 2
+  }, [holdPeriod]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const preHandoverPct     = planRows.filter(r => !r.handover).reduce((s, r) => s + r.pct, 0)
   const totalPaidBeforeHO  = (preHandoverPct / 100) * basePrice
@@ -1053,12 +1072,12 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
       <div className="space-y-2.5">
         {yearGroups.map((g, i) => (
           <div key={i} className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               <span className={`text-sm ${g.isHandover ? 'font-semibold text-brand-text' : 'text-brand-muted'}`}>
                 {g.label}
               </span>
               {g.isHandover && (
-                <div className="flex items-center rounded-full border border-brand-border overflow-hidden" style={{ fontSize: 10 }}>
+                <div className="flex items-center rounded-full border border-brand-border overflow-hidden" style={{ fontSize: 10, alignSelf: 'flex-start' }}>
                   <button
                     onClick={() => setFinancing('cash')}
                     className={`px-2.5 py-0.5 font-medium transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted'}`}
@@ -1277,14 +1296,24 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
 
       <div>
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Exit scenarios</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div
+          ref={exitScrollRef}
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            scrollSnapType: 'x mandatory',
+            scrollbarWidth: 'none',
+            gap: 12,
+            paddingBottom: 4,
+          }}
+        >
           {exitScenarios.map(s => {
             const isActive = holdPeriod === s.holdYrs
             return (
               <div
                 key={s.holdYrs}
                 className={`rounded-xl border p-5 transition-all ${isActive ? '' : 'bg-white border-brand-border'}`}
-                style={isActive ? { borderColor: '#A0784A', backgroundColor: '#FDFCF9' } : {}}
+                style={isActive ? { borderColor: '#A0784A', backgroundColor: '#FDFCF9', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}
               >
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-brand-text">{s.label}</p>
@@ -1490,7 +1519,17 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
         {/* ── 4. Scenarios ──────────────────────────────────────────────── */}
         <div id="scenarios">
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Scenarios</p>
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div
+            ref={scenarioScrollRef}
+            style={{
+              display: 'flex',
+              overflowX: 'auto',
+              scrollSnapType: 'x mandatory',
+              scrollbarWidth: 'none',
+              gap: 12,
+              paddingBottom: 4,
+            }}
+          >
             {([
               { label: 'Conservative', metrics: conservative, highlighted: false },
               { label: 'Base',         metrics: base,         highlighted: true  },
@@ -1498,7 +1537,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
             ] as const).map(({ label, metrics: m, highlighted }) => (
               <div key={label}
                 className={`bg-white rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
-                style={highlighted ? { borderColor: '#A0784A' } : {}}>
+                style={highlighted ? { borderColor: '#A0784A', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}>
                 <div className={`flex items-center justify-between mb-4 ${!isAuth ? 'blur-sm select-none' : ''}`}>
                   <p className="text-xs font-semibold text-brand-muted">{label}</p>
                   {highlighted && (
@@ -1716,6 +1755,7 @@ export default function ProjectDetail({
   const [activePlanIndex, setActivePlanIndex] = useState(0)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
+  const pubTabRef = useRef<HTMLDivElement | null>(null)
 
   // Documents tab state
   const [activeDocTab, setActiveDocTab] = useState(0)
@@ -2280,7 +2320,7 @@ export default function ProjectDetail({
       {!isAuth && (
         <>
           {/* Tab bar */}
-          <div className="sticky top-16 z-20 bg-white border-b border-brand-border">
+          <div ref={pubTabRef} className="sticky top-16 z-20 bg-white border-b border-brand-border">
             <div className="max-w-6xl mx-auto px-6 sm:px-10 flex items-center">
               {([
                 { key: 'overview', label: 'Overview' },
@@ -2289,7 +2329,11 @@ export default function ProjectDetail({
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setPubTab(key)}
+                  onClick={() => {
+                    setPubTab(key)
+                    const el = pubTabRef.current
+                    if (el) window.scrollTo({ top: el.offsetTop - el.offsetHeight, behavior: 'instant' })
+                  }}
                   className={`py-3.5 mr-6 text-sm font-medium border-b-2 transition-colors ${
                     pubTab === key
                       ? 'border-brand-text text-brand-text'
@@ -2367,7 +2411,11 @@ export default function ProjectDetail({
               ] as const).map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setAuthTab(key)}
+                  onClick={() => {
+                    setAuthTab(key)
+                    const el = scrollNavRef.current
+                    if (el) window.scrollTo({ top: el.offsetTop - el.offsetHeight, behavior: 'instant' })
+                  }}
                   className={`px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors ${
                     authTab === key
                       ? 'border-brand-bronze text-brand-bronze'
