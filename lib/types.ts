@@ -73,6 +73,10 @@ export type Project = {
   downpayment_pct?: number | null
   payment_plan_confirmed?: boolean | null
   map_embed_html?: string | null
+  about_image_url?: string | null
+  highlights?: string[] | null
+  tagline?: string | null
+  about_image_position?: string | null
 }
 
 export type DeveloperWithCount = Developer & { project_count: number }

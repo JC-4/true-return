@@ -140,7 +140,21 @@ type UploadStatus = {
   pct: number
 }
 
-function ImageSection({ slug, initialImages }: { slug: string; initialImages: string[] }) {
+function ImageSection({
+  slug,
+  initialImages,
+  aboutImageUrl,
+  aboutImagePosition,
+  onSetAboutImage,
+  onSetAboutImagePosition,
+}: {
+  slug: string
+  initialImages: string[]
+  aboutImageUrl: string | null
+  aboutImagePosition: string
+  onSetAboutImage: (url: string) => void
+  onSetAboutImagePosition: (pos: string) => void
+}) {
   const [images, setImages] = useState<string[]>(initialImages)
   const [status, setStatus] = useState<UploadStatus | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -240,11 +254,18 @@ function ImageSection({ slug, initialImages }: { slug: string; initialImages: st
             <div key={url} className="relative group aspect-video rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" className="w-full h-full object-cover" />
-              {i === 0 && (
-                <span className="absolute top-1.5 left-1.5 text-[10px] font-bold bg-[#18181b] text-white px-1.5 py-0.5 rounded">
-                  Hero
-                </span>
-              )}
+              <div className="absolute top-1.5 left-1.5 flex gap-1">
+                {i === 0 && (
+                  <span className="text-[10px] font-bold bg-[#18181b] text-white px-1.5 py-0.5 rounded">
+                    Hero
+                  </span>
+                )}
+                {url === aboutImageUrl && (
+                  <span className="text-[10px] font-bold bg-[#A0784A] text-white px-1.5 py-0.5 rounded">
+                    About
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => void deleteImage(url, i)}
@@ -254,6 +275,12 @@ function ImageSection({ slug, initialImages }: { slug: string; initialImages: st
                 ×
               </button>
               <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => onSetAboutImage(url)}
+                  className="w-6 h-6 flex items-center justify-center bg-[#A0784A]/80 hover:bg-[#A0784A] text-white rounded text-xs"
+                  title="Set as about image"
+                >★</button>
                 <button
                   type="button"
                   disabled={i === 0}
@@ -271,6 +298,28 @@ function ImageSection({ slug, initialImages }: { slug: string; initialImages: st
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {aboutImageUrl && (
+        <div className="mb-4">
+          <p className="text-xs text-gray-500 mb-1.5">About image focal point</p>
+          <div className="flex gap-1.5">
+            {(['top', 'center', 'bottom'] as const).map(pos => (
+              <button
+                key={pos}
+                type="button"
+                onClick={() => onSetAboutImagePosition(pos)}
+                className={`text-xs px-3 py-1 rounded border transition-colors ${
+                  aboutImagePosition === pos
+                    ? 'bg-[#18181b] text-white border-[#18181b]'
+                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {pos.charAt(0).toUpperCase() + pos.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -433,6 +482,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [aboutImageUrl, setAboutImageUrl] = useState<string | null>(project.about_image_url ?? null)
+  const [aboutImagePosition, setAboutImagePosition] = useState<string>(project.about_image_position ?? 'center')
+  const [aboutImageUploading, setAboutImageUploading] = useState(false)
 
   // ── Payment plan helpers ───────────────────────────────────────────────────
 
@@ -580,6 +632,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
       payment_plan_confirmed: paymentPlanConfirmed,
       payment_plans: updatedPlans,
       map_embed_html: mapEmbedHtml.trim() || null,
+      about_image_position: aboutImagePosition,
     }
 
     const unitTypesPayload = unitTypes.map(ut => ({
@@ -628,12 +681,6 @@ export default function EditProjectClient({ project }: { project: Project }) {
               <h1 className="text-2xl font-bold text-[#18181b] mb-1">Edit project</h1>
               <p className="text-sm text-[#71717a]">{project.name}</p>
             </div>
-            <Link
-              href={`/projects/${project.slug}`}
-              className="text-xs text-[#71717a] hover:text-[#18181b] underline underline-offset-2 whitespace-nowrap mt-1"
-            >
-              ← View project
-            </Link>
           </div>
         </div>
 
@@ -734,7 +781,28 @@ export default function EditProjectClient({ project }: { project: Project }) {
           </div>
 
           {/* ── Images ───────────────────────────────────────────────────── */}
-          <ImageSection slug={project.slug} initialImages={project.images ?? []} />
+          <ImageSection
+            slug={project.slug}
+            initialImages={project.images ?? []}
+            aboutImageUrl={aboutImageUrl}
+            aboutImagePosition={aboutImagePosition}
+            onSetAboutImage={async (url) => {
+              setAboutImageUrl(url)
+              await fetch(`/api/projects/${project.slug}/about-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url }),
+              })
+            }}
+            onSetAboutImagePosition={async (pos) => {
+              setAboutImagePosition(pos)
+              await fetch(`/api/projects/${project.slug}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project: { about_image_position: pos }, unit_types: [] }),
+              })
+            }}
+          />
 
           {/* ── Payment plan options ─────────────────────────────────────── */}
           <div className="space-y-4">
@@ -1111,22 +1179,32 @@ export default function EditProjectClient({ project }: { project: Project }) {
             </button>
           </div>
 
-          {/* ── Save ─────────────────────────────────────────────────────── */}
-          <div className="flex items-center gap-4 pt-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-[#18181b] hover:bg-[#27272a] text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-50 transition-colors"
+          <div
+            className="sticky bottom-0 z-10 border-t border-gray-100 bg-white px-6 py-3 flex items-center justify-between gap-4"
+            style={{ marginLeft: -24, marginRight: -24, paddingLeft: 24, paddingRight: 24 }}
+          >
+            <Link
+              href={`/projects/${project.slug}`}
+              className="text-xs text-[#71717a] hover:text-[#18181b] underline underline-offset-2 whitespace-nowrap"
             >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            {saved && (
-              <span className="text-sm text-emerald-600 font-medium">Saved successfully</span>
-            )}
-            {error && (
-              <span className="text-sm text-red-500">{error}</span>
-            )}
+              ← View project
+            </Link>
+            <div className="flex items-center gap-4">
+              {saved && (
+                <span className="text-sm text-emerald-600 font-medium">Saved</span>
+              )}
+              {error && (
+                <span className="text-sm text-red-500 max-w-xs truncate">{error}</span>
+              )}
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-[#18181b] hover:bg-[#27272a] text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
           </div>
 
         </div>

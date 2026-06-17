@@ -1612,6 +1612,17 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
 function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLightbox: (index: number) => void }) {
   const [current, setCurrent] = useState(0)
 
+  useEffect(() => {
+    const toPreload = [
+      images[(current + 1) % images.length],
+      images[(current - 1 + images.length) % images.length],
+    ]
+    toPreload.forEach(src => {
+      const img = new Image()
+      img.src = src
+    })
+  }, [current, images])
+
   function prev() { setCurrent(i => (i - 1 + images.length) % images.length) }
   function next() { setCurrent(i => (i + 1) % images.length) }
 
@@ -1621,7 +1632,7 @@ function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLig
     <section id="gallery" className="py-16 border-t border-brand-border">
       <div className="max-w-6xl mx-auto px-6 sm:px-10">
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Gallery</p>
-        <div className="relative rounded-2xl overflow-hidden" style={{ height: 600 }}>
+        <div className="relative rounded-2xl overflow-hidden" style={{ height: 'clamp(240px, 50vw, 600px)' }}>
           <img
             src={images[current]}
             alt=""
@@ -1809,33 +1820,97 @@ export default function ProjectDetail({
 
   const aboutSection = (
     <section id="about" className="py-16">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
-      {project.description ? (
-        <p className="text-sm text-brand-muted leading-relaxed max-w-3xl">{project.description}</p>
-      ) : (
-        <p className="text-sm text-brand-hint">No description available.</p>
-      )}
-      <div className="flex flex-wrap gap-2 mt-5">
-        {project.developer?.name && (
-          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-            {project.developer.name}
-          </span>
-        )}
-        {fmtHandover(project.handover_date) !== '—' && (
-          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-            Handover {fmtHandover(project.handover_date)}
-          </span>
-        )}
-        {project.location && (
-          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-            {project.location}
-          </span>
-        )}
-        {statusLabel(project.status) && (
-          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-            {statusLabel(project.status)}
-          </span>
-        )}
+      <div className="grid md:grid-cols-2 gap-8 items-stretch">
+
+        {/* Left: image with stats overlay */}
+        <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: '#1C1B18', height: '100%', minHeight: '480px' }}>
+          {(project.about_image_url ?? images[0]) && (
+            <img
+              src={project.about_image_url ?? images[0]}
+              alt={project.name}
+              className="w-full h-full object-cover"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: project.about_image_position ?? 'center',
+                opacity: 0.85,
+              }}
+            />
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,27,24,0.85) 0%, rgba(28,27,24,0.05) 55%)' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
+            <div className="grid grid-cols-3 gap-2">
+              {fmtHandover(project.handover_date) !== '—' && (
+                <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                  <p className="text-sm font-medium text-white">{fmtHandover(project.handover_date)}</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Handover</p>
+                </div>
+              )}
+              {project.location && (
+                <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                  <p className="text-sm font-medium text-white truncate">{project.location}</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Location</p>
+                </div>
+              )}
+              {statusLabel(project.status) && (
+                <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                  <p className="text-sm font-medium text-white">{statusLabel(project.status)}</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Status</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: description + developer */}
+        <div className="flex flex-col justify-center py-2">
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">About this project</p>
+          {project.tagline && (
+            <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
+          )}
+          {project.description && (
+            <p className="text-sm text-brand-muted leading-relaxed mb-4">{project.description}</p>
+          )}
+
+          {project.highlights && project.highlights.length > 0 && (
+            <div className="flex flex-col gap-2.5 mb-6">
+              {project.highlights.map((h, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <div
+                    className="flex-shrink-0 mt-0.5"
+                    style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: '#F4F3F0', border: '0.5px solid #E5E3DC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2 2 4-4" stroke="#A0784A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <span className="text-sm text-brand-muted leading-relaxed">{h}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {project.developer && (
+            <div className="flex items-center gap-3 pt-5 border-t border-brand-border">
+              <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
+                {project.developer.logo_url ? (
+                  <img src={project.developer.logo_url} alt={project.developer.name} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
+                <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-bronze hover:underline">
+                  View all projects →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )
