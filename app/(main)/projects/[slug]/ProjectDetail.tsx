@@ -1607,6 +1607,79 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   )
 }
 
+// ─── Gallery slider ───────────────────────────────────────────────────────────
+
+function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLightbox: (index: number) => void }) {
+  const [current, setCurrent] = useState(0)
+
+  function prev() { setCurrent(i => (i - 1 + images.length) % images.length) }
+  function next() { setCurrent(i => (i + 1) % images.length) }
+
+  if (images.length === 0) return null
+
+  return (
+    <section id="gallery" className="py-16 border-t border-brand-border">
+      <div className="max-w-6xl mx-auto px-6 sm:px-10">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Gallery</p>
+        <div className="relative rounded-2xl overflow-hidden" style={{ height: 600 }}>
+          <img
+            src={images[current]}
+            alt=""
+            className="w-full h-full object-cover cursor-pointer"
+            onClick={() => onOpenLightbox(current)}
+          />
+
+          {/* Bottom-right arrows */}
+          {images.length > 1 && (
+            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+              <button
+                onClick={prev}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                style={{ backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)', color: '#ffffff', border: '0.5px solid rgba(255,255,255,0.25)' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={next}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                style={{ backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)', color: '#ffffff', border: '0.5px solid rgba(255,255,255,0.25)' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Dot navigation */}
+        {images.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-4">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                style={{
+                  width: i === current ? 24 : 6,
+                  height: 6,
+                  borderRadius: 9999,
+                  backgroundColor: i === current ? '#A0784A' : '#D4C5B0',
+                  border: 'none',
+                  padding: 0,
+                  transition: 'width 0.3s ease, background-color 0.3s ease',
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ProjectDetail({
@@ -1724,10 +1797,11 @@ export default function ProjectDetail({
   })()
 
   const overviewNavSections = [
-    ...(unitTypes.length > 0 ? [{ id: 'units', label: 'Unit Types' }] : []),
+    { id: 'units', label: 'Unit Types' },
     ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
     ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
     ...((connectivity.length > 0 || mapEmbedSrc) ? [{ id: 'location', label: 'Location' }] : []),
+    ...(amenities.length > 0 ? [{ id: 'amenities', label: 'Amenities' }] : []),
     ...(faqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
   ]
 
@@ -1735,105 +1809,130 @@ export default function ProjectDetail({
 
   const aboutSection = (
     <section id="about" className="py-16">
-      <div className="grid md:grid-cols-5 gap-10 md:gap-16 items-start">
-        {/* Left column: About text + Units (~60%) — stacks first on mobile */}
-        <div className="md:col-span-3">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
-          {project.description ? (
-            <p className="text-sm text-brand-muted leading-relaxed">{project.description}</p>
-          ) : (
-            <p className="text-sm text-brand-hint">No description available.</p>
-          )}
-
-          {unitTypes.length > 0 && (
-            <div id="units" className="border-t border-brand-border pt-10 mt-10">
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Unit Types</p>
-              <div className="grid grid-cols-2 gap-3">
-                {unitTypes.map(ut => (
-                  <div
-                    key={ut.id}
-                    className="bg-white border border-brand-border rounded-xl p-5"
-                    onClick={ut.floor_plan_url ? () => setFloorPlanUrl(ut.floor_plan_url!) : undefined}
-                    style={ut.floor_plan_url ? { cursor: 'pointer' } : undefined}
-                  >
-                    <p className="text-sm font-medium text-brand-text">{ut.type}</p>
-                    <p className="text-xl font-medium text-brand-bronze mt-1">{fmtPrice(ut.price_from)}</p>
-                    <div className="border-t border-brand-border my-3" />
-                    {ut.floor_plan_url ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
-                        <span style={{ fontSize: 11, borderRadius: 999, border: '0.5px solid var(--color-border-tertiary)', padding: '2px 10px', color: 'var(--color-text-secondary)', background: 'var(--color-background-secondary)' }}>
-                          View floor plan
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-brand-hint">{ut.size_sqft_from.toLocaleString()} sqft</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 10 }}>
-                Prices and sizes are indicative and vary by floor, view, and layout.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right column: Lead gen form (~40%) — stacks last on mobile */}
-        <div className="md:col-span-2 md:sticky md:top-[132px]">
-          <div className="rounded-xl border border-brand-border bg-white p-6">
-            <p className="text-sm font-semibold text-brand-text mb-1">Get independent advice</p>
-            <p className="text-xs text-brand-muted mb-5">Analysis and advice from an independent buyer's agent.</p>
-            <LeadGenForm
-              projectName={project.name}
-              onSubmit={(data) => {
-                // TODO: wire to submission endpoint (Supabase insert or API route)
-                console.log('LeadGenForm submission:', data)
-              }}
-            />
-          </div>
-        </div>
+      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">About</p>
+      {project.description ? (
+        <p className="text-sm text-brand-muted leading-relaxed max-w-3xl">{project.description}</p>
+      ) : (
+        <p className="text-sm text-brand-hint">No description available.</p>
+      )}
+      <div className="flex flex-wrap gap-2 mt-5">
+        {project.developer?.name && (
+          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+            {project.developer.name}
+          </span>
+        )}
+        {fmtHandover(project.handover_date) !== '—' && (
+          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+            Handover {fmtHandover(project.handover_date)}
+          </span>
+        )}
+        {project.location && (
+          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+            {project.location}
+          </span>
+        )}
+        {statusLabel(project.status) && (
+          <span className="text-xs px-3 py-1.5 rounded-full border text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+            {statusLabel(project.status)}
+          </span>
+        )}
       </div>
     </section>
   )
 
-  const galleryImages = images.slice(1)
+  const unitTypesSection = unitTypes.length > 0 ? (
+    <section id="units" className="py-16 border-t border-brand-border">
+      <div className="flex justify-between items-end mb-8">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-2">Unit types</p>
+          <h2 className="text-2xl font-semibold text-brand-text">Choose your unit</h2>
+        </div>
+        <span className="text-xs text-brand-hint">Prices from, indicative</span>
+      </div>
 
-  const gallerySection = (
-    <section id="gallery" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Gallery</p>
-      {galleryImages.length > 0 ? (
-        <div className="grid grid-cols-4 grid-rows-[200px_200px] gap-2">
-          <div
-            className="col-span-2 row-span-2 rounded-xl overflow-hidden bg-brand-surface cursor-pointer"
-            onClick={() => setLightboxIndex(1)}
-          >
-            <img src={galleryImages[0]} alt="" className="w-full h-full object-cover object-center" />
-          </div>
-          {[1, 2, 3, 4].map(i => (
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+        {unitTypes.map((ut, index) => {
+          const isFeatured = !!ut.is_featured
+          const featuredLabel = ut.featured_label || 'Most popular'
+          return (
             <div
-              key={i}
-              className={`rounded-xl overflow-hidden bg-brand-surface flex items-center justify-center ${galleryImages[i] ? 'cursor-pointer' : ''}`}
-              onClick={() => galleryImages[i] && setLightboxIndex(i + 1)}
+              key={ut.id}
+              className="relative border rounded-xl p-5"
+              onClick={ut.floor_plan_url ? () => setFloorPlanUrl(ut.floor_plan_url!) : undefined}
+              style={{
+                cursor: ut.floor_plan_url ? 'pointer' : undefined,
+                backgroundColor: isFeatured ? '#1C1B18' : '#ffffff',
+                borderColor: isFeatured ? '#C9A96E' : '#E5E3DC',
+                borderWidth: isFeatured ? 2 : 1,
+              }}
             >
-              {galleryImages[i] ? (
-                <img src={galleryImages[i]} alt="" className="w-full h-full object-cover object-center" />
-              ) : (
-                <svg className="w-5 h-5 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              {isFeatured && (
+                <div
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 text-white text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full"
+                  style={{ backgroundColor: '#A0784A' }}
+                >
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  {featuredLabel}
+                </div>
+              )}
+              <p
+                className="text-xs uppercase tracking-widest font-medium mb-2"
+                style={{ color: isFeatured ? 'rgba(255,255,255,0.5)' : '#9B9589' }}
+              >
+                {ut.type}
+              </p>
+              <p
+                className="text-2xl font-semibold mb-1"
+                style={{ color: isFeatured ? '#C9A96E' : '#A0784A' }}
+              >
+                {fmtPrice(ut.price_from)}
+              </p>
+              <p
+                className="text-xs"
+                style={{ color: isFeatured ? 'rgba(255,255,255,0.4)' : '#9B9589' }}
+              >
+                {ut.size_sqft_from.toLocaleString()} sqft
+              </p>
+              {ut.floor_plan_url && (
+                <div className="mt-3">
+                  <span
+                    className="text-[11px] px-3 py-1 rounded-full"
+                    style={{
+                      border: `0.5px solid ${isFeatured ? 'rgba(255,255,255,0.2)' : '#E5E3DC'}`,
+                      color: isFeatured ? 'rgba(255,255,255,0.5)' : '#9B9589',
+                      background: 'transparent',
+                    }}
+                  >
+                    View floor plan
+                  </span>
+                </div>
               )}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="h-64 rounded-xl bg-brand-surface flex items-center justify-center">
-          <p className="text-sm text-brand-hint">No images yet</p>
-        </div>
-      )}
+          )
+        })}
+      </div>
+
+      <div
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl px-5 py-4"
+        style={{ backgroundColor: '#F4F3F0' }}
+      >
+        <p className="text-sm text-brand-muted">Not sure which unit is right for your budget and goals?</p>
+        <button
+          onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+          className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg border transition-colors whitespace-nowrap"
+          style={{ borderColor: '#1C1B18', color: '#1C1B18', backgroundColor: 'transparent' }}
+        >
+          Get unit recommendation →
+        </button>
+      </div>
     </section>
-  )
+  ) : null
+
+  const gallerySection = images.length > 1 ? (
+    <GallerySlider images={images.slice(1)} onOpenLightbox={(i) => setLightboxIndex(i + 1)} />
+  ) : null
 
   const paymentAndDevSection = (plans.length > 0 || project.developer) ? (
     <section id="payment-plan" className="py-16 border-t border-brand-border">
@@ -1916,44 +2015,34 @@ export default function ProjectDetail({
   ) : null
 
   const locationSection = (connectivity.length > 0 || mapEmbedSrc) ? (
-    <section id="location" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Location</p>
-      {mapEmbedSrc && (
-        <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: connectivity.length > 0 ? 24 : 0 }}>
-          <iframe
-            src={mapEmbedSrc}
-            width="100%"
-            height="380"
-            style={{ border: 'none', display: 'block' }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
-      )}
-      {connectivity.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-          {connectivity.map((item, i) => (
-            <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-              <ConnectivityIcon label={item.label} />
-              <span className="text-sm text-brand-muted truncate">{item.label}</span>
-              <span className="ml-auto text-xs font-medium text-brand-bronze flex-shrink-0">{item.time}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {amenities.length > 0 && (
-        <div className="mt-8">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
-          <div className="flex flex-wrap gap-2">
-            {amenities.map((a, i) => (
-              <span key={i} className="bg-brand-surface border border-brand-border rounded-full px-3 py-1 text-xs text-brand-muted" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
-                {a}
-              </span>
+    <section id="location" className="py-16 border-t border-brand-border" style={{ backgroundColor: '#F4F3F0' }}>
+      <div className="max-w-6xl mx-auto px-6 sm:px-10">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Location</p>
+        {mapEmbedSrc && (
+          <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: connectivity.length > 0 ? 24 : 0 }}>
+            <iframe
+              src={mapEmbedSrc}
+              width="100%"
+              height="380"
+              style={{ border: 'none', display: 'block' }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        )}
+        {connectivity.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {connectivity.map((item, i) => (
+              <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+                <ConnectivityIcon label={item.label} />
+                <span className="text-sm text-brand-muted truncate">{item.label}</span>
+                <span className="ml-auto text-xs font-medium text-brand-bronze flex-shrink-0">{item.time}</span>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   ) : null
 
@@ -1964,6 +2053,61 @@ export default function ProjectDetail({
     </section>
   ) : null
 
+  const returnAnalysisTeaserSection = (
+    <section className="py-16 border-t border-brand-border">
+      <div
+        className="rounded-2xl px-8 py-10"
+        style={{ backgroundColor: '#1C1B18' }}
+      >
+        <div className="grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <p className="text-xs uppercase tracking-widest font-medium mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>Independent analysis</p>
+            <h2 className="text-2xl font-semibold text-white mb-3 leading-snug">See the real numbers before you commit</h2>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.55)' }}>IRR projections, yield scenarios, mortgage analysis and exit modelling — available to registered clients.</p>
+            <button
+              onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
+              style={{ backgroundColor: '#A0784A', color: '#ffffff' }}
+            >
+              Get independent analysis →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Net yield', value: '6.8%' },
+              { label: '5yr IRR', value: '14.2%' },
+              { label: 'Capital gain', value: 'AED 420K' },
+              { label: 'Deal score', value: '74 / 100' },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-xl p-4 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
+                <p className="text-xl font-semibold" style={{ color: '#C9A96E', filter: 'blur(5px)', userSelect: 'none' }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+
+  const amenitiesSection = amenities.length > 0 ? (
+    <section id="amenities" className="py-16 border-t border-brand-border" style={{ backgroundColor: '#F4F3F0' }}>
+      <div className="max-w-6xl mx-auto px-6 sm:px-10">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
+        <div className="flex flex-wrap gap-2">
+          {amenities.map((a, i) => (
+            <span
+              key={i}
+              className="text-sm px-4 py-2 rounded-full border"
+              style={{ backgroundColor: '#ffffff', borderColor: '#E5E3DC', color: '#5C5852' }}
+            >
+              {a}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : null
 
   // ─── My Take section (auth) ───────────────────────────────────────────────
 
@@ -2084,33 +2228,36 @@ export default function ProjectDetail({
 
           {/* Overview tab */}
           {pubTab === 'overview' && (
-            <div className="max-w-6xl mx-auto px-6 sm:px-10">
-              <SecondaryPillNav sections={overviewNavSections} />
-              {aboutSection}
-
+            <>
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                <SecondaryPillNav sections={overviewNavSections} />
+                {aboutSection}
+                {unitTypesSection}
+                {returnAnalysisTeaserSection}
+              </div>
               {gallerySection}
-              {paymentAndDevSection}
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                {paymentAndDevSection}
+              </div>
               {locationSection}
-
-              {/* Mid-page CTA — between Location and FAQ */}
-              <div className="py-10 border-t border-brand-border">
-                <div className="bg-brand-surface rounded-2xl px-6 py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5" style={{ backgroundColor: '#F4F3F0' }}>
+              {amenitiesSection}
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
-                    <p className="text-xs text-brand-muted mt-1">Analysis and advice from an independent buyer's agent.</p>
+                    <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer's agent. No cost to you.</p>
                   </div>
                   <button
                     onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="flex-shrink-0 bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+                    className="flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg text-white transition-colors whitespace-nowrap"
                     style={{ backgroundColor: '#A0784A' }}
                   >
                     Get independent advice →
                   </button>
                 </div>
+                {faqSection}
               </div>
-
-              {faqSection}
-            </div>
+            </>
           )}
 
           {/* Return Analysis tab */}
@@ -2175,14 +2322,36 @@ export default function ProjectDetail({
 
           {/* Overview tab */}
           {authTab === 'overview' && (
-            <div className="max-w-6xl mx-auto px-6 sm:px-10">
-              <SecondaryPillNav sections={overviewNavSections} />
-              {aboutSection}
+            <>
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                <SecondaryPillNav sections={overviewNavSections} />
+                {aboutSection}
+                {unitTypesSection}
+                {returnAnalysisTeaserSection}
+              </div>
               {gallerySection}
-              {paymentAndDevSection}
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                {paymentAndDevSection}
+              </div>
               {locationSection}
-              {faqSection}
-            </div>
+              {amenitiesSection}
+              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
+                    <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer's agent. No cost to you.</p>
+                  </div>
+                  <button
+                    onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg text-white transition-colors whitespace-nowrap"
+                    style={{ backgroundColor: '#A0784A' }}
+                  >
+                    Get independent advice →
+                  </button>
+                </div>
+                {faqSection}
+              </div>
+            </>
           )}
 
           {/* Brochure tab */}
@@ -2253,8 +2422,8 @@ export default function ProjectDetail({
         <div className="px-6 sm:px-10 py-16 sm:py-20">
           <div style={{ maxWidth: 600, margin: '0 auto' }}>
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
-            <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get independent advice on this project</h2>
-            <p className="text-sm text-brand-muted mb-8 text-center">Analysis and advice from an independent buyer's agent.</p>
+            <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get an honest view on {project.name}</h2>
+            <p className="text-sm text-brand-muted mb-8 text-center">Independent analysis, no developer affiliation. No cost to you.</p>
             <LeadGenForm
               projectName={project.name}
               onSubmit={(data) => {

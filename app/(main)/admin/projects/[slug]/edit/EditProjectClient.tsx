@@ -357,6 +357,8 @@ type EditUnitType = {
   expected_handover_value: string
   floor_plan_url: string | null
   floor_plan_uploading: boolean
+  is_featured: boolean
+  featured_label: string
 }
 
 // ─── Live calculations ────────────────────────────────────────────────────────
@@ -423,6 +425,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
       expected_handover_value: ut.expected_handover_value?.toString() ?? '',
       floor_plan_url: ut.floor_plan_url ?? null,
       floor_plan_uploading: false,
+      is_featured: ut.is_featured ?? false,
+      featured_label: ut.featured_label ?? '',
     }))
   )
 
@@ -583,6 +587,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
       balcony_sqft: ut.balcony_sqft ? parseInt(ut.balcony_sqft) : 0,
       expected_rent: ut.expected_rent ? parseFloat(ut.expected_rent) : null,
       expected_handover_value: ut.expected_handover_value ? parseFloat(ut.expected_handover_value) : null,
+      is_featured: ut.is_featured,
+      featured_label: ut.featured_label || null,
     }))
 
     try {
@@ -1057,6 +1063,35 @@ export default function EditProjectClient({ project }: { project: Project }) {
                             e.target.value = ''
                           }}
                         />
+                      </div>
+
+                      {/* Featured badge */}
+                      <div className="border-t border-gray-100 pt-4 mt-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Featured badge
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => updateUnitType(i, 'is_featured', !ut.is_featured)}
+                            className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors"
+                            style={{ backgroundColor: ut.is_featured ? '#A0784A' : '#E5E7EB' }}
+                          >
+                            <span
+                              className="inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform"
+                              style={{ transform: ut.is_featured ? 'translateX(18px)' : 'translateX(2px)' }}
+                            />
+                          </button>
+                        </div>
+                        {ut.is_featured && (
+                          <input
+                            type="text"
+                            value={ut.featured_label}
+                            onChange={e => updateUnitType(i, 'featured_label', e.target.value)}
+                            placeholder="e.g. Most popular, Our recommendation"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          />
+                        )}
                       </div>
                     </div>
                   )

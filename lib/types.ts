@@ -24,6 +24,8 @@ export type UnitType = {
   expected_rent?: number | null
   expected_handover_value?: number | null
   floor_plan_url?: string | null
+  is_featured?: boolean | null
+  featured_label?: string | null
 }
 
 export type ConnectivityItem = {
