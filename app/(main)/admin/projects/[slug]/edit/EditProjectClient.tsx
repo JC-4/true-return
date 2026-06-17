@@ -305,7 +305,7 @@ function ImageSection({
         <div className="mb-4">
           <p className="text-xs text-gray-500 mb-1.5">About image focal point</p>
           <div className="flex gap-1.5">
-            {(['top', 'center', 'bottom'] as const).map(pos => (
+            {(['left', 'center', 'right'] as const).map(pos => (
               <button
                 key={pos}
                 type="button"

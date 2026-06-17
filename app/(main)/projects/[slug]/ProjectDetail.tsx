@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
@@ -1780,9 +1780,11 @@ export default function ProjectDetail({
   const amenities = project.amenities ?? []
   const faqs = project.faqs ?? []
   const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
+    if (a.bedrooms === null && b.bedrooms === null) return 0
     if (a.bedrooms === null) return 1
     if (b.bedrooms === null) return -1
-    return a.bedrooms - b.bedrooms
+    if (a.bedrooms !== b.bedrooms) return a.bedrooms - b.bedrooms
+    return (a.size_sqft_from ?? 0) - (b.size_sqft_from ?? 0)
   })
   const firstPlan = plans[0]
   const firstPlanLabel = (() => {
@@ -1808,6 +1810,7 @@ export default function ProjectDetail({
   })()
 
   const overviewNavSections = [
+    { id: 'about', label: 'About' },
     { id: 'units', label: 'Unit Types' },
     ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
     ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
@@ -1845,20 +1848,20 @@ export default function ProjectDetail({
             <div className="grid grid-cols-3 gap-2">
               {fmtHandover(project.handover_date) !== '—' && (
                 <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <p className="text-sm font-medium text-white">{fmtHandover(project.handover_date)}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-poppins, Poppins, sans-serif)', lineHeight: 1.2 }}>{fmtHandover(project.handover_date)}</p>
                   <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Handover</p>
                 </div>
               )}
-              {project.location && (
+              {project.starting_price && (
                 <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <p className="text-sm font-medium text-white truncate">{project.location}</p>
-                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Location</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-poppins, Poppins, sans-serif)', lineHeight: 1.2 }}>{fmtPrice(project.starting_price)}</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>From</p>
                 </div>
               )}
-              {statusLabel(project.status) && (
+              {firstPlanLabel && (
                 <div className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <p className="text-sm font-medium text-white">{statusLabel(project.status)}</p>
-                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Status</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-poppins, Poppins, sans-serif)', lineHeight: 1.2 }}>{firstPlanLabel.replace(' payment plan', '')}</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>Payment plan</p>
                 </div>
               )}
             </div>
@@ -1871,10 +1874,6 @@ export default function ProjectDetail({
           {project.tagline && (
             <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
           )}
-          {project.description && (
-            <p className="text-sm text-brand-muted leading-relaxed mb-4">{project.description}</p>
-          )}
-
           {project.highlights && project.highlights.length > 0 && (
             <div className="flex flex-col gap-2.5 mb-6">
               {project.highlights.map((h, i) => (
@@ -2009,82 +2008,130 @@ export default function ProjectDetail({
     <GallerySlider images={images.slice(1)} onOpenLightbox={(i) => setLightboxIndex(i + 1)} />
   ) : null
 
-  const paymentAndDevSection = (plans.length > 0 || project.developer) ? (
+  const SEGMENT_ICONS: Record<string, string> = {
+    downpayment: 'ti-wallet',
+    construction: 'ti-crane',
+    handover: 'ti-key',
+    'post-handover': 'ti-calendar',
+  }
+
+  const SEGMENT_CARD_STYLE: Record<string, { bg: string; border: string; iconBg: string; iconBorder: string; pctColor: string }> = {
+    downpayment:     { bg: '#1C1B18', border: '#1C1B18',  iconBg: 'rgba(255,255,255,0.1)', iconBorder: 'transparent',  pctColor: '#C9A96E' },
+    construction:    { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#8B5E2A' },
+    handover:        { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#1C1B18' },
+    'post-handover': { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#1C1B18' },
+  }
+
+  const SEGMENT_SUBTITLES: Record<string, (seg: { pct: number; date?: string }, handoverDate: string | null) => string> = {
+    downpayment:     () => 'On signing',
+    construction:    () => 'During build · Instalments',
+    handover:        (_, hd) => `${hd ? fmtHandover(hd) : 'On handover'} · Cash or mortgage`,
+    'post-handover': (seg) => `After handover · ${seg.pct}%`,
+  }
+
+  const paymentPlanSection = plans.length > 0 ? (
     <section id="payment-plan" className="py-16 border-t border-brand-border">
-      <div className="grid md:grid-cols-2 gap-6 items-start">
-
-        {/* Left: payment plans */}
-        {plans.length > 0 && (
-          <div>
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Payment plan</p>
-            <div className="space-y-4">
-              {plans.map((plan, i) => {
-                const merged = mergedPlanSegs(plan.segments)
-                return (
-                  <div key={i} className="bg-white border border-brand-border rounded-xl p-5">
-                    <p className="text-sm font-medium text-brand-text mb-3">{plan.name}</p>
-                    <div className="h-1.5 rounded-full overflow-hidden flex mb-3">
-                      {merged.map((s, j) => (
-                        <div key={j} style={{ width: `${s.pct}%`, backgroundColor: PLAN_COLORS[s.type] }} />
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-4">
-                      {merged.map((s, j) => (
-                        <div key={j} className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PLAN_COLORS[s.type] }} />
-                          <span className="text-xs text-brand-hint">{PLAN_SEG_LABELS[s.type]} · {s.pct}%</span>
+      <div className="mb-10">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-2">Payment plan</p>
+        {plans.map((plan, pi) => {
+          const merged = mergedPlanSegs(plan.segments)
+          const cols = merged.length
+          return (
+            <div key={pi} className={pi > 0 ? 'mt-10' : ''}>
+              <h2 className="text-2xl font-semibold text-brand-text mb-8">{plan.name}</h2>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: Array.from({ length: cols * 2 - 1 }, (_, i) => i % 2 === 0 ? '1fr' : '40px').join(' '),
+                  gap: 0,
+                  alignItems: 'start',
+                }}
+              >
+                {merged.map((seg, i) => {
+                  const style = SEGMENT_CARD_STYLE[seg.type] ?? SEGMENT_CARD_STYLE.construction
+                  const icon = SEGMENT_ICONS[seg.type] ?? 'ti-circle'
+                  const subtitle = SEGMENT_SUBTITLES[seg.type]?.(
+                    { pct: seg.pct, date: undefined },
+                    project.handover_date ?? null
+                  ) ?? ''
+                  const isFirst = seg.type === 'downpayment'
+                  return (
+                    <Fragment key={seg.type}>
+                      <div
+                        style={{
+                          background: style.bg,
+                          border: `0.5px solid ${style.border}`,
+                          borderRadius: 16,
+                          padding: '28px 24px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            background: style.iconBg,
+                            border: `0.5px solid ${style.iconBorder}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 20,
+                          }}
+                        >
+                          <i
+                            className={`ti ${icon}`}
+                            style={{ fontSize: 22, color: style.pctColor }}
+                            aria-hidden="true"
+                          />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Right: developer */}
-        {project.developer && (
-          <div>
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Developer</p>
-            <div className="bg-white border border-brand-border rounded-xl p-5 flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-lg bg-brand-text flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-                {project.developer.logo_url ? (
-                  <img src={project.developer.logo_url} alt={project.developer.name} className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
-                {project.developer.description && (
-                  <p className="text-xs text-brand-hint leading-relaxed mt-1">{project.developer.description}</p>
-                )}
-                <div className="flex flex-wrap gap-5 mt-3">
-                  {project.developer.founded_year && (
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-brand-hint">Founded</p>
-                      <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.founded_year}</p>
-                    </div>
-                  )}
-                  {project.developer.portfolio_value && (
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-brand-hint">Portfolio</p>
-                      <p className="text-xs font-medium text-brand-text mt-0.5">{project.developer.portfolio_value}</p>
-                    </div>
-                  )}
-                </div>
-                <Link
-                  href={`/developers/${project.developer.slug}`}
-                  className="text-xs text-brand-bronze hover:underline mt-2 inline-block"
-                >
-                  View all projects →
-                </Link>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            color: isFirst ? 'rgba(255,255,255,0.4)' : '#9B9589',
+                            margin: '0 0 6px',
+                          }}
+                        >
+                          {PLAN_SEG_LABELS[seg.type]}
+                        </p>
+                        <p style={{ fontSize: 40, fontWeight: 600, color: style.pctColor, margin: 0, lineHeight: 1 }}>
+                          {seg.pct}%
+                        </p>
+                        {project.starting_price && (
+                          <p style={{ fontSize: 12, color: isFirst ? 'rgba(255,255,255,0.4)' : '#9B9589', margin: '4px 0 0' }}>
+                            AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
+                          </p>
+                        )}
+                        <p style={{ fontSize: 13, color: isFirst ? 'rgba(255,255,255,0.55)' : '#5C5852', margin: '8px 0 0', lineHeight: 1.5 }}>
+                          {subtitle}
+                        </p>
+                      </div>
+                      {i < merged.length - 1 && (
+                        <div key={`arrow-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 52 }}>
+                          <i className="ti ti-arrow-right" style={{ fontSize: 18, color: '#9B9589' }} aria-hidden="true" />
+                        </div>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </div>
             </div>
-          </div>
-        )}
+          )
+        })}
+      </div>
 
+      <div style={{ background: '#F4F3F0', borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 500, color: '#1C1B18', margin: '0 0 2px' }}>Financing the handover payment?</p>
+          <p style={{ fontSize: 12, color: '#5C5852', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
+        </div>
+        <button
+          onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ fontSize: 12, fontWeight: 500, color: '#1C1B18', background: 'transparent', border: '0.5px solid #1C1B18', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          Get analysis →
+        </button>
       </div>
     </section>
   ) : null
@@ -2245,24 +2292,6 @@ export default function ProjectDetail({
           <p className="text-xs sm:text-sm text-white/50 mb-4">{project.location}{project.community ? ` · ${project.community}` : ''}</p>
         )}
 
-        {/* Stat pills */}
-        <div className="flex flex-wrap gap-2">
-          {project.starting_price && (
-            <span className="bg-white/10 border border-white/15 text-white/80 text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-              From {fmtPrice(project.starting_price)}
-            </span>
-          )}
-          {project.handover_date && (
-            <span className="bg-white/10 border border-white/15 text-white/80 text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-              Handover {fmtHandover(project.handover_date)}
-            </span>
-          )}
-          {firstPlanLabel && (
-            <span className="bg-white/10 border border-white/15 text-white/80 text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-              {firstPlanLabel}
-            </span>
-          )}
-        </div>
       </div>
     </div>
   )
@@ -2308,12 +2337,10 @@ export default function ProjectDetail({
                 <SecondaryPillNav sections={overviewNavSections} />
                 {aboutSection}
                 {unitTypesSection}
+                {paymentPlanSection}
                 {returnAnalysisTeaserSection}
               </div>
               {gallerySection}
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                {paymentAndDevSection}
-              </div>
               {locationSection}
               {amenitiesSection}
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
@@ -2402,12 +2429,10 @@ export default function ProjectDetail({
                 <SecondaryPillNav sections={overviewNavSections} />
                 {aboutSection}
                 {unitTypesSection}
+                {paymentPlanSection}
                 {returnAnalysisTeaserSection}
               </div>
               {gallerySection}
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                {paymentAndDevSection}
-              </div>
               {locationSection}
               {amenitiesSection}
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
