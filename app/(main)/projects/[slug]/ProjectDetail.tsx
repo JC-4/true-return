@@ -438,7 +438,7 @@ function BrochureTab({ slug }: { slug: string }) {
 
 // ─── Secondary pill nav ───────────────────────────────────────────────────────
 
-function SecondaryPillNav({ sections }: { sections: { id: string; label: string; locked?: boolean }[] }) {
+function SecondaryPillNav({ sections }: { sections: { id: string; label: string; locked?: boolean; color?: string }[] }) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
   const containerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -497,13 +497,13 @@ function SecondaryPillNav({ sections }: { sections: { id: string; label: string;
             transition: 'left 0.4s cubic-bezier(0.4, 0.2, 0.2, 1), width 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)',
           }}
         />
-        {sections.map(({ id, label, locked }) => (
+        {sections.map(({ id, label, locked, color }) => (
           <button
             key={id}
             ref={el => { if (el) pillRefs.current.set(id, el); else pillRefs.current.delete(id) }}
             onClick={() => handleClick(id)}
             className="relative z-10 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap border-0 bg-transparent transition-colors inline-flex items-center gap-1.5"
-            style={{ color: activeId === id ? '#fff' : '#8e8e8e' }}
+            style={{ color: activeId === id ? '#fff' : (color ?? '#8e8e8e') }}
           >
             {locked && (
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1031,7 +1031,7 @@ function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: bo
   const secondaryNavSections = [
     { id: 'inputs',        label: 'Inputs' },
     { id: 'scenarios',     label: 'Scenarios',     locked: !isAuth },
-    { id: 'financing',     label: 'Financing',     locked: !isAuth },
+    { id: 'financing',     label: 'Financing',     locked: !isAuth, color: '#C9A96E' },
     { id: 'exit-analysis', label: 'Exit analysis', locked: !isAuth },
   ]
 
@@ -2008,131 +2008,86 @@ export default function ProjectDetail({
     <GallerySlider images={images.slice(1)} onOpenLightbox={(i) => setLightboxIndex(i + 1)} />
   ) : null
 
-  const SEGMENT_ICONS: Record<string, string> = {
-    downpayment: 'ti-wallet',
-    construction: 'ti-crane',
-    handover: 'ti-key',
-    'post-handover': 'ti-calendar',
-  }
-
-  const SEGMENT_CARD_STYLE: Record<string, { bg: string; border: string; iconBg: string; iconBorder: string; pctColor: string }> = {
-    downpayment:     { bg: '#1C1B18', border: '#1C1B18',  iconBg: 'rgba(255,255,255,0.1)', iconBorder: 'transparent',  pctColor: '#C9A96E' },
-    construction:    { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#8B5E2A' },
-    handover:        { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#1C1B18' },
-    'post-handover': { bg: '#F4F3F0', border: '#E5E3DC',  iconBg: '#ffffff',                iconBorder: '#E5E3DC',       pctColor: '#1C1B18' },
-  }
-
-  const SEGMENT_SUBTITLES: Record<string, (seg: { pct: number; date?: string }, handoverDate: string | null) => string> = {
-    downpayment:     () => 'On signing',
-    construction:    () => 'During build · Instalments',
-    handover:        (_, hd) => `${hd ? fmtHandover(hd) : 'On handover'} · Cash or mortgage`,
-    'post-handover': (seg) => `After handover · ${seg.pct}%`,
-  }
-
   const paymentPlanSection = plans.length > 0 ? (
     <section id="payment-plan" className="py-16 border-t border-brand-border">
-      <div className="mb-10">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-2">Payment plan</p>
-        {plans.map((plan, pi) => {
-          const merged = mergedPlanSegs(plan.segments)
-          const cols = merged.length
-          return (
-            <div key={pi} className={pi > 0 ? 'mt-10' : ''}>
-              <h2 className="text-2xl font-semibold text-brand-text mb-8">{plan.name}</h2>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: Array.from({ length: cols * 2 - 1 }, (_, i) => i % 2 === 0 ? '1fr' : '40px').join(' '),
-                  gap: 0,
-                  alignItems: 'start',
-                }}
-              >
+      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
+      {plans.map((plan, pi) => {
+        const merged = mergedPlanSegs(plan.segments)
+        const cols = merged.length
+        return (
+          <div key={pi} className={pi > 0 ? 'mt-10' : ''}>
+            <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
+              {/* Header row */}
+              <div style={{ padding: '20px 28px', borderBottom: '0.5px solid #E5E3DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 4px' }}>Payment plan</p>
+                  <p style={{ fontSize: 16, fontWeight: 500, color: '#1C1B18', margin: 0 }}>{plan.name}</p>
+                </div>
+                <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', width: 180 }}>
+                  {merged.map((seg, i) => {
+                    const barColors: Record<string, string> = { downpayment: '#3D2008', construction: '#8B5E2A', handover: '#C9A96E', 'post-handover': '#A0784A' }
+                    return (
+                      <Fragment key={seg.type}>
+                        {i > 0 && <div style={{ width: 1, background: '#F4F3F0', flexShrink: 0 }} />}
+                        <div style={{ width: `${seg.pct}%`, background: barColors[seg.type] ?? '#C9A96E' }} />
+                      </Fragment>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Segment columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: Array.from({ length: cols }, () => '1fr').join(' ') }}>
                 {merged.map((seg, i) => {
-                  const style = SEGMENT_CARD_STYLE[seg.type] ?? SEGMENT_CARD_STYLE.construction
-                  const icon = SEGMENT_ICONS[seg.type] ?? 'ti-circle'
-                  const subtitle = SEGMENT_SUBTITLES[seg.type]?.(
-                    { pct: seg.pct, date: undefined },
-                    project.handover_date ?? null
-                  ) ?? ''
-                  const isFirst = seg.type === 'downpayment'
+                  const isHandover = seg.type === 'handover'
+                  const pctColor = isHandover ? '#A0784A' : '#1C1B18'
+                  const subtitle = (() => {
+                    if (seg.type === 'downpayment') return 'On signing'
+                    if (seg.type === 'construction') return 'Instalments'
+                    if (seg.type === 'handover') return `${project.handover_date ? fmtHandover(project.handover_date) : 'On handover'} · Cash or mortgage`
+                    if (seg.type === 'post-handover') return `After handover · ${seg.pct}%`
+                    return ''
+                  })()
                   return (
-                    <Fragment key={seg.type}>
-                      <div
-                        style={{
-                          background: style.bg,
-                          border: `0.5px solid ${style.border}`,
-                          borderRadius: 16,
-                          padding: '28px 24px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 12,
-                            background: style.iconBg,
-                            border: `0.5px solid ${style.iconBorder}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: 20,
-                          }}
-                        >
-                          <i
-                            className={`ti ${icon}`}
-                            style={{ fontSize: 22, color: style.pctColor }}
-                            aria-hidden="true"
-                          />
-                        </div>
-                        <p
-                          style={{
-                            fontSize: 11,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: isFirst ? 'rgba(255,255,255,0.4)' : '#9B9589',
-                            margin: '0 0 6px',
-                          }}
-                        >
-                          {PLAN_SEG_LABELS[seg.type]}
+                    <div
+                      key={seg.type}
+                      style={{
+                        padding: '28px 28px',
+                        borderRight: i < merged.length - 1 ? '0.5px solid #E5E3DC' : undefined,
+                      }}
+                    >
+                      <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 12px' }}>
+                        {PLAN_SEG_LABELS[seg.type]}
+                      </p>
+                      <p style={{ fontSize: 44, fontWeight: 600, color: pctColor, margin: 0, lineHeight: 1 }}>
+                        {seg.pct}%
+                      </p>
+                      <p style={{ fontSize: 12, color: '#9B9589', margin: '10px 0 3px' }}>{subtitle}</p>
+                      {project.starting_price && (
+                        <p style={{ fontSize: 12, color: '#A0784A', margin: 0 }}>
+                          AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
                         </p>
-                        <p style={{ fontSize: 40, fontWeight: 600, color: style.pctColor, margin: 0, lineHeight: 1 }}>
-                          {seg.pct}%
-                        </p>
-                        {project.starting_price && (
-                          <p style={{ fontSize: 12, color: isFirst ? 'rgba(255,255,255,0.4)' : '#9B9589', margin: '4px 0 0' }}>
-                            AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
-                          </p>
-                        )}
-                        <p style={{ fontSize: 13, color: isFirst ? 'rgba(255,255,255,0.55)' : '#5C5852', margin: '8px 0 0', lineHeight: 1.5 }}>
-                          {subtitle}
-                        </p>
-                      </div>
-                      {i < merged.length - 1 && (
-                        <div key={`arrow-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 52 }}>
-                          <i className="ti ti-arrow-right" style={{ fontSize: 18, color: '#9B9589' }} aria-hidden="true" />
-                        </div>
                       )}
-                    </Fragment>
+                    </div>
                   )
                 })}
               </div>
             </div>
-          )
-        })}
-      </div>
-
-      <div style={{ background: '#F4F3F0', borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#1C1B18', margin: '0 0 2px' }}>Financing the handover payment?</p>
-          <p style={{ fontSize: 12, color: '#5C5852', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
-        </div>
-        <button
-          onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          style={{ fontSize: 12, fontWeight: 500, color: '#1C1B18', background: 'transparent', border: '0.5px solid #1C1B18', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-        >
-          Get analysis →
-        </button>
-      </div>
+            {/* Financing strip */}
+            <div style={{ background: '#A0784A', borderRadius: 10, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', margin: '0 0 2px' }}>Financing the handover payment?</p>
+                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
+              </div>
+              <button
+                onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+                style={{ fontSize: 12, fontWeight: 500, color: '#fff', background: 'transparent', border: '0.5px solid rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+              >
+                Get analysis →
+              </button>
+            </div>
+          </div>
+        )
+      })}
     </section>
   ) : null
 
