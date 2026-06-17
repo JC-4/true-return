@@ -1630,7 +1630,6 @@ function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLig
 
   return (
     <section id="gallery" className="py-16 border-t border-brand-border">
-      <div className="max-w-6xl mx-auto px-6 sm:px-10">
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Gallery</p>
         <div className="relative rounded-2xl overflow-hidden" style={{ height: 'clamp(240px, 50vw, 600px)' }}>
           <img
@@ -1686,7 +1685,6 @@ function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLig
             ))}
           </div>
         )}
-      </div>
     </section>
   )
 }
@@ -1715,6 +1713,7 @@ export default function ProjectDetail({
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [floorPlanUrl, setFloorPlanUrl] = useState<string | null>(null)
+  const [activePlanIndex, setActivePlanIndex] = useState(0)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
@@ -1812,11 +1811,9 @@ export default function ProjectDetail({
   const overviewNavSections = [
     { id: 'about', label: 'About' },
     { id: 'units', label: 'Unit Types' },
-    ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
     ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
+    ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
     ...((connectivity.length > 0 || mapEmbedSrc) ? [{ id: 'location', label: 'Location' }] : []),
-    ...(amenities.length > 0 ? [{ id: 'amenities', label: 'Amenities' }] : []),
-    ...(faqs.length > 0 ? [{ id: 'faq', label: 'FAQ' }] : []),
   ]
 
   // ─── Shared section content ────────────────────────────────────────────────
@@ -2008,92 +2005,115 @@ export default function ProjectDetail({
     <GallerySlider images={images.slice(1)} onOpenLightbox={(i) => setLightboxIndex(i + 1)} />
   ) : null
 
-  const paymentPlanSection = plans.length > 0 ? (
-    <section id="payment-plan" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
-      {plans.map((plan, pi) => {
-        const merged = mergedPlanSegs(plan.segments)
-        const cols = merged.length
-        return (
-          <div key={pi} className={pi > 0 ? 'mt-10' : ''}>
-            <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
-              {/* Header row */}
-              <div style={{ padding: '20px 28px', borderBottom: '0.5px solid #E5E3DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 4px' }}>Payment plan</p>
-                  <p style={{ fontSize: 16, fontWeight: 500, color: '#1C1B18', margin: 0 }}>{plan.name}</p>
-                </div>
-                <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', width: 180 }}>
-                  {merged.map((seg, i) => {
-                    const barColors: Record<string, string> = { downpayment: '#3D2008', construction: '#8B5E2A', handover: '#C9A96E', 'post-handover': '#A0784A' }
-                    return (
-                      <Fragment key={seg.type}>
-                        {i > 0 && <div style={{ width: 1, background: '#F4F3F0', flexShrink: 0 }} />}
-                        <div style={{ width: `${seg.pct}%`, background: barColors[seg.type] ?? '#C9A96E' }} />
-                      </Fragment>
-                    )
-                  })}
-                </div>
-              </div>
-              {/* Segment columns */}
-              <div style={{ display: 'grid', gridTemplateColumns: Array.from({ length: cols }, () => '1fr').join(' ') }}>
-                {merged.map((seg, i) => {
-                  const isHandover = seg.type === 'handover'
-                  const pctColor = isHandover ? '#A0784A' : '#1C1B18'
-                  const subtitle = (() => {
-                    if (seg.type === 'downpayment') return 'On signing'
-                    if (seg.type === 'construction') return 'Instalments'
-                    if (seg.type === 'handover') return `${project.handover_date ? fmtHandover(project.handover_date) : 'On handover'} · Cash or mortgage`
-                    if (seg.type === 'post-handover') return `After handover · ${seg.pct}%`
-                    return ''
-                  })()
-                  return (
-                    <div
-                      key={seg.type}
-                      style={{
-                        padding: '28px 28px',
-                        borderRight: i < merged.length - 1 ? '0.5px solid #E5E3DC' : undefined,
-                      }}
-                    >
-                      <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 12px' }}>
-                        {PLAN_SEG_LABELS[seg.type]}
-                      </p>
-                      <p style={{ fontSize: 44, fontWeight: 600, color: pctColor, margin: 0, lineHeight: 1 }}>
-                        {seg.pct}%
-                      </p>
-                      <p style={{ fontSize: 12, color: '#9B9589', margin: '10px 0 3px' }}>{subtitle}</p>
-                      {project.starting_price && (
-                        <p style={{ fontSize: 12, color: '#A0784A', margin: 0 }}>
-                          AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            {/* Financing strip */}
-            <div style={{ background: '#A0784A', borderRadius: 10, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', margin: '0 0 2px' }}>Financing the handover payment?</p>
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
-              </div>
+  const paymentPlanSection = plans.length > 0 ? (() => {
+    const plan = plans[activePlanIndex] ?? plans[0]
+    const merged = mergedPlanSegs(plan.segments)
+    const cols = merged.length
+    return (
+      <section id="payment-plan" className="py-16 border-t border-brand-border">
+        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
+
+        {/* Plan selector — only shown when multiple plans exist */}
+        {plans.length > 1 && (
+          <div style={{ display: 'inline-flex', background: '#F4F3F0', borderRadius: 9999, padding: 4, marginBottom: 16, gap: 0 }}>
+            {plans.map((p, i) => (
               <button
-                onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-                style={{ fontSize: 12, fontWeight: 500, color: '#fff', background: 'transparent', border: '0.5px solid rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                key={i}
+                onClick={() => setActivePlanIndex(i)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: '6px 16px',
+                  borderRadius: 9999,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activePlanIndex === i ? '#1C1B18' : 'transparent',
+                  color: activePlanIndex === i ? '#fff' : '#9B9589',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
               >
-                Get analysis →
+                {p.name}
               </button>
+            ))}
+          </div>
+        )}
+
+        <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
+          {/* Header row */}
+          <div style={{ padding: '20px 28px', borderBottom: '0.5px solid #E5E3DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 4px' }}>Payment plan</p>
+              <p style={{ fontSize: 16, fontWeight: 500, color: '#1C1B18', margin: 0 }}>{plan.name}</p>
+            </div>
+            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', width: 180 }}>
+              {merged.map((seg, i) => {
+                const barColors: Record<string, string> = { downpayment: '#3D2008', construction: '#8B5E2A', handover: '#C9A96E', 'post-handover': '#A0784A' }
+                return (
+                  <Fragment key={seg.type}>
+                    {i > 0 && <div style={{ width: 1, background: '#F4F3F0', flexShrink: 0 }} />}
+                    <div style={{ width: `${seg.pct}%`, background: barColors[seg.type] ?? '#C9A96E' }} />
+                  </Fragment>
+                )
+              })}
             </div>
           </div>
-        )
-      })}
-    </section>
-  ) : null
+          {/* Segment columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: Array.from({ length: cols }, () => '1fr').join(' ') }}>
+            {merged.map((seg, i) => {
+              const isHandover = seg.type === 'handover'
+              const pctColor = isHandover ? '#A0784A' : '#1C1B18'
+              const subtitle = (() => {
+                if (seg.type === 'downpayment') return 'On signing'
+                if (seg.type === 'construction') return 'Instalments'
+                if (seg.type === 'handover') return `${project.handover_date ? fmtHandover(project.handover_date) : 'On handover'} · Cash or mortgage`
+                if (seg.type === 'post-handover') return `After handover · ${seg.pct}%`
+                return ''
+              })()
+              return (
+                <div
+                  key={seg.type}
+                  style={{
+                    padding: '28px 28px',
+                    borderRight: i < merged.length - 1 ? '0.5px solid #E5E3DC' : undefined,
+                  }}
+                >
+                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 12px' }}>
+                    {PLAN_SEG_LABELS[seg.type]}
+                  </p>
+                  <p style={{ fontSize: 44, fontWeight: 600, color: pctColor, margin: 0, lineHeight: 1 }}>
+                    {seg.pct}%
+                  </p>
+                  <p style={{ fontSize: 12, color: '#9B9589', margin: '10px 0 3px' }}>{subtitle}</p>
+                  {project.starting_price && (
+                    <p style={{ fontSize: 12, color: '#A0784A', margin: 0 }}>
+                      AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Financing strip — rendered once, outside the plan loop */}
+        <div style={{ background: '#A0784A', borderRadius: 10, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', margin: '0 0 2px' }}>Financing the handover payment?</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
+          </div>
+          <button
+            onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+            style={{ fontSize: 12, fontWeight: 500, color: '#fff', background: 'transparent', border: '0.5px solid rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+          >
+            Get analysis →
+          </button>
+        </div>
+      </section>
+    )
+  })() : null
 
   const locationSection = (connectivity.length > 0 || mapEmbedSrc) ? (
-    <section id="location" className="py-16 border-t border-brand-border" style={{ backgroundColor: '#F4F3F0' }}>
-      <div className="max-w-6xl mx-auto px-6 sm:px-10">
+    <section id="location" className="py-16 border-t border-brand-border">
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Location</p>
         {mapEmbedSrc && (
           <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: connectivity.length > 0 ? 24 : 0 }}>
@@ -2119,7 +2139,6 @@ export default function ProjectDetail({
             ))}
           </div>
         )}
-      </div>
     </section>
   ) : null
 
@@ -2168,8 +2187,7 @@ export default function ProjectDetail({
   )
 
   const amenitiesSection = amenities.length > 0 ? (
-    <section id="amenities" className="py-16 border-t border-brand-border" style={{ backgroundColor: '#F4F3F0' }}>
-      <div className="max-w-6xl mx-auto px-6 sm:px-10">
+    <section id="amenities" className="py-16 border-t border-brand-border">
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
         <div className="flex flex-wrap gap-2">
           {amenities.map((a, i) => (
@@ -2182,7 +2200,6 @@ export default function ProjectDetail({
             </span>
           ))}
         </div>
-      </div>
     </section>
   ) : null
 
@@ -2294,11 +2311,9 @@ export default function ProjectDetail({
                 {unitTypesSection}
                 {paymentPlanSection}
                 {returnAnalysisTeaserSection}
-              </div>
-              {gallerySection}
-              {locationSection}
-              {amenitiesSection}
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                {gallerySection}
+                {locationSection}
+                {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
@@ -2386,11 +2401,9 @@ export default function ProjectDetail({
                 {unitTypesSection}
                 {paymentPlanSection}
                 {returnAnalysisTeaserSection}
-              </div>
-              {gallerySection}
-              {locationSection}
-              {amenitiesSection}
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+                {gallerySection}
+                {locationSection}
+                {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
