@@ -499,6 +499,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
       expected_handover_value: '',
       floor_plan_url: null,
       floor_plan_uploading: false,
+      is_featured: false,
+      featured_label: '',
     }])
   }
 
