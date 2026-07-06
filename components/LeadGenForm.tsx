@@ -38,7 +38,10 @@ const inputCls = (error: boolean) =>
       : 'border-brand-border focus:ring-brand-bronze focus:border-brand-bronze'
   }`
 
+const BRONZE = '#A0784A'
+
 export default function LeadGenForm({ projectName, onSubmit }: Props) {
+  const [step, setStep]         = useState<1 | 2>(1)
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [phone, setPhone]       = useState('')
@@ -48,23 +51,33 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
   const [errors, setErrors]     = useState<Partial<Record<'name' | 'email' | 'phone' | 'budget' | 'timeline', string>>>({})
   const [submitted, setSubmitted] = useState(false)
 
-  function validate() {
+  function validateStep1() {
     const next: typeof errors = {}
-    if (!name.trim())     next.name     = 'Name is required'
-    if (!email.trim())    next.email    = 'Email is required'
-    if (!phone.trim())    next.phone    = 'Phone / WhatsApp is required'
-    if (!budget)          next.budget   = 'Please select a budget range'
-    if (!timeline)        next.timeline = 'Please select a timeline'
+    if (!name.trim())  next.name  = 'Name is required'
+    if (!email.trim()) next.email = 'Email is required'
+    if (!phone.trim()) next.phone = 'Phone / WhatsApp is required'
     return next
+  }
+
+  function validateStep2() {
+    const next: typeof errors = {}
+    if (!budget)   next.budget   = 'Please select a budget range'
+    if (!timeline) next.timeline = 'Please select a timeline'
+    return next
+  }
+
+  function handleContinue(e: React.FormEvent) {
+    e.preventDefault()
+    const next = validateStep1()
+    if (Object.keys(next).length > 0) { setErrors(next); return }
+    setErrors({})
+    setStep(2)
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const next = validate()
-    if (Object.keys(next).length > 0) {
-      setErrors(next)
-      return
-    }
+    const next = validateStep2()
+    if (Object.keys(next).length > 0) { setErrors(next); return }
     setErrors({})
 
     const data: LeadGenFormData = {
@@ -77,7 +90,6 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
       project:  projectName,
     }
 
-    // TODO: wire submission to backend (e.g. Supabase insert or API route)
     onSubmit(data)
     setSubmitted(true)
   }
@@ -96,110 +108,147 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
     )
   }
 
+  const pillBase: React.CSSProperties = { width: 24, height: 4, borderRadius: 9999 }
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      {/* Hidden project field */}
-      <input type="hidden" name="project" value={projectName} />
+    <form onSubmit={step === 1 ? handleContinue : handleSubmit} noValidate className="space-y-4">
 
-      {/* Name */}
-      <div>
-        <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Name <span className="text-red-400">*</span>
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={e => { setName(e.target.value); if (errors.name) setErrors(p => ({ ...p, name: undefined })) }}
-          placeholder="Your full name"
-          className={inputCls(!!errors.name)}
-        />
-        {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
-      </div>
-
-      {/* Email */}
-      <div>
-        <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Email <span className="text-red-400">*</span>
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email: undefined })) }}
-          placeholder="you@example.com"
-          className={inputCls(!!errors.email)}
-        />
-        {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-      </div>
-
-      {/* Phone */}
-      <div>
-        <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Phone / WhatsApp <span className="text-red-400">*</span>
-        </label>
-        <input
-          type="text"
-          value={phone}
-          onChange={e => { setPhone(e.target.value); if (errors.phone) setErrors(p => ({ ...p, phone: undefined })) }}
-          placeholder="+971 50 000 0000"
-          className={inputCls(!!errors.phone)}
-        />
-        {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
-      </div>
-
-      {/* Budget + Timeline — side by side on wider screens */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-brand-muted mb-1.5">
-            Budget <span className="text-red-400">*</span>
-          </label>
-          <select
-            value={budget}
-            onChange={e => { setBudget(e.target.value); if (errors.budget) setErrors(p => ({ ...p, budget: undefined })) }}
-            className={inputCls(!!errors.budget)}
-          >
-            <option value="">Select a range</option>
-            {BUDGET_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {errors.budget && <p className="mt-1 text-xs text-red-500">{errors.budget}</p>}
+      {/* Progress indicator */}
+      <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ ...pillBase, backgroundColor: BRONZE }} />
+          <div style={{ ...pillBase, backgroundColor: step === 2 ? BRONZE : 'var(--brand-border)' }} />
         </div>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-brand-muted">
+          Step {step} of 2
+        </span>
+      </div>
 
-        <div>
-          <label className="block text-xs font-medium text-brand-muted mb-1.5">
-            Purchase timeline <span className="text-red-400">*</span>
-          </label>
-          <select
-            value={timeline}
-            onChange={e => { setTimeline(e.target.value); if (errors.timeline) setErrors(p => ({ ...p, timeline: undefined })) }}
-            className={inputCls(!!errors.timeline)}
+      {step === 1 ? (
+        <>
+          <div>
+            <h3 className="text-base font-semibold text-brand-text">Interested in {projectName}?</h3>
+            <p className="text-sm text-brand-muted mt-0.5">Share your details and we'll send you the analysis.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-brand-muted mb-1.5">
+              Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => { setName(e.target.value); if (errors.name) setErrors(p => ({ ...p, name: undefined })) }}
+              placeholder="Your full name"
+              className={inputCls(!!errors.name)}
+            />
+            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-brand-muted mb-1.5">
+              Email <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email: undefined })) }}
+              placeholder="you@example.com"
+              className={inputCls(!!errors.email)}
+            />
+            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-brand-muted mb-1.5">
+              Phone / WhatsApp <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={phone}
+              onChange={e => { setPhone(e.target.value); if (errors.phone) setErrors(p => ({ ...p, phone: undefined })) }}
+              placeholder="+971 50 000 0000"
+              className={inputCls(!!errors.phone)}
+            />
+            {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors"
           >
-            <option value="">Select a timeline</option>
-            {TIMELINE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
-          {errors.timeline && <p className="mt-1 text-xs text-red-500">{errors.timeline}</p>}
-        </div>
-      </div>
+            Continue →
+          </button>
+        </>
+      ) : (
+        <>
+          <div>
+            <h3 className="text-base font-semibold text-brand-text">One more thing</h3>
+            <p className="text-sm text-brand-muted mt-0.5">Help us tailor the analysis to your situation.</p>
+          </div>
 
-      {/* Message — optional */}
-      <div>
-        <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          What are you looking for?
-          <span className="ml-1 font-normal text-brand-hint">(optional)</span>
-        </label>
-        <textarea
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          placeholder="Tell us a bit about what you're looking for"
-          rows={4}
-          className={`${inputCls(false)} resize-none`}
-        />
-      </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-brand-muted mb-1.5">
+                Budget <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={budget}
+                onChange={e => { setBudget(e.target.value); if (errors.budget) setErrors(p => ({ ...p, budget: undefined })) }}
+                className={inputCls(!!errors.budget)}
+              >
+                <option value="">Select a range</option>
+                {BUDGET_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              {errors.budget && <p className="mt-1 text-xs text-red-500">{errors.budget}</p>}
+            </div>
 
-      <button
-        type="submit"
-        className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors"
-      >
-        Send enquiry
-      </button>
+            <div>
+              <label className="block text-xs font-medium text-brand-muted mb-1.5">
+                Purchase timeline <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={timeline}
+                onChange={e => { setTimeline(e.target.value); if (errors.timeline) setErrors(p => ({ ...p, timeline: undefined })) }}
+                className={inputCls(!!errors.timeline)}
+              >
+                <option value="">Select a timeline</option>
+                {TIMELINE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              {errors.timeline && <p className="mt-1 text-xs text-red-500">{errors.timeline}</p>}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-brand-muted mb-1.5">
+              What are you looking for?
+              <span className="ml-1 font-normal text-brand-hint">(optional)</span>
+            </label>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Tell us a bit about what you're looking for"
+              rows={4}
+              className={`${inputCls(false)} resize-none`}
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors"
+          >
+            Send enquiry
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setErrors({}); setStep(1) }}
+            className="w-full text-center text-xs text-brand-muted hover:text-brand-text transition-colors mt-1"
+          >
+            ← Back
+          </button>
+        </>
+      )}
     </form>
   )
 }

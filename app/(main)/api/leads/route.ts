@@ -1,34 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+
+const MAKE_WEBHOOK = 'https://hook.eu2.make.com/5prfp4iixgyoi5416yhszlaq32514cow'
 
 export async function POST(req: NextRequest) {
-  const { name, email, phone, project_slug } = await req.json() as {
-    name: string
-    email: string
-    phone?: string
-    project_slug?: string
-  }
+  const { name, email, phone, project_slug, source, referrer, utm_source, utm_campaign } =
+    await req.json() as {
+      name: string
+      email: string
+      phone?: string
+      project_slug?: string
+      source?: string
+      referrer?: string
+      utm_source?: string
+      utm_campaign?: string
+    }
 
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
   }
 
-  const { error: insertErr } = await supabase
-    .from('leads')
-    .insert({ name: name.trim(), email: email.trim(), phone: phone?.trim() ?? null, project_slug: project_slug ?? null })
+  const lead_id = crypto.randomUUID()
 
-  if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
-
-  // Fetch brochure_url for the project if a slug was provided
-  let brochure_url: string | null = null
-  if (project_slug) {
-    const { data } = await supabase
-      .from('projects')
-      .select('brochure_url')
-      .eq('slug', project_slug)
-      .single()
-    brochure_url = data?.brochure_url ?? null
+  try {
+    const res = await fetch(MAKE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_id, name, email, phone, project_slug, source, referrer, utm_source, utm_campaign }),
+    })
+    if (!res.ok) {
+      console.error('Make webhook error (POST):', res.status, await res.text())
+    }
+  } catch (err) {
+    console.error('Make webhook fetch failed (POST):', err)
   }
 
-  return NextResponse.json({ ok: true, brochure_url })
+  return NextResponse.json({ ok: true, lead_id })
+}
+
+export async function PATCH(req: NextRequest) {
+  const { lead_id, budget, timeline, message } =
+    await req.json() as {
+      lead_id: string
+      budget?: string
+      timeline?: string
+      message?: string
+    }
+
+  try {
+    const res = await fetch(MAKE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_id, budget, timeline, message }),
+    })
+    if (!res.ok) {
+      console.error('Make webhook error (PATCH):', res.status, await res.text())
+    }
+  } catch (err) {
+    console.error('Make webhook fetch failed (PATCH):', err)
+  }
+
+  return NextResponse.json({ ok: true })
 }
