@@ -121,6 +121,15 @@ export default function LeadGenForm({ projectName }: Props) {
           </svg>
         </div>
         <p className="text-sm font-semibold text-brand-text">Thanks — we'll be in touch shortly.</p>
+        <a
+          href={`https://wa.me/971585940411?text=${encodeURIComponent(`Hi, I'm interested in more information about ${projectName}.`)}`}
+          target="_blank"
+          rel="noopener"
+          className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+          style={{ backgroundColor: '#25D366' }}
+        >
+          Message me on WhatsApp
+        </a>
       </div>
     )
   }
@@ -182,8 +191,14 @@ export default function LeadGenForm({ projectName }: Props) {
             </label>
             <input
               type="text"
+              inputMode="tel"
               value={phone}
-              onChange={e => { setPhone(e.target.value); if (errors.phone) setErrors(p => ({ ...p, phone: undefined })) }}
+              onChange={e => {
+                const raw = e.target.value
+                const filtered = (raw.startsWith('+') ? '+' : '') + raw.replace(/[^\d\s]/g, '').replace(/^\s+/, '')
+                setPhone(filtered)
+                if (errors.phone) setErrors(p => ({ ...p, phone: undefined }))
+              }}
               placeholder="+971 50 000 0000"
               className={inputCls(!!errors.phone)}
             />
@@ -259,13 +274,6 @@ export default function LeadGenForm({ projectName }: Props) {
             {loading ? 'Sending…' : 'Send enquiry'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => { setErrors({}); setStep(1) }}
-            className="w-full text-center text-xs text-brand-muted hover:text-brand-text transition-colors mt-1"
-          >
-            ← Back
-          </button>
         </>
       )}
     </form>
