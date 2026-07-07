@@ -2,19 +2,8 @@
 
 import { useState } from 'react'
 
-export interface LeadGenFormData {
-  name: string
-  email: string
-  phone: string
-  budget: string
-  timeline: string
-  message: string
-  project: string
-}
-
 interface Props {
   projectName: string
-  onSubmit: (data: LeadGenFormData) => void
 }
 
 const BUDGET_OPTIONS = [
@@ -40,7 +29,7 @@ const inputCls = (error: boolean) =>
 
 const BRONZE = '#A0784A'
 
-export default function LeadGenForm({ projectName, onSubmit }: Props) {
+export default function LeadGenForm({ projectName }: Props) {
   const [step, setStep]         = useState<1 | 2>(1)
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
@@ -48,7 +37,9 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
   const [budget, setBudget]     = useState('')
   const [timeline, setTimeline] = useState('')
   const [message, setMessage]   = useState('')
+  const [leadId, setLeadId]     = useState<string | null>(null)
   const [errors, setErrors]     = useState<Partial<Record<'name' | 'email' | 'phone' | 'budget' | 'timeline', string>>>({})
+  const [loading, setLoading]   = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   function validateStep1() {
@@ -66,31 +57,57 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
     return next
   }
 
-  function handleContinue(e: React.FormEvent) {
+  async function handleContinue(e: React.FormEvent) {
     e.preventDefault()
     const next = validateStep1()
     if (Object.keys(next).length > 0) { setErrors(next); return }
     setErrors({})
+    setLoading(true)
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:         name.trim(),
+          email:        email.trim(),
+          phone:        phone.trim(),
+          project_slug: projectName,
+          source:       'Footer form',
+          referrer:     typeof document !== 'undefined' ? document.referrer : '',
+        }),
+      })
+      const data = await res.json() as { ok?: boolean; lead_id?: string }
+      if (data.lead_id) setLeadId(data.lead_id)
+    } catch {
+      // Non-fatal — proceed to step 2 regardless
+    } finally {
+      setLoading(false)
+    }
     setStep(2)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const next = validateStep2()
     if (Object.keys(next).length > 0) { setErrors(next); return }
     setErrors({})
-
-    const data: LeadGenFormData = {
-      name:     name.trim(),
-      email:    email.trim(),
-      phone:    phone.trim(),
-      budget,
-      timeline,
-      message:  message.trim(),
-      project:  projectName,
+    setLoading(true)
+    try {
+      await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id:  leadId,
+          budget,
+          timeline,
+          message:  message.trim(),
+        }),
+      })
+    } catch {
+      // Non-fatal
+    } finally {
+      setLoading(false)
     }
-
-    onSubmit(data)
     setSubmitted(true)
   }
 
@@ -175,9 +192,10 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
 
           <button
             type="submit"
-            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors"
+            disabled={loading}
+            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors disabled:opacity-60"
           >
-            Continue →
+            {loading ? 'Please wait…' : 'Continue →'}
           </button>
         </>
       ) : (
@@ -235,9 +253,10 @@ export default function LeadGenForm({ projectName, onSubmit }: Props) {
 
           <button
             type="submit"
-            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors"
+            disabled={loading}
+            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors disabled:opacity-60"
           >
-            Send enquiry
+            {loading ? 'Sending…' : 'Send enquiry'}
           </button>
 
           <button

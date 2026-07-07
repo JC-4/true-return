@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(MAKE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead_id, name, email, phone, project_slug, source, referrer, utm_source, utm_campaign }),
+      body: JSON.stringify({ event: 'created', lead_id, name, email, phone, project_slug, source, referrer, utm_source, utm_campaign }),
     })
     if (!res.ok) {
       console.error('Make webhook error (POST):', res.status, await res.text())
@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest) {
     const res = await fetch(MAKE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead_id, budget, timeline, message }),
+      body: JSON.stringify({ event: 'completed', lead_id, budget, timeline, message }),
     })
     if (!res.ok) {
       console.error('Make webhook error (PATCH):', res.status, await res.text())

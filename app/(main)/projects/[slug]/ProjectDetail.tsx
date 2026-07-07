@@ -2540,12 +2540,7 @@ export default function ProjectDetail({
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
             <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get an honest view on {project.name}</h2>
             <p className="text-sm text-brand-muted mb-8 text-center">Independent analysis, no developer affiliation. No cost to you.</p>
-            <LeadGenForm
-              projectName={project.name}
-              onSubmit={(data) => {
-                console.log('LeadGenForm submission:', data)
-              }}
-            />
+            <LeadGenForm projectName={project.name} />
           </div>
         </div>
       </section>
