@@ -16,7 +16,7 @@ export default function ContactPage() {
           <p className="text-sm text-brand-muted mb-8 text-center">
             Analysis and advice from an independent buyer&apos;s agent.
           </p>
-          <LeadGenForm projectName="Contact page" />
+          <LeadGenForm projectName="Contact page" isProjectPage={false} />
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 interface Props {
   projectName: string
+  isProjectPage?: boolean
 }
 
 const BUDGET_OPTIONS = [
@@ -29,7 +30,7 @@ const inputCls = (error: boolean) =>
 
 const BRONZE = '#A0784A'
 
-export default function LeadGenForm({ projectName }: Props) {
+export default function LeadGenForm({ projectName, isProjectPage = true }: Props) {
   const [step, setStep]         = useState<1 | 2>(1)
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
@@ -122,7 +123,7 @@ export default function LeadGenForm({ projectName }: Props) {
         </div>
         <p className="text-sm font-semibold text-brand-text">Thanks — we'll be in touch shortly.</p>
         <a
-          href={`https://wa.me/971585940411?text=${encodeURIComponent(`Hi, I'm interested in more information about ${projectName}.`)}`}
+          href={`https://wa.me/971585940411?text=${encodeURIComponent(isProjectPage ? `Hi, I'm interested in more information about ${projectName}.` : "Hi, I'm interested in investing in UAE property.")}`}
           target="_blank"
           rel="noopener"
           className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
