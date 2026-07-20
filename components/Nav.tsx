@@ -18,7 +18,6 @@ const adminLinks = [
   { href: '/deals', label: 'Deals' },
   { href: '/areas', label: 'Areas' },
   { href: '/notes', label: 'Notes' },
-  { href: '/crm',   label: 'CRM' },
 ]
 
 function NavLink({ href, label, pathname, onClick }: { href: string; label: string; pathname: string; onClick?: () => void }) {
