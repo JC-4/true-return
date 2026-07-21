@@ -111,30 +111,30 @@ function ConnectivityIcon({ label }: { label: string }) {
 
 // ─── Brochure form ────────────────────────────────────────────────────────────
 
-function BrochureForm({ projectSlug }: { projectSlug: string }) {
+function BrochureForm({ projectSlug, projectName }: { projectSlug: string; projectName: string }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
-  const [brochureUrl, setBrochureUrl] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const inputCls = 'border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text bg-white focus:outline-none focus:ring-1 focus:ring-brand-bronze focus:border-brand-bronze placeholder:text-brand-hint'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !email.trim()) return
+    if (!name.trim() || !phone.trim()) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, project_slug: projectSlug }),
+        body: JSON.stringify({ name, email, phone, project_slug: projectSlug, source: 'Brochure' }),
       })
-      const data = await res.json() as { ok?: boolean; brochure_url?: string | null; error?: string }
+      const data = await res.json() as { ok?: boolean; error?: string }
       if (!res.ok) { setError(data.error ?? 'Something went wrong'); return }
-      setBrochureUrl(data.brochure_url ?? null)
+      setSubmitted(true)
     } catch {
       setError('Network error — please try again.')
     } finally {
@@ -142,31 +142,41 @@ function BrochureForm({ projectSlug }: { projectSlug: string }) {
     }
   }
 
-  if (brochureUrl) {
+  if (submitted) {
     return (
-      <a
-        href={brochureUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-        style={{ backgroundColor: '#A0784A' }}
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Download brochure
-      </a>
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm font-semibold text-brand-text">Thanks, we&apos;ll send the brochure over shortly.</p>
+        <a
+          href={`https://wa.me/971585940411?text=${encodeURIComponent(`Hi, I've just requested the brochure for ${projectName}.`)}`}
+          target="_blank"
+          rel="noopener"
+          className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+          style={{ backgroundColor: '#25D366' }}
+        >
+          Contact us on WhatsApp
+        </a>
+      </div>
     )
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row flex-wrap gap-2">
       <input value={name} onChange={e => setName(e.target.value)} required placeholder="Your name" className={`${inputCls} w-full sm:w-36`} />
-      <input value={email} onChange={e => setEmail(e.target.value)} type="email" required placeholder="Email address" className={`${inputCls} w-full sm:w-44`} />
-      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (optional)" className={`${inputCls} w-full sm:w-36`} />
+      <input
+        value={phone}
+        inputMode="tel"
+        required
+        onChange={e => {
+          const raw = e.target.value
+          setPhone((raw.startsWith('+') ? '+' : '') + raw.replace(/[^\d\s]/g, '').replace(/^\s+/, ''))
+        }}
+        placeholder="Phone number"
+        className={`${inputCls} w-full sm:w-36`}
+      />
+      <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address" className={`${inputCls} w-full sm:w-44`} />
       <button
         type="submit"
-        disabled={loading || !name.trim() || !email.trim()}
+        disabled={loading || !name.trim() || !phone.trim()}
         className="bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
         style={{ backgroundColor: '#A0784A' }}
       >
@@ -2388,8 +2398,8 @@ export default function ProjectDetail({
             <div className="max-w-6xl mx-auto px-6 sm:px-10 py-12">
               <div className="max-w-lg">
                 <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Download brochure</p>
-                <p className="text-sm text-brand-muted mb-6">Verify your email to access floor plans, renders and payment schedule.</p>
-                <BrochureForm projectSlug={project.slug} />
+                <p className="text-sm text-brand-muted mb-6">Leave your details and we&apos;ll send you the full brochure, floor plans and payment schedule.</p>
+                <BrochureForm projectSlug={project.slug} projectName={project.name} />
               </div>
             </div>
           )}
@@ -2533,17 +2543,19 @@ export default function ProjectDetail({
         </>
       )}
 
-      {/* ── Lead gen footer ────────────────────────────────────────────────── */}
-      <section id="lead-gen-form" className="border-t border-brand-border bg-white">
-        <div className="px-6 sm:px-10 py-16 sm:py-20">
-          <div style={{ maxWidth: 600, margin: '0 auto' }}>
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
-            <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get an honest view on {project.name}</h2>
-            <p className="text-sm text-brand-muted mb-8 text-center">Independent analysis, no developer affiliation. No cost to you.</p>
-            <LeadGenForm projectName={project.name} />
+      {/* ── Lead gen footer (hidden on the brochure tab) ───────────────────── */}
+      {(isAuth ? authTab : pubTab) !== 'brochure' && (
+        <section id="lead-gen-form" className="border-t border-brand-border bg-white">
+          <div className="px-6 sm:px-10 py-16 sm:py-20">
+            <div style={{ maxWidth: 600, margin: '0 auto' }}>
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
+              <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get an honest view on {project.name}</h2>
+              <p className="text-sm text-brand-muted mb-8 text-center">Independent analysis, no developer affiliation. No cost to you.</p>
+              <LeadGenForm projectName={project.name} />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {lightboxIndex !== null && (
         <Lightbox
