@@ -34,6 +34,7 @@ function Field({
   type = 'text',
   placeholder,
   readOnly,
+  hint,
 }: {
   label: string
   value: string
@@ -41,6 +42,7 @@ function Field({
   type?: string
   placeholder?: string
   readOnly?: boolean
+  hint?: string
 }) {
   return (
     <div>
@@ -55,6 +57,7 @@ function Field({
         onChange={e => onChange?.(e.target.value)}
         className={readOnly ? readonlyCls : inputCls}
       />
+      {hint && <p className="mt-1.5 text-xs text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -747,7 +750,13 @@ export default function EditProjectClient({ project }: { project: Project }) {
 
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Community" value={community} onChange={setCommunity} placeholder="e.g. Dubai Creek Harbour" />
-              <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. Dubai, UAE" />
+              <Field
+                label="Location (optional)"
+                value={location}
+                onChange={setLocation}
+                placeholder="e.g. Creek Beach"
+                hint='Only when there&apos;s a sub-location more specific than the community — e.g. "Creek Beach" within "Dubai Creek Harbour". Most projects should leave this blank.'
+              />
             </div>
 
             <div>

@@ -25,21 +25,43 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
   const residentialUnits = unitTypes.filter(ut => ut.bedrooms !== null)
   const poolForDefault   = residentialUnits.length > 0 ? residentialUnits : unitTypes
   const sortedByPrice    = [...poolForDefault].sort((a, b) => (a.price_from ?? 0) - (b.price_from ?? 0))
-  const midUnit          = sortedByPrice[Math.floor(sortedByPrice.length / 2)] ?? sortedByPrice[0]
+  // Prefer a featured unit (cheapest if several are flagged); fall back to the median by price
+  const featuredUnits    = sortedByPrice.filter(ut => ut.is_featured)
+  const defaultUnit      = featuredUnits[0] ?? sortedByPrice[Math.floor(sortedByPrice.length / 2)] ?? sortedByPrice[0]
   // Use !== undefined so bedrooms=null (commercial units) is preserved rather than falling through ??
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
-    midUnit !== undefined ? midUnit.bedrooms : (bedroomGroups[0] ?? null)
+    defaultUnit !== undefined ? defaultUnit.bedrooms : (bedroomGroups[0] ?? null)
   )
   const unitsInGroup = unitTypes.filter(ut => ut.bedrooms === selectedBedrooms)
-  const [selectedUnitId, setSelectedUnitId] = useState<string>(midUnit?.id ?? unitsInGroup[0]?.id ?? '')
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(defaultUnit?.id ?? unitsInGroup[0]?.id ?? '')
   const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? unitsInGroup[0]
 
   const basePrice    = selectedUnit?.price_from ?? project.starting_price ?? 0
   const internalSqft = selectedUnit?.internal_sqft ?? 0
   const balconySqft  = selectedUnit?.balcony_sqft  ?? 0
 
-  function snapRent(v: number) { return Math.min(300_000, Math.max(20_000, Math.round(v / 5_000) * 5_000)) }
-  function snapHV(v: number)   { return Math.min(5_000_000, Math.max(300_000, Math.round(v / 50_000) * 50_000)) }
+  // ── Slider bounds derived from the selected unit's price ───────────────────
+  // Step targets ~100 increments across the range, snapped to the nearest clean
+  // number; bounds are rounded to the step so every slider position lands on a
+  // round value.
+  function sliderBounds(rawMin: number, rawMax: number, minStep: number) {
+    const target = (rawMax - rawMin) / 100
+    const steps = [1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000]
+    const step = Math.max(minStep, steps.reduce((best, s) => Math.abs(s - target) < Math.abs(best - target) ? s : best))
+    return { min: Math.round(rawMin / step) * step, max: Math.round(rawMax / step) * step, step }
+  }
+  // Rent spans 2%–12% gross yield (floored at AED 10k); handover value spans
+  // 70%–250% of price — below purchase is a real scenario the panel must show.
+  // Fallbacks cover units with no price.
+  const rentBounds = basePrice > 0
+    ? sliderBounds(Math.max(10_000, basePrice * 0.02), basePrice * 0.12, 1_000)
+    : { min: 20_000, max: 300_000, step: 5_000 }
+  const hvBounds = basePrice > 0
+    ? sliderBounds(basePrice * 0.7, basePrice * 2.5, 10_000)
+    : { min: 300_000, max: 5_000_000, step: 50_000 }
+
+  function snapRent(v: number) { return Math.min(rentBounds.max, Math.max(rentBounds.min, Math.round(v / rentBounds.step) * rentBounds.step)) }
+  function snapHV(v: number)   { return Math.min(hvBounds.max, Math.max(hvBounds.min, Math.round(v / hvBounds.step) * hvBounds.step)) }
 
   const [rent,          setRent]          = useState(() => snapRent(selectedUnit?.expected_rent          ?? basePrice * 0.07))
   const [handoverValue, setHandoverValue] = useState(() => snapHV  (selectedUnit?.expected_handover_value ?? basePrice * 1.2))
@@ -757,12 +779,12 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
             <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
             <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
           </div>
-          <input type="range" min={20_000} max={300_000} step={5_000} value={rent}
+          <input type="range" min={rentBounds.min} max={rentBounds.max} step={rentBounds.step} value={rent}
             onChange={e => setRent(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 20,000</span>
-            <span className="text-xs text-brand-hint">AED 300,000</span>
+            <span className="text-xs text-brand-hint">AED {rentBounds.min.toLocaleString()}</span>
+            <span className="text-xs text-brand-hint">AED {rentBounds.max.toLocaleString()}</span>
           </div>
         </div>
 
@@ -772,12 +794,12 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
             <span className="text-xs font-medium text-brand-muted">Est. value at handover</span>
             <span className="text-sm font-semibold text-brand-text">{fmtA(handoverValue)}</span>
           </div>
-          <input type="range" min={300_000} max={5_000_000} step={50_000} value={handoverValue}
+          <input type="range" min={hvBounds.min} max={hvBounds.max} step={hvBounds.step} value={handoverValue}
             onChange={e => setHandoverValue(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-brand-hint">AED 300,000</span>
-            <span className="text-xs text-brand-hint">AED 5,000,000</span>
+            <span className="text-xs text-brand-hint">AED {hvBounds.min.toLocaleString()}</span>
+            <span className="text-xs text-brand-hint">AED {hvBounds.max.toLocaleString()}</span>
           </div>
         </div>
 
