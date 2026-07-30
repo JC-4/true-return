@@ -50,15 +50,22 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
     const step = Math.max(minStep, steps.reduce((best, s) => Math.abs(s - target) < Math.abs(best - target) ? s : best))
     return { min: Math.round(rawMin / step) * step, max: Math.round(rawMax / step) * step, step }
   }
-  // Rent spans 2%–12% gross yield (floored at AED 10k); handover value spans
-  // 70%–250% of price — below purchase is a real scenario the panel must show.
-  // Fallbacks cover units with no price.
-  const rentBounds = basePrice > 0
-    ? sliderBounds(Math.max(10_000, basePrice * 0.02), basePrice * 0.12, 1_000)
-    : { min: 20_000, max: 300_000, step: 5_000 }
-  const hvBounds = basePrice > 0
-    ? sliderBounds(basePrice * 0.7, basePrice * 2.5, 10_000)
-    : { min: 300_000, max: 5_000_000, step: 50_000 }
+  // Bounds derive from the unit's stored estimate when there is one, putting
+  // the seeded value near mid-track with usable resolution either side. Units
+  // without an estimate fall back to price-derived bounds; absolute floors
+  // keep small units workable, and hard-coded bounds cover units with no price.
+  const seededRent = selectedUnit?.expected_rent ?? 0
+  const seededHV   = selectedUnit?.expected_handover_value ?? 0
+  const rentBounds = seededRent > 0
+    ? sliderBounds(Math.max(10_000, seededRent * 0.6), seededRent * 1.6, 1_000)
+    : basePrice > 0
+      ? sliderBounds(Math.max(10_000, basePrice * 0.03), basePrice * 0.09, 1_000)
+      : { min: 20_000, max: 300_000, step: 5_000 }
+  const hvBounds = seededHV > 0
+    ? sliderBounds(Math.max(100_000, seededHV * 0.75), seededHV * 1.5, 10_000)
+    : basePrice > 0
+      ? sliderBounds(Math.max(100_000, basePrice * 0.85), basePrice * 1.6, 10_000)
+      : { min: 300_000, max: 5_000_000, step: 50_000 }
 
   function snapRent(v: number) { return Math.min(rentBounds.max, Math.max(rentBounds.min, Math.round(v / rentBounds.step) * rentBounds.step)) }
   function snapHV(v: number)   { return Math.min(hvBounds.max, Math.max(hvBounds.min, Math.round(v / hvBounds.step) * hvBounds.step)) }
