@@ -97,3 +97,53 @@ export type ProjectInsight = {
    *  any visitor who opens /projects/[slug]/insight without a snapshot ID. */
   defaultParams?: Record<string, unknown>
 }
+
+/** Pre-filled per-client figures on a shortlist entry. Stored as jsonb;
+ *  project data (prices, payment plans, handover dates) is never stored here —
+ *  always read live from projects and unit_types. */
+export type ShortlistAssumptions = {
+  rent?: number
+  handoverValue?: number
+  growth?: number
+  holdPeriod?: number
+  financing?: 'cash' | 'mortgage'
+  ltvPct?: number
+  mortgageRate?: number
+}
+
+export type Shortlist = {
+  id: string
+  /** Unguessable public URL segment */
+  token: string
+  client_name: string
+  intro: string | null
+  created_at: string
+  entries?: ShortlistEntry[]
+}
+
+export type ShortlistEntry = {
+  id: string
+  shortlist_id: string
+  project_id: string
+  /** The unit selected for this client; comparison row + panel default */
+  unit_type_id: string | null
+  assumptions: ShortlistAssumptions | null
+  note: string
+  pros: string[]
+  cons: string[]
+  /** null = no pick made — a valid state for a whole shortlist */
+  recommended: boolean | null
+  sort_order: number
+  project?: Project
+  unit_type?: UnitType
+}
+
+export type ShortlistViewEvent = 'open' | 'expand'
+
+export type ShortlistView = {
+  id: string
+  shortlist_id: string
+  entry_id: string | null
+  event: ShortlistViewEvent
+  created_at: string
+}

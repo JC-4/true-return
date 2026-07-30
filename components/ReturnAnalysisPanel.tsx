@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Project } from '@/lib/types'
 import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate } from '@/lib/payment-plan'
+import { returnSliderBounds, snapToBounds, defaultReturnInputs } from '@/lib/return-defaults'
 import { Tooltip, SecondaryPillNav } from '@/components/SharedUI'
 
 export default function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: boolean }) {
@@ -40,38 +41,16 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
   const internalSqft = selectedUnit?.internal_sqft ?? 0
   const balconySqft  = selectedUnit?.balcony_sqft  ?? 0
 
-  // ── Slider bounds derived from the selected unit's price ───────────────────
-  // Step targets ~100 increments across the range, snapped to the nearest clean
-  // number; bounds are rounded to the step so every slider position lands on a
-  // round value.
-  function sliderBounds(rawMin: number, rawMax: number, minStep: number) {
-    const target = (rawMax - rawMin) / 100
-    const steps = [1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000]
-    const step = Math.max(minStep, steps.reduce((best, s) => Math.abs(s - target) < Math.abs(best - target) ? s : best))
-    return { min: Math.round(rawMin / step) * step, max: Math.round(rawMax / step) * step, step }
-  }
-  // Bounds derive from the unit's stored estimate when there is one, putting
-  // the seeded value near mid-track with usable resolution either side. Units
-  // without an estimate fall back to price-derived bounds; absolute floors
-  // keep small units workable, and hard-coded bounds cover units with no price.
-  const seededRent = selectedUnit?.expected_rent ?? 0
-  const seededHV   = selectedUnit?.expected_handover_value ?? 0
-  const rentBounds = seededRent > 0
-    ? sliderBounds(Math.max(10_000, seededRent * 0.6), seededRent * 1.6, 1_000)
-    : basePrice > 0
-      ? sliderBounds(Math.max(10_000, basePrice * 0.03), basePrice * 0.09, 1_000)
-      : { min: 20_000, max: 300_000, step: 5_000 }
-  const hvBounds = seededHV > 0
-    ? sliderBounds(Math.max(100_000, seededHV * 0.75), seededHV * 1.5, 10_000)
-    : basePrice > 0
-      ? sliderBounds(Math.max(100_000, basePrice * 0.85), basePrice * 1.6, 10_000)
-      : { min: 300_000, max: 5_000_000, step: 50_000 }
+  // Slider bounds and seed values live in lib/return-defaults.ts, shared with
+  // the shortlist comparison so its numbers agree with this panel at load.
+  const { rent: rentBounds, hv: hvBounds } = returnSliderBounds(selectedUnit, basePrice)
 
-  function snapRent(v: number) { return Math.min(rentBounds.max, Math.max(rentBounds.min, Math.round(v / rentBounds.step) * rentBounds.step)) }
-  function snapHV(v: number)   { return Math.min(hvBounds.max, Math.max(hvBounds.min, Math.round(v / hvBounds.step) * hvBounds.step)) }
+  function snapRent(v: number) { return snapToBounds(v, rentBounds) }
+  function snapHV(v: number)   { return snapToBounds(v, hvBounds) }
 
-  const [rent,          setRent]          = useState(() => snapRent(selectedUnit?.expected_rent          ?? basePrice * 0.07))
-  const [handoverValue, setHandoverValue] = useState(() => snapHV  (selectedUnit?.expected_handover_value ?? basePrice * 1.2))
+  const initialInputs = defaultReturnInputs(selectedUnit, basePrice)
+  const [rent,          setRent]          = useState(() => initialInputs.rent)
+  const [handoverValue, setHandoverValue] = useState(() => initialInputs.handoverValue)
   const [growth,        setGrowth]        = useState(5)
   const [holdPeriod,    setHoldPeriod]    = useState(5)
 

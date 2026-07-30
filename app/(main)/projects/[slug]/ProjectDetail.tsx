@@ -10,7 +10,7 @@ import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
 import { SecondaryPillNav } from '@/components/SharedUI'
-import { adaptPaymentPlan, formatHandoverDate } from '@/lib/payment-plan'
+import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,14 +57,6 @@ const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
   construction:  'During construction',
   handover:      'Handover',
   'post-handover': 'Post-handover',
-}
-
-function classifyPlanSeg(label: string): PlanSegType {
-  const l = label.toLowerCase()
-  if (l.includes('post') || (l.includes('after') && l.includes('handover'))) return 'post-handover'
-  if (l.includes('handover')) return 'handover'
-  if (l.includes('booking') || l.includes('down') || l.includes('reservation')) return 'downpayment'
-  return 'construction'
 }
 
 function mergedPlanSegs(segments: PaymentSegment[]): Array<{ type: PlanSegType; pct: number }> {
@@ -433,21 +425,8 @@ export default function ProjectDetail({
     if (a.bedrooms !== b.bedrooms) return a.bedrooms - b.bedrooms
     return (a.size_sqft_from ?? 0) - (b.size_sqft_from ?? 0)
   })
-  const firstPlan = plans[0]
-  const firstPlanLabel = (() => {
-    if (!firstPlan?.segments?.length) return null
-    const segs = firstPlan.segments
-    const hasPost = segs.some(s => classifyPlanSeg(s.label) === 'post-handover')
-    if (hasPost) {
-      const y = segs.filter(s => classifyPlanSeg(s.label) === 'post-handover').reduce((sum, s) => sum + s.percent, 0)
-      const x = 100 - y
-      return `${Math.round(x)}/${Math.round(y)} payment plan`
-    } else {
-      const y = segs.filter(s => classifyPlanSeg(s.label) === 'handover').reduce((sum, s) => sum + s.percent, 0)
-      const x = segs.filter(s => classifyPlanSeg(s.label) !== 'handover').reduce((sum, s) => sum + s.percent, 0)
-      return `${Math.round(x)}/${Math.round(y)} payment plan`
-    }
-  })()
+  const planSummary = paymentPlanSummary(plans)
+  const firstPlanLabel = planSummary ? `${planSummary} payment plan` : null
 
   const mapEmbedSrc = (() => {
     const html = project.map_embed_html
