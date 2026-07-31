@@ -13,7 +13,7 @@ export const revalidate = 60
 async function getProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
-    .select('*, developer:developers(*)')
+    .select('*, developer:developers(*), unit_types(id, price_from)')
     .order('name')
 
   if (error) { console.error('[projects]', error.message); return [] }

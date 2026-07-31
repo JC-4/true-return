@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import type { Project } from '@/lib/types'
-import { fmtLocation } from '@/lib/format'
+import { fmtLocation, projectPriceRange } from '@/lib/format'
 
-function fmtPrice(n: number | null) {
-  if (!n) return '—'
-  if (n >= 1_000_000) return `AED ${(n / 1_000_000).toFixed(1)}M`
-  return `AED ${Math.round(n / 1000)}k`
+// Compact price without the AED prefix, so ranges don't repeat it
+function fmtPriceValue(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  return `${Math.round(n / 1000)}k`
 }
 
 function fmtHandover(iso: string | null) {
@@ -25,6 +25,7 @@ function statusLabel(s: string | null) {
 
 export default function ProjectCard({ project }: { project: Project }) {
   const hero = project.images?.[0] ?? null
+  const { min: minPrice, max: maxPrice } = projectPriceRange(project)
 
   return (
     <Link
@@ -66,7 +67,13 @@ export default function ProjectCard({ project }: { project: Project }) {
           {fmtLocation(project)}
         </p>
         <div className="flex items-end justify-between mt-3 pt-3 border-t border-brand-border">
-          <p className="text-sm font-medium text-brand-bronze">{fmtPrice(project.starting_price)}</p>
+          <p className="text-sm font-medium text-brand-bronze">
+            {minPrice == null ? '—' : maxPrice != null && maxPrice !== minPrice ? (
+              `AED ${fmtPriceValue(minPrice)} – ${fmtPriceValue(maxPrice)}`
+            ) : (
+              <><span className="text-xs text-brand-hint font-normal">From </span>AED {fmtPriceValue(minPrice)}</>
+            )}
+          </p>
           <p className="text-xs text-brand-hint">{fmtHandover(project.handover_date)}</p>
         </div>
       </div>

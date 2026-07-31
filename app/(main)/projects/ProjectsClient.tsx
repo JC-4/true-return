@@ -2,6 +2,13 @@
 import { useState, useMemo } from 'react'
 import ProjectCard from '@/components/ProjectCard'
 import type { Project } from '@/lib/types'
+import { projectPriceRange } from '@/lib/format'
+
+// Fixed ladder so the control doesn't shift as the catalogue grows
+const PRICE_LADDER = [
+  500_000, 750_000, 1_000_000, 1_500_000, 2_000_000, 3_000_000,
+  5_000_000, 7_500_000, 10_000_000, 15_000_000, 20_000_000,
+]
 
 export default function ProjectsClient({ projects }: { projects: Project[] }) {
   const [developerFilter, setDeveloperFilter] = useState('')
@@ -9,7 +16,15 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
   const [emirateFilter, setEmirateFilter] = useState('')
   const [locationFilter, setLocationFilter] = useState('')
   const [handoverFilter, setHandoverFilter] = useState('')
-  const [maxPrice, setMaxPrice] = useState<number>(0)
+  const [minPrice, setMinPrice] = useState(0) // 0 = no bound
+  const [maxPrice, setMaxPrice] = useState(0)
+
+  function handleMinPriceChange(v: number) {
+    setMinPrice(v)
+    // Max options are strictly greater than min, so a max at or below the new
+    // min is no longer selectable — clear it
+    if (v > 0 && maxPrice > 0 && maxPrice <= v) setMaxPrice(0)
+  }
 
   const developers = useMemo(() => {
     const names = [...new Set(projects.map(p => p.developer?.name).filter(Boolean))] as string[]
@@ -45,11 +60,6 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
     return years.sort()
   }, [projects])
 
-  const priceMax = useMemo(() => {
-    const max = Math.max(...projects.map(p => p.starting_price ?? 0))
-    return max > 0 ? max : 5_000_000
-  }, [projects])
-
   const filtered = useMemo(() => projects.filter(p => {
     if (developerFilter && p.developer?.name !== developerFilter) return false
     if (statusFilter && p.status !== statusFilter) return false
@@ -58,11 +68,20 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
     if (handoverFilter && p.handover_date) {
       if (new Date(p.handover_date).getFullYear().toString() !== handoverFilter) return false
     }
-    if (maxPrice > 0 && p.starting_price && p.starting_price > maxPrice) return false
+    // Match on overlap with the project's unit price range, not starting
+    // price: a project shows if any of its units could fall in the range.
+    // Projects with no price data at all are never filtered out.
+    if (minPrice > 0 || maxPrice > 0) {
+      const { min, max } = projectPriceRange(p)
+      if (min != null && max != null) {
+        if (minPrice > 0 && max < minPrice) return false
+        if (maxPrice > 0 && min > maxPrice) return false
+      }
+    }
     return true
-  }), [projects, developerFilter, statusFilter, emirateFilter, locationFilter, handoverFilter, maxPrice])
+  }), [projects, developerFilter, statusFilter, emirateFilter, locationFilter, handoverFilter, minPrice, maxPrice])
 
-  const hasFilters = developerFilter || statusFilter || emirateFilter || locationFilter || handoverFilter || maxPrice > 0
+  const hasFilters = developerFilter || statusFilter || emirateFilter || locationFilter || handoverFilter || minPrice > 0 || maxPrice > 0
 
   function clearFilters() {
     setDeveloperFilter('')
@@ -70,6 +89,7 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
     setEmirateFilter('')
     setLocationFilter('')
     setHandoverFilter('')
+    setMinPrice(0)
     setMaxPrice(0)
   }
 
@@ -150,22 +170,19 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
               </div>
 
               <div>
-                <label className={labelCls}>
-                  Max price{maxPrice > 0 ? ` · ${fmtPrice(maxPrice)}` : ''}
-                </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={priceMax}
-                  step={50000}
-                  value={maxPrice || priceMax}
-                  onChange={e => setMaxPrice(Number(e.target.value) === priceMax ? 0 : Number(e.target.value))}
-                  className="w-full accent-[var(--brand-bronze)]"
-                />
-                <div className="flex justify-between text-xs text-brand-hint mt-1">
-                  <span>AED 0</span>
-                  <span>{fmtPrice(priceMax)}</span>
-                </div>
+                <label className={labelCls}>Min price</label>
+                <select value={minPrice} onChange={e => handleMinPriceChange(Number(e.target.value))} className={selectCls}>
+                  <option value={0}>No min</option>
+                  {PRICE_LADDER.map(v => <option key={v} value={v}>{fmtPrice(v)}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelCls}>Max price</label>
+                <select value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} className={selectCls}>
+                  <option value={0}>No max</option>
+                  {PRICE_LADDER.filter(v => v > minPrice).map(v => <option key={v} value={v}>{fmtPrice(v)}</option>)}
+                </select>
               </div>
             </div>
           </aside>
