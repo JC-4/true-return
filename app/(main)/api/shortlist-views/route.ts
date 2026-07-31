@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   }
 
   const { token, event, entryId } = body
-  if (typeof token !== 'string' || (event !== 'open' && event !== 'expand')) {
+  if (typeof token !== 'string' || !['open', 'expand', 'conclusion'].includes(event as string)) {
     return NextResponse.json({ error: 'Bad request' }, { status: 400 })
   }
 

@@ -2,14 +2,15 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { createServiceClient } from '@/lib/supabase'
 import { computeDealMetrics } from '@/lib/calculations'
 import type { DealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate, paymentPlanSummary } from '@/lib/payment-plan'
 import { fmtLocation } from '@/lib/format'
 import ShortlistViewLogger from '@/components/ShortlistViewLogger'
+import ShortlistFooterNav from '@/components/ShortlistFooterNav'
+import { getShortlist, sortedEntries, deriveSteps } from '@/lib/shortlist'
 import { defaultReturnInputs } from '@/lib/return-defaults'
-import type { Project, UnitType, Shortlist, ShortlistEntry } from '@/lib/types'
+import type { Project, UnitType, ShortlistEntry } from '@/lib/types'
 
 // Every request must hit the database for fresh data. View logging is
 // client-side (ShortlistViewLogger) so crawler fetches are never counted.
@@ -19,9 +20,6 @@ export const metadata: Metadata = {
   title: 'Investment shortlist — TrueReturn',
   robots: { index: false, follow: false },
 }
-
-type LoadedEntry = ShortlistEntry & { project: Project | null; unit_type: UnitType | null }
-type LoadedShortlist = Shortlist & { entries: LoadedEntry[] }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
@@ -84,18 +82,11 @@ function entryMetrics(project: Project, unit: UnitType | null, assumptions: Shor
 export default async function ShortlistPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
 
-  const supabase = createServiceClient()
-  const { data, error } = await supabase
-    .from('shortlists')
-    .select('*, entries:shortlist_entries(*, project:projects(*, developer:developers(*)), unit_type:unit_types(*))')
-    .eq('token', token)
-    .single()
-  if (error || !data) notFound()
-  const shortlist = data as LoadedShortlist
+  const shortlist = await getShortlist(token)
+  if (!shortlist) notFound()
 
-  const entries = [...(shortlist.entries ?? [])]
-    .filter((e): e is LoadedEntry & { project: Project } => !!e.project)
-    .sort((a, b) => a.sort_order - b.sort_order)
+  const entries = sortedEntries(shortlist)
+  const steps = deriveSteps(shortlist, token)
 
   const rows = entries.map(entry => ({
     entry,
@@ -237,6 +228,8 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
             </Link>
           ))}
         </div>
+
+        <ShortlistFooterNav steps={steps} currentHref={`/s/${encodeURIComponent(token)}`} />
 
       </div>
     </div>

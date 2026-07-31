@@ -6,7 +6,7 @@ import { useEffect, useRef } from 'react'
 // double-invoked effects; failures are ignored — analytics never breaks a page.
 export default function ShortlistViewLogger({ token, event, entryId }: {
   token: string
-  event: 'open' | 'expand'
+  event: 'open' | 'expand' | 'conclusion'
   entryId?: string
 }) {
   const fired = useRef(false)

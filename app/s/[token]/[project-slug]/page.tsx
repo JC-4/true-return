@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { createServiceClient } from '@/lib/supabase'
 import { fmtLocation } from '@/lib/format'
-import type { Project, UnitType, Shortlist, ShortlistEntry } from '@/lib/types'
+import { getShortlist, sortedEntries, deriveSteps } from '@/lib/shortlist'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import BrochureTab from '@/components/BrochureTab'
 import ProjectGallery from '@/components/ProjectGallery'
 import ShortlistViewLogger from '@/components/ShortlistViewLogger'
+import ShortlistFooterNav from '@/components/ShortlistFooterNav'
 
 // Fresh data on every request; view logging is client-side so crawler
 // fetches are never counted.
@@ -18,32 +18,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-type LoadedEntry = ShortlistEntry & { project: Project | null; unit_type: UnitType | null }
-type LoadedShortlist = Shortlist & { entries: LoadedEntry[] }
-
 export default async function ShortlistProjectPage({ params }: {
   params: Promise<{ token: string; 'project-slug': string }>
 }) {
   const { token, 'project-slug': projectSlug } = await params
+  // The sibling /conclusion route resolves first (static beats dynamic), so a
+  // project can never be reached through that segment.
+  if (projectSlug === 'conclusion') notFound()
 
-  const supabase = createServiceClient()
   // Look up by token only; the project renders solely as an entry of this
   // shortlist — a valid project slug alone must never resolve.
-  const { data, error } = await supabase
-    .from('shortlists')
-    .select('*, entries:shortlist_entries(*, project:projects(*, developer:developers(*), unit_types(*)), unit_type:unit_types(*))')
-    .eq('token', token)
-    .single()
-  if (error || !data) notFound()
-  const shortlist = data as LoadedShortlist
+  const shortlist = await getShortlist(token)
+  if (!shortlist) notFound()
 
-  const entry = (shortlist.entries ?? []).find(e => e.project?.slug === projectSlug)
-  if (!entry?.project) notFound()
+  const entry = sortedEntries(shortlist).find(e => e.project.slug === projectSlug)
+  if (!entry) notFound()
   const project = entry.project
-
-  const others = [...(shortlist.entries ?? [])]
-    .filter((e): e is LoadedEntry & { project: Project } => !!e.project && e.id !== entry.id)
-    .sort((a, b) => a.sort_order - b.sort_order)
+  const steps = deriveSteps(shortlist, token)
 
   return (
     <div className="bg-brand-bg min-h-screen">
@@ -134,25 +125,8 @@ export default async function ShortlistProjectPage({ params }: {
           />
         </section>
 
-        {/* ── 8. The rest of the shortlist ───────────────────────────────── */}
-        {others.length > 0 && (
-          <section className="mt-8 border-t border-brand-border pt-10">
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Also on this shortlist</p>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {others.map(o => (
-                <Link
-                  key={o.id}
-                  href={`/s/${encodeURIComponent(token)}/${o.project.slug}`}
-                  className="bg-white border border-brand-border rounded-xl p-5 transition-colors hover:border-brand-bronze"
-                >
-                  <p className="text-sm font-semibold text-brand-text">{o.project.name}</p>
-                  <p className="text-xs text-brand-hint mt-0.5">{fmtLocation(o.project)}</p>
-                  <p className="text-xs font-medium mt-3" style={{ color: '#A0784A' }}>View analysis →</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* ── 8. Sequential movement through the document ────────────────── */}
+        <ShortlistFooterNav steps={steps} currentHref={`/s/${encodeURIComponent(token)}/${project.slug}`} />
 
       </div>
     </div>

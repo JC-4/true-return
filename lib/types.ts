@@ -119,6 +119,8 @@ export type Shortlist = {
   token: string
   client_name: string
   intro: string | null
+  /** Closing note; when null/empty the conclusion step is omitted entirely */
+  conclusion: string | null
   created_at: string
   entries?: ShortlistEntry[]
 }
