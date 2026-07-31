@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 
 export type BrochureDoc = {
   name: string
-  sizeBytes: number
+  /** null for external links (e.g. the project brochure), which have no file size */
+  sizeBytes: number | null
   mimeType: string
   signedUrl: string | null
   signError: string | null
@@ -24,13 +25,17 @@ function fileLabel(name: string): { display: string; ext: string } {
   return { display, ext }
 }
 
-export default function BrochureTab({ slug }: { slug: string }) {
+export default function BrochureTab({ slug, endpoint }: {
+  slug: string
+  /** Override the session-gated default, e.g. the token-authorised shortlist endpoint */
+  endpoint?: string
+}) {
   const [docs, setDocs] = useState<BrochureDoc[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/projects/${slug}/documents`)
+    fetch(endpoint ?? `/api/projects/${slug}/documents`)
       .then(r => r.json() as Promise<BrochureDoc[] | { error: string }>)
       .then(data => {
         if ('error' in data) { setError(data.error); return }
@@ -38,7 +43,7 @@ export default function BrochureTab({ slug }: { slug: string }) {
       })
       .catch(() => setError('Failed to load documents.'))
       .finally(() => setLoading(false))
-  }, [slug])
+  }, [slug, endpoint])
 
   if (loading) {
     return (
@@ -87,7 +92,9 @@ export default function BrochureTab({ slug }: { slug: string }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-brand-text leading-snug truncate" title={display}>{display}</p>
-                  <p className="text-xs text-brand-hint mt-0.5">{fmtSize(doc.sizeBytes)}</p>
+                  {doc.sizeBytes != null && (
+                    <p className="text-xs text-brand-hint mt-0.5">{fmtSize(doc.sizeBytes)}</p>
+                  )}
                 </div>
               </div>
 

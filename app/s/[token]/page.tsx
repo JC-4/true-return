@@ -7,10 +7,12 @@ import { computeDealMetrics } from '@/lib/calculations'
 import type { DealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate, paymentPlanSummary } from '@/lib/payment-plan'
 import { fmtLocation } from '@/lib/format'
+import ShortlistViewLogger from '@/components/ShortlistViewLogger'
 import { defaultReturnInputs } from '@/lib/return-defaults'
 import type { Project, UnitType, Shortlist, ShortlistEntry } from '@/lib/types'
 
-// Every request must hit the database (fresh data + one 'open' view row)
+// Every request must hit the database for fresh data. View logging is
+// client-side (ShortlistViewLogger) so crawler fetches are never counted.
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
@@ -91,11 +93,6 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
   if (error || !data) notFound()
   const shortlist = data as LoadedShortlist
 
-  // Log the open server-side; analytics must never block the render
-  try {
-    await supabase.from('shortlist_views').insert({ shortlist_id: shortlist.id, event: 'open' })
-  } catch { /* ignore */ }
-
   const entries = [...(shortlist.entries ?? [])]
     .filter((e): e is LoadedEntry & { project: Project } => !!e.project)
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -119,6 +116,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
 
   return (
     <div className="bg-brand-bg min-h-screen">
+      <ShortlistViewLogger token={token} event="open" />
       <div className="max-w-6xl mx-auto px-5 sm:px-10 py-10 sm:py-16">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}

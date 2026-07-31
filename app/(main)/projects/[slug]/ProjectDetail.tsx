@@ -967,7 +967,7 @@ export default function ProjectDetail({
           {/* Return Analysis tab */}
           {pubTab === 'returns' && (
             <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-20">
-              <ReturnAnalysisPanel project={project} isAuth={false} />
+              <ReturnAnalysisPanel project={project} showFullAnalysis={false} />
             </div>
           )}
 
@@ -1069,7 +1069,7 @@ export default function ProjectDetail({
           {authTab === 'returns' && (
             <div className="max-w-6xl mx-auto px-6 sm:px-10 space-y-10">
               {myTakeSection}
-              <ReturnAnalysisPanel project={project} isAuth={true} />
+              <ReturnAnalysisPanel project={project} showFullAnalysis={true} />
 
               {/* Documents */}
               {hasDocs && (

@@ -1,13 +1,25 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import type { Project } from '@/lib/types'
+import type { Project, ShortlistAssumptions } from '@/lib/types'
 import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate } from '@/lib/payment-plan'
 import { returnSliderBounds, snapToBounds, defaultReturnInputs } from '@/lib/return-defaults'
 import { Tooltip, SecondaryPillNav } from '@/components/SharedUI'
 
-export default function ReturnAnalysisPanel({ project, isAuth }: { project: Project; isAuth: boolean }) {
+export default function ReturnAnalysisPanel({
+  project,
+  showFullAnalysis,
+  assumptions,
+  defaultUnitTypeId,
+}: {
+  project: Project
+  showFullAnalysis: boolean
+  /** Stored per-client figures (shortlist); clamped to the selected unit's slider bounds on load */
+  assumptions?: ShortlistAssumptions | null
+  /** Unit to preselect, taking priority over the featured/median default */
+  defaultUnitTypeId?: string | null
+}) {
   const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
     if (a.bedrooms === null) return 1
     if (b.bedrooms === null) return -1
@@ -26,9 +38,11 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
   const residentialUnits = unitTypes.filter(ut => ut.bedrooms !== null)
   const poolForDefault   = residentialUnits.length > 0 ? residentialUnits : unitTypes
   const sortedByPrice    = [...poolForDefault].sort((a, b) => (a.price_from ?? 0) - (b.price_from ?? 0))
-  // Prefer a featured unit (cheapest if several are flagged); fall back to the median by price
+  // An explicitly seeded unit wins; otherwise prefer a featured unit (cheapest
+  // if several are flagged); fall back to the median by price
   const featuredUnits    = sortedByPrice.filter(ut => ut.is_featured)
-  const defaultUnit      = featuredUnits[0] ?? sortedByPrice[Math.floor(sortedByPrice.length / 2)] ?? sortedByPrice[0]
+  const seededUnit       = defaultUnitTypeId ? unitTypes.find(ut => ut.id === defaultUnitTypeId) : undefined
+  const defaultUnit      = seededUnit ?? featuredUnits[0] ?? sortedByPrice[Math.floor(sortedByPrice.length / 2)] ?? sortedByPrice[0]
   // Use !== undefined so bedrooms=null (commercial units) is preserved rather than falling through ??
   const [selectedBedrooms, setSelectedBedrooms] = useState<number | null>(
     defaultUnit !== undefined ? defaultUnit.bedrooms : (bedroomGroups[0] ?? null)
@@ -48,13 +62,22 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
   function snapRent(v: number) { return snapToBounds(v, rentBounds) }
   function snapHV(v: number)   { return snapToBounds(v, hvBounds) }
 
+  // Stored assumptions seed the inputs, clamped to the selected unit's bounds
+  // like any other value; without them behaviour is unchanged.
   const initialInputs = defaultReturnInputs(selectedUnit, basePrice)
-  const [rent,          setRent]          = useState(() => initialInputs.rent)
-  const [handoverValue, setHandoverValue] = useState(() => initialInputs.handoverValue)
-  const [growth,        setGrowth]        = useState(5)
-  const [holdPeriod,    setHoldPeriod]    = useState(5)
+  const [rent,          setRent]          = useState(() => assumptions?.rent          != null ? snapRent(assumptions.rent)        : initialInputs.rent)
+  const [handoverValue, setHandoverValue] = useState(() => assumptions?.handoverValue != null ? snapHV  (assumptions.handoverValue) : initialInputs.handoverValue)
+  const [growth,        setGrowth]        = useState(assumptions?.growth     ?? 5)
+  const [holdPeriod,    setHoldPeriod]    = useState(assumptions?.holdPeriod ?? 5)
 
+  // Both effects below reset state derived from the current selection, so they
+  // must fire only on an actual change. Effects also run after first render
+  // (twice in strict mode), where resetting would silently overwrite seeded
+  // assumptions — guard with the previous value, not a first-run flag.
+  const prevUnitIdRef = useRef(selectedUnitId)
   useEffect(() => {
+    if (prevUnitIdRef.current === selectedUnitId) return
+    prevUnitIdRef.current = selectedUnitId
     const unit = unitTypes.find(ut => ut.id === selectedUnitId)
     if (!unit) return
     const p = unit.price_from ?? 0
@@ -62,7 +85,10 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
     setHandoverValue(snapHV(unit.expected_handover_value ?? p * 1.2))
   }, [selectedUnitId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const prevBedroomsRef = useRef(selectedBedrooms)
   useEffect(() => {
+    if (prevBedroomsRef.current === selectedBedrooms) return
+    prevBedroomsRef.current = selectedBedrooms
     const first = unitTypes.find(ut => ut.bedrooms === selectedBedrooms)
     if (first) setSelectedUnitId(first.id)
   }, [selectedBedrooms]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -79,13 +105,13 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
   }, [])
 
   // ── Financing state ────────────────────────────────────────────────────────
-  const [financing,    setFinancing]    = useState<'cash' | 'mortgage'>('cash')
+  const [financing,    setFinancing]    = useState<'cash' | 'mortgage'>(assumptions?.financing ?? 'cash')
   const handoverRow = planRows.find(r => r.handover) ?? planRows[planRows.length - 1]
   const defaultLtv  = handoverRow
     ? Math.min(80, Math.max(20, Math.round(handoverRow.pct / 5) * 5))
     : 80
-  const [ltvPct,       setLtvPct]       = useState(defaultLtv)
-  const [mortgageRate, setMortgageRate] = useState(4.5)
+  const [ltvPct,       setLtvPct]       = useState(assumptions?.ltvPct ?? defaultLtv)
+  const [mortgageRate, setMortgageRate] = useState(assumptions?.mortgageRate ?? 4.5)
   const mortgageOn = financing === 'mortgage'
 
   // ── Core metrics via computeDealMetrics ────────────────────────────────────
@@ -358,9 +384,9 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
 
   const secondaryNavSections = [
     { id: 'inputs',        label: 'Inputs' },
-    { id: 'scenarios',     label: 'Scenarios',     locked: !isAuth },
-    { id: 'financing',     label: 'Financing',     locked: !isAuth, color: '#C9A96E' },
-    { id: 'exit-analysis', label: 'Exit analysis', locked: !isAuth },
+    { id: 'scenarios',     label: 'Scenarios',     locked: !showFullAnalysis },
+    { id: 'financing',     label: 'Financing',     locked: !showFullAnalysis, color: '#C9A96E' },
+    { id: 'exit-analysis', label: 'Exit analysis', locked: !showFullAnalysis },
   ]
 
   // ── Shared Return Analysis content blocks ───────────────────────────────────
@@ -847,7 +873,7 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
               <div key={label}
                 className={`bg-white rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
                 style={highlighted ? { borderColor: '#A0784A', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}>
-                <div className={`flex items-center justify-between mb-4 ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                <div className={`flex items-center justify-between mb-4 ${!showFullAnalysis ? 'blur-sm select-none' : ''}`}>
                   <p className="text-xs font-semibold text-brand-muted">{label}</p>
                   {highlighted && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
@@ -858,27 +884,27 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
                 </div>
                 {m.mode === 'hold' ? (
                   <div className="space-y-3">
-                    <div className={!isAuth && !highlighted ? 'blur-sm select-none' : ''}>
+                    <div className={!showFullAnalysis && !highlighted ? 'blur-sm select-none' : ''}>
                       <p className="text-xs text-brand-hint mb-0.5">Net yield</p>
                       <p className="text-lg font-semibold text-brand-text">{fmtP(m.netYield)}</p>
                     </div>
-                    <div className={!isAuth ? 'blur-sm select-none' : ''}>
+                    <div className={!showFullAnalysis ? 'blur-sm select-none' : ''}>
                       <p className="text-xs text-brand-hint mb-0.5">Value at exit</p>
                       <p className="text-sm font-semibold text-brand-text">{fmtA(m.valueAtExit)}</p>
                     </div>
-                    <div className={!isAuth ? 'blur-sm select-none' : ''}>
+                    <div className={!showFullAnalysis ? 'blur-sm select-none' : ''}>
                       <p className="text-xs text-brand-hint mb-0.5">Total return</p>
                       <p className="text-sm font-semibold text-brand-text">{fmtA(m.totalReturn)}</p>
                     </div>
                     {m.irr !== null && (
-                      <div className={`pt-2 border-t border-brand-border ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                      <div className={`pt-2 border-t border-brand-border ${!showFullAnalysis ? 'blur-sm select-none' : ''}`}>
                         <p className="text-xs text-brand-hint mb-0.5">IRR</p>
                         <p className="text-base font-bold text-brand-text">{fmtP(m.irr)}</p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className={`space-y-3 ${!isAuth ? 'blur-sm select-none' : ''}`}>
+                  <div className={`space-y-3 ${!showFullAnalysis ? 'blur-sm select-none' : ''}`}>
                     <div>
                       <p className="text-xs text-brand-hint mb-0.5">Gain on paper</p>
                       <p className="text-lg font-semibold text-brand-text">{fmtA(m.gainOnPaper)}</p>
@@ -903,7 +929,7 @@ export default function ReturnAnalysisPanel({ project, isAuth }: { project: Proj
           </p>
         </div>
 
-        {isAuth ? (
+        {showFullAnalysis ? (
           <>
             {/* ── 4. Financing ─────────────────────────────────────────── */}
             <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
