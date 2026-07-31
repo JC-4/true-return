@@ -1,10 +1,12 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase'
 import { computeDealMetrics } from '@/lib/calculations'
 import type { DealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate, paymentPlanSummary } from '@/lib/payment-plan'
+import { fmtLocation } from '@/lib/format'
 import { defaultReturnInputs } from '@/lib/return-defaults'
 import type { Project, UnitType, Shortlist, ShortlistEntry } from '@/lib/types'
 
@@ -34,6 +36,10 @@ function fmtQuarter(iso: string | null): string {
 
 function fmtPct(n: number | null | undefined): string {
   return n == null ? '—' : `${n.toFixed(1)}%`
+}
+
+function fmtSqft(n: number | null | undefined): string {
+  return n == null || n === 0 ? '—' : `${Math.round(n).toLocaleString('en-US')} sqft`
 }
 
 // ─── Metrics ──────────────────────────────────────────────────────────────────
@@ -99,7 +105,11 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
     metrics: entryMetrics(entry.project, entry.unit_type, entry.assumptions),
   }))
 
+  // Context first, then cost, then outcome — each column reads down as an argument
   const tableRows: { label: string; value: (r: (typeof rows)[number]) => string }[] = [
+    { label: 'Developer',        value: ({ entry })   => entry.project.developer?.name ?? '—' },
+    { label: 'Location',         value: ({ entry })   => fmtLocation(entry.project) },
+    { label: 'Size',             value: ({ entry })   => fmtSqft(entry.unit_type?.size_sqft_from) },
     { label: 'Price',            value: ({ entry })   => fmtAED(entry.unit_type?.price_from ?? entry.project.starting_price) },
     { label: 'Payment plan',     value: ({ entry })   => paymentPlanSummary(entry.project.payment_plans) ?? '—' },
     { label: 'Cash to handover', value: ({ metrics }) => metrics ? fmtAED(metrics.cashDeployedPreCompletion) : '—' },
@@ -109,7 +119,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
 
   return (
     <div className="bg-brand-bg min-h-screen">
-      <div className="max-w-5xl mx-auto px-5 sm:px-10 py-10 sm:py-16">
+      <div className="max-w-6xl mx-auto px-5 sm:px-10 py-10 sm:py-16">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <h1 className="text-2xl sm:text-3xl font-semibold text-brand-text">Investment shortlist</h1>
@@ -163,13 +173,30 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
         </div>
 
         {/* ── Project cards ──────────────────────────────────────────────── */}
-        <div className="mt-10 space-y-4">
-          {rows.map(({ entry, metrics }) => (
+        {/* Two entries keep two columns at lg rather than leaving a gap */}
+        <div className={`mt-10 grid grid-cols-1 md:grid-cols-2 gap-4 ${rows.length >= 3 ? 'lg:grid-cols-3' : ''}`}>
+          {rows.map(({ entry, metrics }, i) => (
             <Link
               key={entry.id}
               href={`/s/${encodeURIComponent(token)}/${entry.project.slug}`}
-              className="block bg-white border border-brand-border rounded-2xl p-6 transition-colors hover:border-brand-bronze"
+              className="flex flex-col bg-white border border-brand-border rounded-2xl overflow-hidden transition-colors hover:border-brand-bronze"
             >
+              {entry.project.images?.[0] && (
+                <div className="relative w-full aspect-[3/2]">
+                  <Image
+                    src={entry.project.images[0]}
+                    alt={entry.project.name}
+                    fill
+                    priority={i === 0}
+                    sizes={rows.length >= 3
+                      ? '(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 350px'
+                      : '(max-width: 768px) 100vw, (max-width: 1152px) 50vw, 530px'}
+                    className="object-cover"
+                    style={{ objectPosition: 'center 40%' }}
+                  />
+                </div>
+              )}
+              <div className="p-6 flex flex-col flex-1">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-base font-semibold text-brand-text">{entry.project.name}</p>
@@ -189,22 +216,26 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
 
               <p className="text-sm text-brand-muted leading-relaxed mt-3">{entry.note}</p>
 
-              <div className="grid grid-cols-3 gap-3 mt-5">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Net yield</p>
-                  <p className="text-sm font-semibold text-brand-text">{fmtPct(metrics?.netYield)}</p>
+              {/* Pushed to the card bottom so metrics align across a row */}
+              <div className="mt-auto pt-5">
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Net yield</p>
+                    <p className="text-sm font-semibold text-brand-text">{fmtPct(metrics?.netYield)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">IRR (base)</p>
+                    <p className="text-sm font-semibold text-brand-text">{fmtPct(metrics?.irr)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Cash to handover</p>
+                    <p className="text-sm font-semibold text-brand-text">{metrics ? fmtAED(metrics.cashDeployedPreCompletion) : '—'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">IRR (base)</p>
-                  <p className="text-sm font-semibold text-brand-text">{fmtPct(metrics?.irr)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Cash to handover</p>
-                  <p className="text-sm font-semibold text-brand-text">{metrics ? fmtAED(metrics.cashDeployedPreCompletion) : '—'}</p>
-                </div>
-              </div>
 
-              <p className="text-xs font-medium mt-5" style={{ color: '#A0784A' }}>View full analysis →</p>
+                <p className="text-xs font-medium mt-5" style={{ color: '#A0784A' }}>View full analysis →</p>
+              </div>
+              </div>
             </Link>
           ))}
         </div>

@@ -56,8 +56,10 @@ export type Project = {
   name: string
   developer_id: string
   developer?: Developer
+  /** Primary area within the emirate, e.g. "Dubai Creek Harbour" (formerly community) */
   location: string | null
-  community: string | null
+  /** One of the seven UAE emirates; DB-constrained, defaults to 'Dubai' */
+  emirate: string
   status: string | null
   handover_date: string | null
   starting_price: number | null

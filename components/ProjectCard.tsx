@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Project } from '@/lib/types'
+import { fmtLocation } from '@/lib/format'
 
 function fmtPrice(n: number | null) {
   if (!n) return '—'
@@ -61,11 +62,9 @@ export default function ProjectCard({ project }: { project: Project }) {
         <h3 className="text-base font-medium text-brand-text mt-0.5 group-hover:text-brand-bronze transition-colors">
           {project.name}
         </h3>
-        {project.location && (
-          <p className="text-xs text-brand-muted mt-1">
-            {project.location}{project.community ? ` · ${project.community}` : ''}
-          </p>
-        )}
+        <p className="text-xs text-brand-muted mt-1">
+          {fmtLocation(project)}
+        </p>
         <div className="flex items-end justify-between mt-3 pt-3 border-t border-brand-border">
           <p className="text-sm font-medium text-brand-bronze">{fmtPrice(project.starting_price)}</p>
           <p className="text-xs text-brand-hint">{fmtHandover(project.handover_date)}</p>

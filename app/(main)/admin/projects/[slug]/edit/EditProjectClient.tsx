@@ -441,7 +441,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
   const [status, setStatus] = useState(project.status ?? '')
   const [handoverDate, setHandoverDate] = useState(project.handover_date ?? '')
   const [startingPrice, setStartingPrice] = useState(project.starting_price?.toString() ?? '')
-  const [community, setCommunity] = useState(project.community ?? '')
+  const [emirate, setEmirate] = useState(project.emirate ?? 'Dubai')
   const [location, setLocation] = useState(project.location ?? '')
   const [serviceChargeRate, setServiceChargeRate] = useState(
     project.service_charge_rate?.toString() ?? ''
@@ -629,7 +629,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
       status: status || null,
       handover_date: handoverDate || null,
       starting_price: startingPrice ? parseFloat(startingPrice) : null,
-      community: community.trim() || null,
+      emirate,
       location: location.trim() || null,
       service_charge_rate: serviceChargeRate ? parseFloat(serviceChargeRate) : null,
       payment_plan_confirmed: paymentPlanConfirmed,
@@ -749,14 +749,18 @@ export default function EditProjectClient({ project }: { project: Project }) {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Community" value={community} onChange={setCommunity} placeholder="e.g. Dubai Creek Harbour" />
-              <Field
-                label="Location (optional)"
-                value={location}
-                onChange={setLocation}
-                placeholder="e.g. Creek Beach"
-                hint='Only when there&apos;s a sub-location more specific than the community — e.g. "Creek Beach" within "Dubai Creek Harbour". Most projects should leave this blank.'
-              />
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Emirate
+                </label>
+                <select value={emirate} onChange={e => setEmirate(e.target.value)} className={inputCls}>
+                  {/* Common markets first, then the remaining emirates */}
+                  {['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Fujairah'].map(e => (
+                    <option key={e} value={e}>{e}</option>
+                  ))}
+                </select>
+              </div>
+              <Field label="Location" value={location} onChange={setLocation} placeholder="e.g. Dubai Creek Harbour" />
             </div>
 
             <div>

@@ -6,7 +6,8 @@ import type { Project } from '@/lib/types'
 export default function ProjectsClient({ projects }: { projects: Project[] }) {
   const [developerFilter, setDeveloperFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [communityFilter, setCommunityFilter] = useState('')
+  const [emirateFilter, setEmirateFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
   const [handoverFilter, setHandoverFilter] = useState('')
   const [maxPrice, setMaxPrice] = useState<number>(0)
 
@@ -15,10 +16,27 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
     return names.sort()
   }, [projects])
 
-  const communities = useMemo(() => {
-    const vals = [...new Set(projects.map(p => p.community).filter(Boolean))] as string[]
-    return vals.sort()
+  // Only emirates actually present in the data, in the edit form's order
+  const emirates = useMemo(() => {
+    const present = new Set(projects.map(p => p.emirate).filter(Boolean))
+    return ['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Ajman', 'Umm Al Quwain', 'Fujairah']
+      .filter(e => present.has(e))
   }, [projects])
+
+  // Locations narrow to the selected emirate when one is chosen
+  const locations = useMemo(() => {
+    const pool = emirateFilter ? projects.filter(p => p.emirate === emirateFilter) : projects
+    const vals = [...new Set(pool.map(p => p.location).filter(Boolean))] as string[]
+    return vals.sort()
+  }, [projects, emirateFilter])
+
+  function handleEmirateChange(v: string) {
+    setEmirateFilter(v)
+    // Keep the location filter unless it no longer exists under the new emirate
+    if (locationFilter && !projects.some(p => p.location === locationFilter && (!v || p.emirate === v))) {
+      setLocationFilter('')
+    }
+  }
 
   const handoverYears = useMemo(() => {
     const years = [...new Set(
@@ -35,20 +53,22 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
   const filtered = useMemo(() => projects.filter(p => {
     if (developerFilter && p.developer?.name !== developerFilter) return false
     if (statusFilter && p.status !== statusFilter) return false
-    if (communityFilter && p.community !== communityFilter) return false
+    if (emirateFilter && p.emirate !== emirateFilter) return false
+    if (locationFilter && p.location !== locationFilter) return false
     if (handoverFilter && p.handover_date) {
       if (new Date(p.handover_date).getFullYear().toString() !== handoverFilter) return false
     }
     if (maxPrice > 0 && p.starting_price && p.starting_price > maxPrice) return false
     return true
-  }), [projects, developerFilter, statusFilter, communityFilter, handoverFilter, maxPrice])
+  }), [projects, developerFilter, statusFilter, emirateFilter, locationFilter, handoverFilter, maxPrice])
 
-  const hasFilters = developerFilter || statusFilter || communityFilter || handoverFilter || maxPrice > 0
+  const hasFilters = developerFilter || statusFilter || emirateFilter || locationFilter || handoverFilter || maxPrice > 0
 
   function clearFilters() {
     setDeveloperFilter('')
     setStatusFilter('')
-    setCommunityFilter('')
+    setEmirateFilter('')
+    setLocationFilter('')
     setHandoverFilter('')
     setMaxPrice(0)
   }
@@ -88,6 +108,14 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
               </div>
 
               <div>
+                <label className={labelCls}>Emirate</label>
+                <select value={emirateFilter} onChange={e => handleEmirateChange(e.target.value)} className={selectCls}>
+                  <option value="">All emirates</option>
+                  {emirates.map(em => <option key={em} value={em}>{em}</option>)}
+                </select>
+              </div>
+
+              <div>
                 <label className={labelCls}>Developer</label>
                 <select value={developerFilter} onChange={e => setDeveloperFilter(e.target.value)} className={selectCls}>
                   <option value="">All developers</option>
@@ -106,10 +134,10 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
               </div>
 
               <div>
-                <label className={labelCls}>Community</label>
-                <select value={communityFilter} onChange={e => setCommunityFilter(e.target.value)} className={selectCls}>
-                  <option value="">All communities</option>
-                  {communities.map(c => <option key={c} value={c}>{c}</option>)}
+                <label className={labelCls}>Location</label>
+                <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className={selectCls}>
+                  <option value="">All locations</option>
+                  {locations.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </div>
 

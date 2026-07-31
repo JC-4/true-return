@@ -11,6 +11,7 @@ import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
 import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
+import { fmtLocation } from '@/lib/format'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -887,12 +888,9 @@ export default function ProjectDetail({
       <div className="relative px-6 sm:px-10 pb-6 max-w-6xl mx-auto w-full">
         <p className="hidden md:block text-brand-bronze-mid text-xs tracking-widest uppercase mb-2">{project.developer?.name}</p>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-medium text-white leading-tight mb-3">{project.name}</h1>
-        {(() => {
-          // Show both only when they genuinely differ; community alone otherwise
-          const showBoth = !!project.location && !!project.community && project.location !== project.community
-          const locationLine = showBoth ? `${project.location} · ${project.community}` : (project.community ?? project.location)
-          return locationLine ? <p className="text-xs sm:text-sm text-white/50 mb-4">{locationLine}</p> : null
-        })()}
+        <p className="text-xs sm:text-sm text-white/50 mb-4">
+          {fmtLocation(project)}
+        </p>
 
       </div>
     </div>
