@@ -2,6 +2,11 @@
 
 export const BALCONY_SC_RATIO = 0.25
 
+/** Dubai Land Department transfer fee, as a percentage of the purchase price. */
+export const DLD_PCT = 4
+/** Flat DLD admin/registration fee in AED. */
+export const ADMIN_FEE = 4_200
+
 export const DEVELOPERS = [
   // ── Tier 1 ─────────────────────────────────────────────────────────────────
   { name: 'Aldar',                  tier: 1 },

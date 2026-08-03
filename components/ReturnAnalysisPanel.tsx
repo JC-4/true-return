@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Project, ShortlistAssumptions } from '@/lib/types'
-import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
+import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics, DLD_PCT, ADMIN_FEE } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate } from '@/lib/payment-plan'
 import { resolveReturnInputs, snapToBounds } from '@/lib/return-defaults'
 import { Tooltip, SecondaryPillNav } from '@/components/SharedUI'
@@ -163,9 +163,9 @@ export default function ReturnAnalysisPanel({
     developer:    project.developer?.name ?? '',
     handoverValue,
     paymentPlan:  planRows,
-    dldPct:       4,
+    dldPct:       DLD_PCT,
     agencyFeePct: 0,
-    adminFee:     4_200,
+    adminFee:     ADMIN_FEE,
     mortgageOn,
     depositPct:   100 - ltvPct,
     interestRate: mortgageRate,

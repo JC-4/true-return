@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
@@ -11,6 +11,7 @@ import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
 import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
+import { pickShowcaseUnit } from '@/lib/units'
 import { fmtLocation } from '@/lib/format'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,16 +59,6 @@ const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
   construction:  'During construction',
   handover:      'Handover',
   'post-handover': 'Post-handover',
-}
-
-function mergedPlanSegs(segments: PaymentSegment[]): Array<{ type: PlanSegType; pct: number }> {
-  const totals: Partial<Record<PlanSegType, number>> = {}
-  for (const seg of segments) {
-    const t = classifyPlanSeg(seg.label)
-    totals[t] = (totals[t] ?? 0) + seg.percent
-  }
-  const order: PlanSegType[] = ['downpayment', 'construction', 'handover', 'post-handover']
-  return order.filter(t => totals[t]).map(t => ({ type: t, pct: totals[t]! }))
 }
 
 const WHATSAPP = 'https://wa.me/971000000000'
@@ -426,6 +417,26 @@ export default function ProjectDetail({
     if (a.bedrooms !== b.bedrooms) return a.bedrooms - b.bedrooms
     return (a.size_sqft_from ?? 0) - (b.size_sqft_from ?? 0)
   })
+  // Selection for the units + payment plan section. Local to this section —
+  // ReturnAnalysisPanel keeps its own selector and its own default.
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(() => pickShowcaseUnit(unitTypes)?.id ?? '')
+  const unitScrollRef = useRef<HTMLDivElement | null>(null)
+  const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? pickShowcaseUnit(unitTypes)
+  const selectedUnitPrice = selectedUnit?.price_from ?? project.starting_price ?? 0
+
+  // On mobile the cards are a scroll row; bring the default into view if it
+  // isn't the first card. No-op on desktop, where the row is a grid.
+  useEffect(() => {
+    const el = unitScrollRef.current
+    if (!el) return
+    const card = el.querySelector<HTMLElement>('[data-unit-selected="true"]')
+    if (!card) return
+    // Measure against the scroll container, not offsetParent, which sits
+    // outside the row and would add the page padding to the offset.
+    const delta = card.getBoundingClientRect().left - el.getBoundingClientRect().left
+    if (delta > 0) el.scrollLeft = delta - 16
+  }, [])
+
   const planSummary = paymentPlanSummary(plans)
   const firstPlanLabel = planSummary ? `${planSummary} payment plan` : null
 
@@ -539,7 +550,9 @@ export default function ProjectDetail({
     </section>
   )
 
-  const unitTypesSection = unitTypes.length > 0 ? (
+  // Units and payment plan are one interactive section: selecting a unit
+  // recalculates the plan below it.
+  const unitsAndPlanSection = (unitTypes.length > 0 || plans.length > 0) ? (
     <section id="units" className="py-16 border-t border-brand-border">
       <div className="flex justify-between items-end mb-8">
         <div>
@@ -549,79 +562,182 @@ export default function ProjectDetail({
         <span className="text-xs text-brand-hint">Prices from, indicative</span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-        {unitTypes.map((ut, index) => {
-          const isFeatured = !!ut.is_featured
-          const featuredLabel = ut.featured_label || 'Most popular'
-          return (
-            <div
-              key={ut.id}
-              className="relative border rounded-xl p-5"
-              onClick={ut.floor_plan_url ? () => setFloorPlanUrl(ut.floor_plan_url!) : undefined}
-              style={{
-                cursor: ut.floor_plan_url ? 'pointer' : undefined,
-                backgroundColor: isFeatured ? '#1C1B18' : '#ffffff',
-                borderColor: isFeatured ? '#C9A96E' : '#E5E3DC',
-                borderWidth: isFeatured ? 2 : 1,
-              }}
-            >
-              {isFeatured && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 text-white text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full"
-                  style={{ backgroundColor: '#A0784A' }}
+      {unitTypes.length > 0 && (
+        // Scroll row on mobile with a partial card showing at the edge; grid
+        // from md up. pt-4 keeps the featured badge clear of the scroll clip.
+        <div
+          ref={unitScrollRef}
+          className="unit-scroll flex gap-3 mb-4 pt-4 overflow-x-auto"
+          // Column count comes from the data: projects carry anywhere from
+          // three to six unit types and they all sit on one desktop row.
+          style={{ scrollbarWidth: 'none', ['--unit-cols' as string]: unitTypes.length }}
+        >
+          {unitTypes.map(ut => {
+            const isSelected = ut.id === selectedUnitId
+            const isFeatured = !!ut.is_featured
+            const featuredLabel = ut.featured_label || 'Most popular'
+            return (
+              <div
+                key={ut.id}
+                data-unit-selected={isSelected ? 'true' : 'false'}
+                onClick={() => setSelectedUnitId(ut.id)}
+                className="relative border rounded-xl p-4 w-44 flex-shrink-0 md:w-auto transition-colors"
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: isSelected ? '#1C1B18' : '#ffffff',
+                  borderColor: isSelected ? '#C9A96E' : '#E5E3DC',
+                  borderWidth: isSelected ? 2 : 1,
+                }}
+              >
+                {/* Badge marks the featured unit whether or not it's selected */}
+                {isFeatured && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 text-white text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full whitespace-nowrap"
+                    style={{ backgroundColor: '#A0784A' }}
+                  >
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    {featuredLabel}
+                  </div>
+                )}
+                <p
+                  className="text-xs uppercase tracking-widest font-medium mb-2"
+                  style={{ color: isSelected ? 'rgba(255,255,255,0.5)' : '#9B9589' }}
                 >
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                  {featuredLabel}
+                  {ut.type}
+                </p>
+                <p
+                  className="text-xl font-semibold mb-1"
+                  style={{ color: isSelected ? '#C9A96E' : '#A0784A' }}
+                >
+                  {fmtPrice(ut.price_from)}
+                </p>
+                <p
+                  className="text-xs"
+                  style={{ color: isSelected ? 'rgba(255,255,255,0.4)' : '#9B9589' }}
+                >
+                  from {ut.size_sqft_from.toLocaleString()} sqft
+                </p>
+                {/* Fixed height so cards without a floor plan match the others */}
+                <div className="mt-3 h-4 flex items-center">
+                  {ut.floor_plan_url && (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setFloorPlanUrl(ut.floor_plan_url!) }}
+                      className="text-[11px] underline underline-offset-2 transition-opacity hover:opacity-70"
+                      style={{
+                        color: isSelected ? 'rgba(255,255,255,0.55)' : '#9B9589',
+                        background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                      }}
+                    >
+                      View floor plan
+                    </button>
+                  )}
                 </div>
-              )}
-              <p
-                className="text-xs uppercase tracking-widest font-medium mb-2"
-                style={{ color: isFeatured ? 'rgba(255,255,255,0.5)' : '#9B9589' }}
-              >
-                {ut.type}
-              </p>
-              <p
-                className="text-2xl font-semibold mb-1"
-                style={{ color: isFeatured ? '#C9A96E' : '#A0784A' }}
-              >
-                {fmtPrice(ut.price_from)}
-              </p>
-              <p
-                className="text-xs"
-                style={{ color: isFeatured ? 'rgba(255,255,255,0.4)' : '#9B9589' }}
-              >
-                {ut.size_sqft_from.toLocaleString()} sqft
-              </p>
-              {ut.floor_plan_url && (
-                <div className="mt-3">
-                  <span
-                    className="text-[11px] px-3 py-1 rounded-full"
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Payment plan, recalculated from the selected unit ─────────────── */}
+      {plans.length > 0 && (() => {
+        const plan = plans[activePlanIndex] ?? plans[0]
+        const aed = (n: number) => `AED ${Math.round(n).toLocaleString()}`
+
+        return (
+          <div id="payment-plan" className="mt-14">
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
+
+            {/* Plan selector — only shown when multiple plans exist */}
+            {plans.length > 1 && (
+              <div style={{ display: 'inline-flex', background: '#F4F3F0', borderRadius: 9999, padding: 4, marginBottom: 16, gap: 0 }}>
+                {plans.map((p, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActivePlanIndex(i)}
                     style={{
-                      border: `0.5px solid ${isFeatured ? 'rgba(255,255,255,0.2)' : '#E5E3DC'}`,
-                      color: isFeatured ? 'rgba(255,255,255,0.5)' : '#9B9589',
-                      background: 'transparent',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      padding: '6px 16px',
+                      borderRadius: 9999,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: activePlanIndex === i ? '#1C1B18' : 'transparent',
+                      color: activePlanIndex === i ? '#fff' : '#9B9589',
+                      transition: 'background 0.2s, color 0.2s',
                     }}
                   >
-                    View floor plan
-                  </span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
+            <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
+              {/* One row per actual segment — the merged view hid the
+                  instalment schedule, and the bar makes the shape readable. */}
+              <div>
+                {plan.segments.map((seg, i) => {
+                  const type = classifyPlanSeg(seg.label)
+                  const isHandover = type === 'handover'
+                  // Labels that just restate the percentage add nothing beside it
+                  const label = /^\s*\d+(\.\d+)?\s*%\s*$/.test(seg.label ?? '') ? '' : seg.label?.trim()
+                  const middle = [label, seg.date?.trim()].filter(Boolean).join(' · ') || PLAN_SEG_LABELS[type]
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-4 sm:gap-5 px-4 sm:px-7 py-4"
+                      style={{
+                        borderTop: i > 0 ? '0.5px solid #E5E3DC' : undefined,
+                        background: isHandover ? 'rgba(160,120,74,0.10)' : undefined,
+                      }}
+                    >
+                      <div className="w-[92px] sm:w-[116px] flex-shrink-0">
+                        <p style={{ fontSize: 18, fontWeight: 600, color: '#A0784A', margin: '0 0 6px', lineHeight: 1 }}>
+                          {seg.percent}%
+                        </p>
+                        <div style={{ height: 4, borderRadius: 2, background: 'rgba(28,27,24,0.08)', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${Math.max(0, Math.min(100, seg.percent))}%`,
+                            height: '100%',
+                            borderRadius: 2,
+                            background: PLAN_COLORS[type] ?? '#C9A96E',
+                          }} />
+                        </div>
+                      </div>
+                      <p style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#5C5852', margin: 0 }}>{middle}</p>
+                      {selectedUnitPrice > 0 && (
+                        <p style={{ fontSize: 13, fontWeight: 500, color: '#1C1B18', margin: 0, whiteSpace: 'nowrap' }}>
+                          {aed(selectedUnitPrice * seg.percent / 100)}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <p className="text-xs text-brand-hint mt-3 leading-relaxed">
+              {selectedUnit
+                ? `Indicative figures, based on the entry price for the ${selectedUnit.type}.${unitTypes.length > 1 ? ' Select another unit type above to update them.' : ''}`
+                : 'Indicative figures, based on the entry price.'}
+            </p>
+          </div>
+        )
+      })()}
+
+      {/* The section's single CTA */}
       <div
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl px-5 py-4"
-        style={{ backgroundColor: '#F4F3F0' }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl px-5 py-4 mt-6"
+        style={{ backgroundColor: '#A0784A' }}
       >
-        <p className="text-sm text-brand-muted">Not sure which unit is right for your budget and goals?</p>
+        <p className="text-sm" style={{ color: '#ffffff' }}>Not sure which unit is right for your budget and goals?</p>
         <button
           onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg border transition-colors whitespace-nowrap"
-          style={{ borderColor: '#1C1B18', color: '#1C1B18', backgroundColor: 'transparent' }}
+          className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
+          style={{ border: '0.5px solid rgba(255,255,255,0.5)', color: '#ffffff', backgroundColor: 'transparent' }}
         >
           Get unit recommendation →
         </button>
@@ -632,113 +748,6 @@ export default function ProjectDetail({
   const gallerySection = images.length > 1 ? (
     <GallerySlider images={images.slice(1)} onOpenLightbox={(i) => setLightboxIndex(i + 1)} />
   ) : null
-
-  const paymentPlanSection = plans.length > 0 ? (() => {
-    const plan = plans[activePlanIndex] ?? plans[0]
-    const merged = mergedPlanSegs(plan.segments)
-    const cols = merged.length
-    return (
-      <section id="payment-plan" className="py-16 border-t border-brand-border">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
-
-        {/* Plan selector — only shown when multiple plans exist */}
-        {plans.length > 1 && (
-          <div style={{ display: 'inline-flex', background: '#F4F3F0', borderRadius: 9999, padding: 4, marginBottom: 16, gap: 0 }}>
-            {plans.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => setActivePlanIndex(i)}
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: '6px 16px',
-                  borderRadius: 9999,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activePlanIndex === i ? '#1C1B18' : 'transparent',
-                  color: activePlanIndex === i ? '#fff' : '#9B9589',
-                  transition: 'background 0.2s, color 0.2s',
-                }}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
-          {/* Header row */}
-          <div style={{ padding: '20px 28px', borderBottom: '0.5px solid #E5E3DC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 4px' }}>Payment plan</p>
-              <p style={{ fontSize: 16, fontWeight: 500, color: '#1C1B18', margin: 0 }}>{plan.name}</p>
-            </div>
-            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', width: 180 }}>
-              {merged.map((seg, i) => {
-                const barColors: Record<string, string> = { downpayment: '#3D2008', construction: '#8B5E2A', handover: '#C9A96E', 'post-handover': '#A0784A' }
-                return (
-                  <Fragment key={seg.type}>
-                    {i > 0 && <div style={{ width: 1, background: '#F4F3F0', flexShrink: 0 }} />}
-                    <div style={{ width: `${seg.pct}%`, background: barColors[seg.type] ?? '#C9A96E' }} />
-                  </Fragment>
-                )
-              })}
-            </div>
-          </div>
-          {/* Segment columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: Array.from({ length: cols }, () => '1fr').join(' ') }}>
-            {merged.map((seg, i) => {
-              const isHandover = seg.type === 'handover'
-              const pctColor = isHandover ? '#A0784A' : '#1C1B18'
-              const subtitle = (() => {
-                if (seg.type === 'downpayment') return 'On signing'
-                if (seg.type === 'construction') return 'Instalments'
-                if (seg.type === 'handover') return `${project.handover_date ? fmtHandover(project.handover_date) : 'On handover'} · Cash or mortgage`
-                if (seg.type === 'post-handover') return `After handover · ${seg.pct}%`
-                return ''
-              })()
-              return (
-                <div
-                  key={seg.type}
-                  style={{
-                    padding: '28px 28px',
-                    borderRight: i < merged.length - 1 ? '0.5px solid #E5E3DC' : undefined,
-                  }}
-                >
-                  <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9B9589', margin: '0 0 12px' }}>
-                    {PLAN_SEG_LABELS[seg.type]}
-                  </p>
-                  <p style={{ fontSize: 44, fontWeight: 600, color: pctColor, margin: 0, lineHeight: 1 }}>
-                    {seg.pct}%
-                  </p>
-                  <p style={{ fontSize: 12, color: '#9B9589', margin: '10px 0 3px' }}>{subtitle}</p>
-                  {project.starting_price && (
-                    <p style={{ fontSize: 12, color: '#A0784A', margin: 0 }}>
-                      AED {Math.round(project.starting_price * seg.pct / 100).toLocaleString()}+
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Financing strip — rendered once, outside the plan loop */}
-        <div style={{ background: '#A0784A', borderRadius: 10, padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#fff', margin: '0 0 2px' }}>Financing the handover payment?</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Model mortgage vs cash scenarios with our return analysis.</p>
-          </div>
-          <button
-            onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-            style={{ fontSize: 12, fontWeight: 500, color: '#fff', background: 'transparent', border: '0.5px solid rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-          >
-            Get analysis →
-          </button>
-        </div>
-      </section>
-    )
-  })() : null
 
   const locationSection = (connectivity.length > 0 || mapEmbedSrc) ? (
     <section id="location" className="py-16 border-t border-brand-border">
@@ -901,6 +910,22 @@ export default function ProjectDetail({
   return (
     <div className="bg-brand-bg min-h-screen">
 
+      {/* Scoped to this page: the site nav (64px) and the tab bar (52px) are
+          both sticky, so anchors would otherwise land under them. */}
+      <style>{`
+        html { scroll-padding-top: 116px; }
+        .unit-scroll::-webkit-scrollbar { display: none; }
+        @media (min-width: 768px) {
+          .unit-scroll {
+            display: grid;
+            /* One row; the floor keeps six-across readable and lets the row
+               scroll rather than crushing cards on a narrow desktop. */
+            grid-template-columns: repeat(var(--unit-cols), minmax(140px, 1fr));
+          }
+          .unit-scroll > * { width: auto; }
+        }
+      `}</style>
+
       {/* Hero */}
       {heroEl}
 
@@ -940,10 +965,10 @@ export default function ProjectDetail({
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
                 <SecondaryPillNav sections={overviewNavSections} />
                 {aboutSection}
-                {unitTypesSection}
-                {paymentPlanSection}
-                {returnAnalysisTeaserSection}
+                {unitsAndPlanSection}
+
                 {gallerySection}
+                {returnAnalysisTeaserSection}
                 {locationSection}
                 {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1034,10 +1059,10 @@ export default function ProjectDetail({
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
                 <SecondaryPillNav sections={overviewNavSections} />
                 {aboutSection}
-                {unitTypesSection}
-                {paymentPlanSection}
-                {returnAnalysisTeaserSection}
+                {unitsAndPlanSection}
+
                 {gallerySection}
+                {returnAnalysisTeaserSection}
                 {locationSection}
                 {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">

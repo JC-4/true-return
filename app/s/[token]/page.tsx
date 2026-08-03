@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { computeDealMetrics } from '@/lib/calculations'
+import { computeDealMetrics, DLD_PCT, ADMIN_FEE } from '@/lib/calculations'
 import type { DealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate, paymentPlanSummary } from '@/lib/payment-plan'
 import { fmtLocation } from '@/lib/format'
@@ -73,9 +73,9 @@ function entryMetrics(
     developer:    project.developer?.name ?? '',
     handoverValue: inputs.handoverValue,
     paymentPlan:  planRows,
-    dldPct:       4,
+    dldPct:       DLD_PCT,
     agencyFeePct: 0,
-    adminFee:     4_200,
+    adminFee:     ADMIN_FEE,
     mortgageOn:   a.financing === 'mortgage',
     depositPct:   100 - ltvPct,
     interestRate: a.mortgageRate ?? 4.5,
