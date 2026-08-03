@@ -97,6 +97,59 @@ function SectionHeader({ label }: { label: string }) {
   )
 }
 
+// Repeater controls, matching the at_a_glance repeater on the developer form.
+function MoveButtons({
+  index,
+  total,
+  onMove,
+}: {
+  index: number
+  total: number
+  onMove: (dir: 'up' | 'down') => void
+}) {
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        onClick={() => onMove('up')}
+        disabled={index === 0}
+        aria-label="Move up"
+        className="text-gray-300 hover:text-[#18181b] disabled:opacity-30 disabled:hover:text-gray-300 transition-colors"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3.5 8.5L7 5l3.5 3.5" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => onMove('down')}
+        disabled={index === total - 1}
+        aria-label="Move down"
+        className="text-gray-300 hover:text-[#18181b] disabled:opacity-30 disabled:hover:text-gray-300 transition-colors"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3.5 5.5L7 9l3.5-3.5" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="text-gray-300 hover:text-red-500 transition-colors"
+    >
+      <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <path d="M3 3l8 8M11 3l-8 8" />
+      </svg>
+    </button>
+  )
+}
+
 // ─── Slab date picker ─────────────────────────────────────────────────────────
 
 const MONTHS = [
@@ -438,6 +491,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
   // Project-level fields
   const [name, setName] = useState(project.name)
   const [description, setDescription] = useState(project.description ?? '')
+  const [tagline, setTagline] = useState(project.tagline ?? '')
+  const [highlights, setHighlights] = useState<string[]>(project.highlights ?? [])
   const [status, setStatus] = useState(project.status ?? '')
   const [handoverDate, setHandoverDate] = useState(project.handover_date ?? '')
   const [startingPrice, setStartingPrice] = useState(project.starting_price?.toString() ?? '')
@@ -609,6 +664,22 @@ export default function EditProjectClient({ project }: { project: Project }) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
+  // ── Highlights repeater ───────────────────────────────────────────────────
+
+  function updateHighlight(i: number, value: string) {
+    setHighlights(rows => rows.map((r, idx) => (idx === i ? value : r)))
+  }
+
+  function moveHighlight(i: number, dir: 'up' | 'down') {
+    const to = dir === 'up' ? i - 1 : i + 1
+    setHighlights(rows => {
+      if (to < 0 || to >= rows.length) return rows
+      const next = [...rows]
+      ;[next[i], next[to]] = [next[to], next[i]]
+      return next
+    })
+  }
+
   async function handleSave() {
     setSaving(true)
     setError(null)
@@ -626,6 +697,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
     const projectPayload = {
       name: name.trim(),
       description: description.trim() || null,
+      tagline: tagline.trim() || null,
+      // Drop blank rows rather than writing empty strings into the array.
+      highlights: highlights.map(h => h.trim()).filter(Boolean),
       status: status || null,
       handover_date: handoverDate || null,
       starting_price: startingPrice ? parseFloat(startingPrice) : null,
@@ -695,6 +769,55 @@ export default function EditProjectClient({ project }: { project: Project }) {
 
             <Field label="Name" value={name} onChange={setName} placeholder="Project name" />
 
+            <Field
+              label="Tagline"
+              value={tagline}
+              onChange={setTagline}
+              placeholder="Design-led living in Dubai Design District"
+              hint="The headline in the About section on the project page."
+            />
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Highlights
+              </label>
+              {highlights.length === 0 ? (
+                <p className="text-sm text-gray-400">No highlights yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {highlights.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <MoveButtons index={i} total={highlights.length} onMove={dir => moveHighlight(i, dir)} />
+                      <input
+                        type="text"
+                        value={h}
+                        onChange={e => updateHighlight(i, e.target.value)}
+                        placeholder="Canal and Burj Khalifa views"
+                        className={inputCls}
+                      />
+                      <RemoveButton
+                        label={`Remove highlight ${i + 1}`}
+                        onClick={() => setHighlights(rows => rows.filter((_, idx) => idx !== i))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setHighlights(rows => [...rows, ''])}
+                className="mt-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#18181b] transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M7 1v12M1 7h12" />
+                </svg>
+                Add highlight
+              </button>
+              <p className="mt-1.5 text-xs text-gray-400">
+                The ticked list under the tagline, in this order.
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                 Description
@@ -706,6 +829,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
                 placeholder="Project description…"
                 className={`${inputCls} resize-y`}
               />
+              <p className="mt-1.5 text-xs text-gray-400">
+                Used only as the page meta description, trimmed to 160 characters. Not shown anywhere on the project page.
+              </p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
