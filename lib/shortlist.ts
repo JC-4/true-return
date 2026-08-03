@@ -1,5 +1,7 @@
 import { cache } from 'react'
+import { getServerSession } from 'next-auth'
 import { createServiceClient } from '@/lib/supabase'
+import { authOptions } from '@/lib/auth'
 import type { Project, UnitType, Shortlist, ShortlistEntry } from '@/lib/types'
 
 export type LoadedEntry = ShortlistEntry & { project: Project | null; unit_type: UnitType | null }
@@ -21,6 +23,15 @@ export const getShortlist = cache(async (token: string): Promise<LoadedShortlist
   if (error || !data) return null
   return data as LoadedShortlist
 })
+
+// My own visits shouldn't show up as client activity: a signed-in admin
+// session covers normal browsing, ?preview=1 covers a private window where
+// there is no session to detect. Decided server side and handed to the logger.
+export async function isOwnerVisit(preview: boolean): Promise<boolean> {
+  if (preview) return true
+  const session = await getServerSession(authOptions)
+  return !!session?.user
+}
 
 /** Entries in sort_order, dropping any whose project has since been deleted. */
 export function sortedEntries(shortlist: LoadedShortlist): EntryWithProject[] {

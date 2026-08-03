@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { fmtLocation } from '@/lib/format'
-import { getShortlist, sortedEntries, deriveSteps } from '@/lib/shortlist'
+import { isPreviewParam } from '@/lib/preview'
+import { getShortlist, sortedEntries, deriveSteps, isOwnerVisit } from '@/lib/shortlist'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import BrochureTab from '@/components/BrochureTab'
 import ProjectGallery from '@/components/ProjectGallery'
@@ -18,10 +18,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default async function ShortlistProjectPage({ params }: {
+export default async function ShortlistProjectPage({ params, searchParams }: {
   params: Promise<{ token: string; 'project-slug': string }>
+  searchParams: Promise<{ preview?: string | string[] }>
 }) {
   const { token, 'project-slug': projectSlug } = await params
+  const preview = isPreviewParam((await searchParams).preview)
   // The sibling /conclusion route resolves first (static beats dynamic), so a
   // project can never be reached through that segment.
   if (projectSlug === 'conclusion') notFound()
@@ -35,28 +37,18 @@ export default async function ShortlistProjectPage({ params }: {
   if (!entry) notFound()
   const project = entry.project
   const steps = deriveSteps(shortlist, token)
+  const ownVisit = await isOwnerVisit(preview)
 
   return (
     <div className="bg-brand-bg min-h-screen">
-      <ShortlistViewLogger token={token} event="expand" entryId={entry.id} />
+      <ShortlistViewLogger token={token} event="expand" entryId={entry.id} disabled={ownVisit} />
       <div className="max-w-6xl mx-auto px-5 sm:px-10 py-10 sm:py-16">
 
-        {/* ── 1. Back to the shortlist ───────────────────────────────────── */}
-        <Link
-          href={`/s/${encodeURIComponent(token)}`}
-          className="inline-flex items-center gap-1.5 text-sm text-brand-muted hover:text-brand-bronze transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to shortlist
-        </Link>
-
-        {/* ── 2. Gallery ─────────────────────────────────────────────────── */}
+        {/* ── 1. Gallery — the stepper already handles getting back ──────── */}
         <ProjectGallery images={project.images ?? []} />
 
-        {/* ── 3. Project identity ────────────────────────────────────────── */}
-        <div className="mt-4">
+        {/* ── 2. Project identity ────────────────────────────────────────── */}
+        <div className="mt-6">
           {project.developer && (
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">{project.developer.name}</p>
           )}
@@ -64,17 +56,18 @@ export default async function ShortlistProjectPage({ params }: {
           <p className="text-sm text-brand-muted mt-1.5">{fmtLocation(project)}</p>
         </div>
 
-        {/* ── 4. The note ────────────────────────────────────────────────── */}
+        {/* ── 3. The note ────────────────────────────────────────────────── */}
         <div className="mt-8 bg-white border border-brand-border rounded-2xl p-6 sm:p-8" style={{ borderLeftWidth: 3, borderLeftColor: '#A0784A' }}>
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Why it&apos;s on your shortlist</p>
-          <p className="text-base text-brand-text leading-relaxed">{entry.note}</p>
+          <p className="text-base text-brand-text leading-relaxed max-w-xl">{entry.note}</p>
         </div>
 
-        {/* ── 5. Pros and cons ───────────────────────────────────────────── */}
+        {/* ── 4. Pros and cons ───────────────────────────────────────────── */}
         {(entry.pros.length > 0 || entry.cons.length > 0) && (
           <div className="mt-4 grid sm:grid-cols-2 gap-4">
             {entry.pros.length > 0 && (
-              <div className="bg-white border border-brand-border rounded-2xl p-6">
+              /* Gently colour-coded, not alert boxes — this reads as considered judgement */
+              <div className="border border-brand-border rounded-2xl p-6" style={{ backgroundColor: '#F2F8F4' }}>
                 <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Pros</p>
                 <ul className="space-y-2.5">
                   {entry.pros.map((pro, i) => (
@@ -89,7 +82,7 @@ export default async function ShortlistProjectPage({ params }: {
               </div>
             )}
             {entry.cons.length > 0 && (
-              <div className="bg-white border border-brand-border rounded-2xl p-6">
+              <div className="border border-brand-border rounded-2xl p-6" style={{ backgroundColor: '#FCF4F3' }}>
                 <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Cons</p>
                 <ul className="space-y-2.5">
                   {entry.cons.map((con, i) => (
@@ -106,7 +99,7 @@ export default async function ShortlistProjectPage({ params }: {
           </div>
         )}
 
-        {/* ── 6. Return analysis, seeded with this entry's assumptions ───── */}
+        {/* ── 5. Return analysis, seeded with this entry's assumptions ───── */}
         <section className="mt-12 border-t border-brand-border pt-10">
           <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Return analysis</p>
           <ReturnAnalysisPanel
@@ -117,7 +110,7 @@ export default async function ShortlistProjectPage({ params }: {
           />
         </section>
 
-        {/* ── 7. Project materials ───────────────────────────────────────── */}
+        {/* ── 6. Project materials ───────────────────────────────────────── */}
         <section className="mt-4 border-t border-brand-border">
           <BrochureTab
             slug={project.slug}
@@ -125,8 +118,12 @@ export default async function ShortlistProjectPage({ params }: {
           />
         </section>
 
-        {/* ── 8. Sequential movement through the document ────────────────── */}
-        <ShortlistFooterNav steps={steps} currentHref={`/s/${encodeURIComponent(token)}/${project.slug}`} />
+        {/* ── 7. Sequential movement through the document ────────────────── */}
+        <ShortlistFooterNav
+          steps={steps}
+          currentHref={`/s/${encodeURIComponent(token)}/${project.slug}`}
+          preview={preview}
+        />
 
       </div>
     </div>

@@ -11,7 +11,7 @@ export default function ProjectGallery({ images }: { images: string[] }) {
 
   return (
     <>
-      <GallerySlider images={images} onOpenLightbox={setLightboxIndex} />
+      <GallerySlider images={images} onOpenLightbox={setLightboxIndex} variant="plain" />
       {lightboxIndex !== null && (
         <Lightbox
           images={images}

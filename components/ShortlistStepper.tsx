@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { withPreview } from '@/lib/preview'
 import type { ShortlistStep } from '@/lib/shortlist'
 
 const norm = (s: string) => decodeURIComponent(s).replace(/\/+$/, '')
@@ -12,6 +13,9 @@ const norm = (s: string) => decodeURIComponent(s).replace(/\/+$/, '')
 // seeing your position at a glance is the whole point.
 export default function ShortlistStepper({ steps }: { steps: ShortlistStep[] }) {
   const pathname = usePathname()
+  // Layouts can't read searchParams, so preview mode is picked up here and
+  // carried onto every step link
+  const preview = useSearchParams().get('preview') === '1'
   const current = norm(pathname)
 
   if (steps.length <= 1) return null
@@ -25,7 +29,7 @@ export default function ShortlistStepper({ steps }: { steps: ShortlistStep[] }) 
             return (
               <li key={step.href} className="min-w-0">
                 <Link
-                  href={step.href}
+                  href={withPreview(step.href, preview)}
                   aria-current={isCurrent ? 'step' : undefined}
                   className="flex items-baseline gap-1.5 min-w-0 transition-colors"
                 >

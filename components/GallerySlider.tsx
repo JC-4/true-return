@@ -1,7 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-export default function GallerySlider({ images, onOpenLightbox }: { images: string[]; onOpenLightbox: (index: number) => void }) {
+export default function GallerySlider({ images, onOpenLightbox, variant = 'section' }: {
+  images: string[]
+  onOpenLightbox: (index: number) => void
+  /** 'plain' drops the heading, top border and vertical padding, for use at the top of a page */
+  variant?: 'section' | 'plain'
+}) {
   const [current, setCurrent] = useState(0)
 
   useEffect(() => {
@@ -21,8 +26,10 @@ export default function GallerySlider({ images, onOpenLightbox }: { images: stri
   if (images.length === 0) return null
 
   return (
-    <section id="gallery" className="py-16 border-t border-brand-border">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Gallery</p>
+    <section id="gallery" className={variant === 'plain' ? '' : 'py-16 border-t border-brand-border'}>
+        {variant === 'section' && (
+          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Gallery</p>
+        )}
         <div className="relative rounded-2xl overflow-hidden" style={{ height: 'clamp(240px, 50vw, 600px)' }}>
           <img
             src={images[current]}

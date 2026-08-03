@@ -8,7 +8,8 @@ import { adaptPaymentPlan, formatHandoverDate, paymentPlanSummary } from '@/lib/
 import { fmtLocation } from '@/lib/format'
 import ShortlistViewLogger from '@/components/ShortlistViewLogger'
 import ShortlistFooterNav from '@/components/ShortlistFooterNav'
-import { getShortlist, sortedEntries, deriveSteps } from '@/lib/shortlist'
+import { getShortlist, sortedEntries, deriveSteps, isOwnerVisit } from '@/lib/shortlist'
+import { isPreviewParam, withPreview } from '@/lib/preview'
 import { defaultReturnInputs } from '@/lib/return-defaults'
 import type { Project, UnitType, ShortlistEntry } from '@/lib/types'
 
@@ -79,14 +80,19 @@ function entryMetrics(project: Project, unit: UnitType | null, assumptions: Shor
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function ShortlistPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function ShortlistPage({ params, searchParams }: {
+  params: Promise<{ token: string }>
+  searchParams: Promise<{ preview?: string | string[] }>
+}) {
   const { token } = await params
+  const preview = isPreviewParam((await searchParams).preview)
 
   const shortlist = await getShortlist(token)
   if (!shortlist) notFound()
 
   const entries = sortedEntries(shortlist)
   const steps = deriveSteps(shortlist, token)
+  const ownVisit = await isOwnerVisit(preview)
 
   const rows = entries.map(entry => ({
     entry,
@@ -107,7 +113,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
 
   return (
     <div className="bg-brand-bg min-h-screen">
-      <ShortlistViewLogger token={token} event="open" />
+      <ShortlistViewLogger token={token} event="open" disabled={ownVisit} />
       <div className="max-w-6xl mx-auto px-5 sm:px-10 py-10 sm:py-16">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -115,7 +121,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
         <p className="text-sm text-brand-muted mt-1.5">Prepared for {shortlist.client_name}</p>
 
         {shortlist.intro && (
-          <p className="text-sm text-brand-muted leading-relaxed whitespace-pre-line mt-6 max-w-2xl">
+          <p className="text-sm text-brand-muted leading-relaxed whitespace-pre-line mt-6 max-w-xl">
             {shortlist.intro}
           </p>
         )}
@@ -167,7 +173,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
           {rows.map(({ entry, metrics }, i) => (
             <Link
               key={entry.id}
-              href={`/s/${encodeURIComponent(token)}/${entry.project.slug}`}
+              href={withPreview(`/s/${encodeURIComponent(token)}/${entry.project.slug}`, preview)}
               className="flex flex-col bg-white border border-brand-border rounded-2xl overflow-hidden transition-colors hover:border-brand-bronze"
             >
               {entry.project.images?.[0] && (
@@ -229,7 +235,7 @@ export default async function ShortlistPage({ params }: { params: Promise<{ toke
           ))}
         </div>
 
-        <ShortlistFooterNav steps={steps} currentHref={`/s/${encodeURIComponent(token)}`} />
+        <ShortlistFooterNav steps={steps} currentHref={`/s/${encodeURIComponent(token)}`} preview={preview} />
 
       </div>
     </div>
