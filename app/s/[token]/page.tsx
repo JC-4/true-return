@@ -10,7 +10,8 @@ import ShortlistViewLogger from '@/components/ShortlistViewLogger'
 import ShortlistFooterNav from '@/components/ShortlistFooterNav'
 import { getShortlist, sortedEntries, deriveSteps, isOwnerVisit } from '@/lib/shortlist'
 import { isPreviewParam, withPreview } from '@/lib/preview'
-import { defaultReturnInputs } from '@/lib/return-defaults'
+import { resolveReturnInputs } from '@/lib/return-defaults'
+import type { ResolvedReturnInputs } from '@/lib/return-defaults'
 import type { Project, UnitType, ShortlistEntry } from '@/lib/types'
 
 // Every request must hit the database for fresh data. View logging is
@@ -45,13 +46,17 @@ function fmtSqft(n: number | null | undefined): string {
 
 // ─── Metrics ──────────────────────────────────────────────────────────────────
 
-// Mirrors ReturnAnalysisPanel's computeDealMetrics call at load: the entry's
-// stored assumptions override the panel's derived defaults field by field.
-function entryMetrics(project: Project, unit: UnitType | null, assumptions: ShortlistEntry['assumptions']): DealMetrics | null {
-  const basePrice = unit?.price_from ?? project.starting_price ?? 0
+// Mirrors ReturnAnalysisPanel's computeDealMetrics call at load, using the same
+// resolved inputs so the two cannot disagree.
+function entryMetrics(
+  project: Project,
+  unit: UnitType | null,
+  assumptions: ShortlistEntry['assumptions'],
+  inputs: ResolvedReturnInputs,
+): DealMetrics | null {
+  const basePrice = inputs.price
   if (basePrice <= 0) return null
   const planRows = adaptPaymentPlan(project.payment_plans, project.handover_date)
-  const defaults = defaultReturnInputs(unit ?? undefined, basePrice)
   const handoverRow = planRows.find(r => r.handover) ?? planRows[planRows.length - 1]
   const defaultLtv = handoverRow ? Math.min(80, Math.max(20, Math.round(handoverRow.pct / 5) * 5)) : 80
   const a = assumptions ?? {}
@@ -59,14 +64,14 @@ function entryMetrics(project: Project, unit: UnitType | null, assumptions: Shor
   return computeDealMetrics({
     propertyType: 'offplan',
     price:        basePrice,
-    rent:         a.rent ?? defaults.rent,
-    growth:       a.growth ?? defaults.growth,
+    rent:         inputs.rent,
+    growth:       inputs.growth,
     internalSqft: unit?.internal_sqft ?? 0,
     balconySqft:  unit?.balcony_sqft ?? 0,
     scRate:       project.service_charge_rate ?? 0,
     completion:   formatHandoverDate(project.handover_date),
     developer:    project.developer?.name ?? '',
-    handoverValue: a.handoverValue ?? defaults.handoverValue,
+    handoverValue: inputs.handoverValue,
     paymentPlan:  planRows,
     dldPct:       4,
     agencyFeePct: 0,
@@ -94,17 +99,26 @@ export default async function ShortlistPage({ params, searchParams }: {
   const steps = deriveSteps(shortlist, token)
   const ownVisit = await isOwnerVisit(preview)
 
-  const rows = entries.map(entry => ({
-    entry,
-    metrics: entryMetrics(entry.project, entry.unit_type, entry.assumptions),
-  }))
+  const rows = entries.map(entry => {
+    const inputs = resolveReturnInputs({
+      unit: entry.unit_type ?? undefined,
+      fallbackPrice: entry.project.starting_price,
+      purchasePrice: entry.purchase_price,
+      assumptions: entry.assumptions,
+    })
+    return {
+      entry,
+      inputs,
+      metrics: entryMetrics(entry.project, entry.unit_type, entry.assumptions, inputs),
+    }
+  })
 
   // Context first, then cost, then outcome — each column reads down as an argument
   const tableRows: { label: string; value: (r: (typeof rows)[number]) => string }[] = [
     { label: 'Developer',        value: ({ entry })   => entry.project.developer?.name ?? '—' },
     { label: 'Location',         value: ({ entry })   => fmtLocation(entry.project) },
     { label: 'Size',             value: ({ entry })   => fmtSqft(entry.unit_type?.size_sqft_from) },
-    { label: 'Price',            value: ({ entry })   => fmtAED(entry.unit_type?.price_from ?? entry.project.starting_price) },
+    { label: 'Price',            value: ({ inputs })  => fmtAED(inputs.price) },
     { label: 'Payment plan',     value: ({ entry })   => paymentPlanSummary(entry.project.payment_plans) ?? '—' },
     { label: 'Cash to handover', value: ({ metrics }) => metrics ? fmtAED(metrics.cashDeployedPreCompletion) : '—' },
     { label: 'Handover',         value: ({ entry })   => fmtQuarter(entry.project.handover_date) },

@@ -131,6 +131,8 @@ export type ShortlistEntry = {
   project_id: string
   /** The unit selected for this client; comparison row + panel default */
   unit_type_id: string | null
+  /** Price actually worth analysing; null falls back to the unit's price_from */
+  purchase_price: number | null
   assumptions: ShortlistAssumptions | null
   note: string
   pros: string[]

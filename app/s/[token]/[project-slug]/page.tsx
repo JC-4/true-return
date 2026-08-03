@@ -107,6 +107,7 @@ export default async function ShortlistProjectPage({ params, searchParams }: {
             showFullAnalysis={true}
             assumptions={entry.assumptions}
             defaultUnitTypeId={entry.unit_type_id}
+            purchasePrice={entry.purchase_price}
           />
         </section>
 

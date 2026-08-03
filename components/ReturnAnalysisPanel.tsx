@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Project, ShortlistAssumptions } from '@/lib/types'
 import { solveIRR, getYearsToCompletion, parseDateToYear, buildAndSolveIRR, computeDealMetrics } from '@/lib/calculations'
 import { adaptPaymentPlan, formatHandoverDate } from '@/lib/payment-plan'
-import { returnSliderBounds, snapToBounds, defaultReturnInputs } from '@/lib/return-defaults'
+import { resolveReturnInputs, snapToBounds } from '@/lib/return-defaults'
 import { Tooltip, SecondaryPillNav } from '@/components/SharedUI'
 
 export default function ReturnAnalysisPanel({
@@ -12,6 +12,7 @@ export default function ReturnAnalysisPanel({
   showFullAnalysis,
   assumptions,
   defaultUnitTypeId,
+  purchasePrice,
 }: {
   project: Project
   showFullAnalysis: boolean
@@ -19,6 +20,8 @@ export default function ReturnAnalysisPanel({
   assumptions?: ShortlistAssumptions | null
   /** Unit to preselect, taking priority over the featured/median default */
   defaultUnitTypeId?: string | null
+  /** Price to analyse for the seeded unit; null falls back to its price_from */
+  purchasePrice?: number | null
 }) {
   const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
     if (a.bedrooms === null) return 1
@@ -51,24 +54,48 @@ export default function ReturnAnalysisPanel({
   const [selectedUnitId, setSelectedUnitId] = useState<string>(defaultUnit?.id ?? unitsInGroup[0]?.id ?? '')
   const selectedUnit = unitTypes.find(ut => ut.id === selectedUnitId) ?? unitsInGroup[0]
 
-  const basePrice    = selectedUnit?.price_from ?? project.starting_price ?? 0
   const internalSqft = selectedUnit?.internal_sqft ?? 0
   const balconySqft  = selectedUnit?.balcony_sqft  ?? 0
 
-  // Slider bounds and seed values live in lib/return-defaults.ts, shared with
-  // the shortlist comparison so its numbers agree with this panel at load.
-  const { rent: rentBounds, hv: hvBounds } = returnSliderBounds(selectedUnit, basePrice)
+  // The entry's purchase price was chosen for one unit; any other unit is
+  // analysed at its own price_from.
+  function purchasePriceFor(unitId: string | undefined) {
+    return unitId && unitId === defaultUnitTypeId ? purchasePrice : null
+  }
 
-  function snapRent(v: number) { return snapToBounds(v, rentBounds) }
-  function snapHV(v: number)   { return snapToBounds(v, hvBounds) }
+  // Everything the panel loads with comes from one shared derivation in
+  // lib/return-defaults.ts, so the shortlist comparison cannot disagree with it.
+  const [initial] = useState(() => resolveReturnInputs({
+    unit: selectedUnit,
+    fallbackPrice: project.starting_price,
+    purchasePrice: purchasePriceFor(selectedUnit?.id),
+    assumptions,
+  }))
 
-  // Stored assumptions seed the inputs, clamped to the selected unit's bounds
-  // like any other value; without them behaviour is unchanged.
-  const initialInputs = defaultReturnInputs(selectedUnit, basePrice)
-  const [rent,          setRent]          = useState(() => assumptions?.rent          != null ? snapRent(assumptions.rent)        : initialInputs.rent)
-  const [handoverValue, setHandoverValue] = useState(() => assumptions?.handoverValue != null ? snapHV  (assumptions.handoverValue) : initialInputs.handoverValue)
-  const [growth,        setGrowth]        = useState(assumptions?.growth     ?? 5)
-  const [holdPeriod,    setHoldPeriod]    = useState(assumptions?.holdPeriod ?? 5)
+  const [price,         setPrice]         = useState(initial.price)
+  const [rent,          setRent]          = useState(initial.rent)
+  const [handoverValue, setHandoverValue] = useState(initial.handoverValue)
+  const [growth,        setGrowth]        = useState(initial.growth)
+  const [holdPeriod,    setHoldPeriod]    = useState(initial.holdPeriod)
+
+  // Bounds are fixed at load and on unit change. Rent and handover value don't
+  // move with price, so nothing needs to recompute them in between.
+  const [priceBounds, setPriceBounds] = useState(initial.priceBounds)
+  const [rentBounds,  setRentBounds]  = useState(initial.rentBounds)
+  const [hvBounds,    setHvBounds]    = useState(initial.hvBounds)
+
+  // Everything downstream calculates from the price being analysed
+  const basePrice = price
+
+  // Price moves alone: rent and handover value are the client's own inputs and
+  // are left untouched, so raising price puts more capital in against the same
+  // income and yield and IRR fall accordingly.
+  function handlePriceChange(raw: number) {
+    // The track starts at price_from, which is rarely a multiple of the step,
+    // so snap dragged values to clean figures. The loaded price is left exactly
+    // as configured, so it still matches the comparison table.
+    setPrice(snapToBounds(raw, priceBounds))
+  }
 
   // Both effects below reset state derived from the current selection, so they
   // must fire only on an actual change. Effects also run after first render
@@ -80,9 +107,18 @@ export default function ReturnAnalysisPanel({
     prevUnitIdRef.current = selectedUnitId
     const unit = unitTypes.find(ut => ut.id === selectedUnitId)
     if (!unit) return
-    const p = unit.price_from ?? 0
-    setRent(snapRent(unit.expected_rent          ?? p * 0.07))
-    setHandoverValue(snapHV(unit.expected_handover_value ?? p * 1.2))
+    // Stored assumptions belong to the seeded unit, so they are not carried over
+    const next = resolveReturnInputs({
+      unit,
+      fallbackPrice: project.starting_price,
+      purchasePrice: purchasePriceFor(unit.id),
+    })
+    setPrice(next.price)
+    setRent(next.rent)
+    setHandoverValue(next.handoverValue)
+    setPriceBounds(next.priceBounds)
+    setRentBounds(next.rentBounds)
+    setHvBounds(next.hvBounds)
   }, [selectedUnitId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevBedroomsRef = useRef(selectedBedrooms)
@@ -537,7 +573,7 @@ export default function ReturnAnalysisPanel({
         <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
             <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Gross yield</p>
-            <Tooltip text="Annual rent as a percentage of purchase price." />
+            <Tooltip text="Rent at handover as a percentage of purchase price." />
           </div>
           <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
             {grossYield !== null ? `${grossYield.toFixed(1)}%` : '—'}
@@ -548,7 +584,7 @@ export default function ReturnAnalysisPanel({
         <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
             <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Net yield</p>
-            <Tooltip text="Annual rent minus service charge, as a percentage of purchase price." />
+            <Tooltip text="Rent at handover minus service charge, as a percentage of purchase price." />
           </div>
           <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
             {netYield !== null ? `${netYield.toFixed(1)}%` : '—'}
@@ -570,18 +606,18 @@ export default function ReturnAnalysisPanel({
         <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
             <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Annual cash flow</p>
-            <Tooltip text={mortgageOn ? 'Net annual rent minus service charge and annual mortgage cost.' : 'Net annual rent after service charge deduction.'} />
+            <Tooltip text={mortgageOn ? 'Rent at handover, less service charge and annual mortgage cost.' : 'Rent at handover, less service charge.'} />
           </div>
           <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
             {(() => { const v = Math.round(netIncome - (mortgageOn ? annualMortgageCost : 0)); return `AED ${v.toLocaleString()}` })()}
           </p>
         </div>
 
-        {/* Min. annual rent */}
+        {/* Min. rent at handover */}
         <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Min. annual rent</p>
-            <Tooltip text="Minimum rent needed to cover service charge (and mortgage if applicable)." />
+            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Min. rent at handover</p>
+            <Tooltip text="Minimum rent at handover needed to cover service charge (and mortgage if applicable)." />
           </div>
           <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
             {minRent > 0 ? `AED ${Math.round(minRent).toLocaleString()}` : '—'}
@@ -785,10 +821,28 @@ export default function ReturnAnalysisPanel({
           Estimated — adjust to explore scenarios
         </span>
 
+        {/* Purchase price */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-brand-muted">Purchase price</span>
+              <Tooltip text="The price you'd actually pay. The lowest figure is this unit type's starting price — a better unit costs more, so raising this puts more capital in against the same rent." />
+            </div>
+            <span className="text-sm font-semibold text-brand-text">{fmtA(price)}</span>
+          </div>
+          <input type="range" min={priceBounds.min} max={priceBounds.max} step={priceBounds.step} value={price}
+            onChange={e => handlePriceChange(parseInt(e.target.value))}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs text-brand-hint">AED {priceBounds.min.toLocaleString()}</span>
+            <span className="text-xs text-brand-hint">AED {priceBounds.max.toLocaleString()}</span>
+          </div>
+        </div>
+
         {/* Rent */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-brand-muted">Expected annual rent</span>
+            <span className="text-xs font-medium text-brand-muted">Expected rent at handover</span>
             <span className="text-sm font-semibold text-brand-text">AED {rent.toLocaleString()}</span>
           </div>
           <input type="range" min={rentBounds.min} max={rentBounds.max} step={rentBounds.step} value={rent}
@@ -925,7 +979,7 @@ export default function ReturnAnalysisPanel({
           <p className="text-xs text-brand-hint mt-2.5">
             {holdPeriod === 0
               ? 'Conservative assumes 7.5% below estimated handover value. Optimistic assumes 7.5% above.'
-              : 'Conservative assumes 15% lower rent and growth than base estimate. Optimistic assumes 15% higher.'}
+              : 'Conservative assumes rent at handover and growth 15% below the base estimate. Optimistic assumes 15% above.'}
           </p>
         </div>
 
