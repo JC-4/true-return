@@ -505,53 +505,61 @@ export default function ProjectDetail({
         </div>
 
         {/* Right: description + developer */}
-        <div className="flex flex-col justify-center py-2">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">About this project</p>
-          {project.tagline && (
-            <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
-          )}
-          {project.highlights && project.highlights.length > 0 && (
-            <div className="flex flex-col gap-2.5 mb-6">
-              {project.highlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <div
-                    className="flex-shrink-0 mt-0.5"
-                    style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: '#F4F3F0', border: '0.5px solid #E5E3DC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M2 5l2 2 4-4" stroke="#A0784A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+        <div className="flex flex-col justify-between py-2">
+          {/* Grouped so justify-between splits the column into exactly two
+              blocks — top content and developer. Left ungrouped it would also
+              push the tagline and highlights apart from each other. */}
+          <div>
+            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">About this project</p>
+            {project.tagline && (
+              <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
+            )}
+            {project.highlights && project.highlights.length > 0 && (
+              <div className="flex flex-col gap-2.5 mb-6">
+                {project.highlights.map((h, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <div
+                      className="flex-shrink-0 mt-0.5"
+                      style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: '#F4F3F0', border: '0.5px solid #E5E3DC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5l2 2 4-4" stroke="#A0784A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-brand-muted leading-relaxed">{h}</span>
                   </div>
-                  <span className="text-sm text-brand-muted leading-relaxed">{h}</span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
 
           {project.developer && (
-            <div className="flex items-center gap-3 pt-5 border-t border-brand-border">
-              {/* Split by branch: this block sits on the cream page background,
-                  not inside a card, so a real logo gets no background at all and
-                  the transparent PNG sits directly on the page. The initial
-                  fallback keeps its dark chip. */}
-              {project.developer.logo_url ? (
-                <div className="w-24 h-12 flex-shrink-0 flex items-center justify-center">
-                  <img
-                    src={project.developer.logo_url}
-                    alt={project.developer.name}
-                    className="w-full h-full object-contain"
-                  />
+            <div className="pt-5 border-t border-brand-border">
+              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Developer</p>
+              <div className="flex items-center gap-3">
+                {/* Split by branch: this block sits on the cream page background,
+                    not inside a card, so a real logo gets no background at all and
+                    the transparent PNG sits directly on the page. The initial
+                    fallback keeps its dark chip. */}
+                {project.developer.logo_url ? (
+                  <div className="w-24 h-12 flex-shrink-0 flex items-center justify-center">
+                    <img
+                      src={project.developer.logo_url}
+                      alt={project.developer.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
+                    <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
+                  <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-bronze hover:underline">
+                    View all projects →
+                  </Link>
                 </div>
-              ) : (
-                <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-                  <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
-                <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-bronze hover:underline">
-                  View all projects →
-                </Link>
               </div>
             </div>
           )}
