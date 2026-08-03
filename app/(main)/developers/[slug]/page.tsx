@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import ProjectCard from '@/components/ProjectCard'
 import AdminEditLink from '@/components/AdminEditLink'
+import LeadGenForm from '@/components/LeadGenForm'
 import type { Developer, DeliveredProject, GlanceRow, Project } from '@/lib/types'
 
 type Props = { params: Promise<{ slug: string }> }
@@ -286,6 +287,29 @@ export default async function DeveloperPage({ params }: Props) {
             </figure>
           </section>
         )}
+
+        {/* 7. Lead gen — always rendered. LeadGenForm is a client component
+               taking public strings only, so it doesn't affect static rendering. */}
+        <section id="lead-gen-form" className="bg-white border border-brand-border rounded-xl">
+          <div className="px-6 sm:px-10 py-16 sm:py-20">
+            <div style={{ maxWidth: 600, margin: '0 auto' }}>
+              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-3 text-center">
+                Independent advice
+              </p>
+              <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">
+                Thinking about a {dev.name} project?
+              </h2>
+              <p className="text-sm text-brand-muted mb-8 text-center">
+                I will tell you which of their buildings are worth the money and which are not. No cost to you.
+              </p>
+              <LeadGenForm
+                projectName={dev.name}
+                isProjectPage={false}
+                source="Developer page"
+              />
+            </div>
+          </div>
+        </section>
 
       </div>
     </div>
