@@ -505,10 +505,11 @@ export default function ProjectDetail({
         </div>
 
         {/* Right: description + developer */}
-        <div className="flex flex-col justify-between py-2">
-          {/* Grouped so justify-between splits the column into exactly two
-              blocks — top content and developer. Left ungrouped it would also
-              push the tagline and highlights apart from each other. */}
+        <div className="flex flex-col justify-center py-2">
+          {/* Grouping wrapper. Inert under justify-center, which packs the
+              children together and centres them as one block — but it is what
+              keeps the tagline and highlights from being spread apart if this
+              column ever goes back to justify-between. */}
           <div>
             <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">About this project</p>
             {project.tagline && (
