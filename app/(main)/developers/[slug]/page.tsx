@@ -3,15 +3,59 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import ProjectCard from '@/components/ProjectCard'
-import type { Developer, Project } from '@/lib/types'
+import AdminEditLink from '@/components/AdminEditLink'
+import type { Developer, DeliveredProject, GlanceRow, Project } from '@/lib/types'
 
 type Props = { params: Promise<{ slug: string }> }
 
+/** Statically rendered and revalidated — the admin edit link resolves
+ *  client-side precisely so nothing here has to read the session. */
 export const revalidate = 60
 
-type DeveloperWithProjects = Developer & { projects: Project[] }
+/** Without this the route has no params to prerender, so Next renders it on
+ *  demand and skips the route cache entirely — revalidate alone doesn't get
+ *  you ISR on a dynamic segment. Slugs added later still resolve on demand. */
+export async function generateStaticParams() {
+  const { data, error } = await supabase.from('developers').select('slug')
+  if (error) { console.error('[developer params]', error.message); return [] }
+  return (data ?? []).map(({ slug }) => ({ slug }))
+}
 
-async function getDeveloper(slug: string): Promise<DeveloperWithProjects | null> {
+/** Delivered projects shown as cards. The rest are named in a plain text line. */
+const DELIVERED_CARD_LIMIT = 4
+
+type DeveloperAnalysis = Developer & {
+  projects: Project[]
+  delivered: DeliveredProject[]
+}
+
+/** "Plus No.9 and Studio One." — Oxford-free list, matching how it reads aloud. */
+function fmtOverflowNames(names: string[]): string {
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/** at_a_glance is hand-entered jsonb, so tolerate malformed rows rather than throwing. */
+function glanceRows(raw: unknown): GlanceRow[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap(r => {
+    if (!r || typeof r !== 'object') return []
+    const { label, value } = r as Record<string, unknown>
+    if (typeof label !== 'string' || !label.trim()) return []
+    if (value == null || String(value).trim() === '') return []
+    return [{ label: label.trim(), value: String(value).trim() }]
+  })
+}
+
+function fmtReviewed(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+}
+
+async function getDeveloper(slug: string): Promise<DeveloperAnalysis | null> {
   const { data: developer, error: devErr } = await supabase
     .from('developers')
     .select('*')
@@ -20,24 +64,38 @@ async function getDeveloper(slug: string): Promise<DeveloperWithProjects | null>
 
   if (devErr) { console.error('[developer slug]', devErr.message); return null }
 
-  const { data: projects, error: projErr } = await supabase
-    .from('projects')
-    .select('*, developer:developers(*)')
-    .eq('developer_id', developer.id)
-    .order('name')
+  const [{ data: projects, error: projErr }, { data: delivered, error: delErr }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('*, developer:developers(*)')
+      .eq('developer_id', developer.id)
+      .order('name'),
+    supabase
+      .from('developer_delivered_projects')
+      .select('*')
+      .eq('developer_id', developer.id)
+      .order('sort_order'),
+  ])
 
   if (projErr) { console.error('[developer projects]', projErr.message); return null }
+  // Delivered records are supplementary — a failure here shouldn't 404 the page.
+  if (delErr) console.error('[developer delivered]', delErr.message)
 
-  return { ...developer, projects: (projects ?? []) as Project[] }
+  return {
+    ...developer,
+    projects: (projects ?? []) as Project[],
+    delivered: (delivered ?? []) as DeliveredProject[],
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const dev = await getDeveloper(slug)
   if (!dev) return {}
+  const summary = dev.description ?? dev.delivery_record
   return {
     title: `${dev.name} — TrueReturn`,
-    description: dev.description?.slice(0, 160) ?? undefined,
+    description: summary?.slice(0, 160) ?? undefined,
   }
 }
 
@@ -45,6 +103,13 @@ export default async function DeveloperPage({ params }: Props) {
   const { slug } = await params
   const dev = await getDeveloper(slug)
   if (!dev) notFound()
+
+  const glance = glanceRows(dev.at_a_glance)
+  const reviewed = fmtReviewed(dev.reviewed_at)
+  const showPerformance = Boolean(dev.performance_image_url && dev.performance_note)
+
+  const deliveredCards = dev.delivered.slice(0, DELIVERED_CARD_LIMIT)
+  const overflowNames = dev.delivered.slice(DELIVERED_CARD_LIMIT).map(d => d.name)
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -60,9 +125,17 @@ export default async function DeveloperPage({ params }: Props) {
           All developers
         </Link>
 
+        {/* 1. Header */}
         <div className="bg-white border border-brand-border rounded-xl p-8 mb-10">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="w-20 h-20 rounded-xl bg-brand-surface flex-shrink-0 flex items-center justify-center overflow-hidden">
+            {/* White behind a real logo so a transparent PNG blends into the
+                card instead of reading as a grey square. The initial fallback
+                keeps the tint — it needs a container to sit in. */}
+            <div
+              className={`w-20 h-20 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                dev.logo_url ? 'bg-white' : 'bg-brand-surface'
+              }`}
+            >
               {dev.logo_url ? (
                 <img src={dev.logo_url} alt={dev.name} className="w-full h-full object-contain" />
               ) : (
@@ -70,43 +143,50 @@ export default async function DeveloperPage({ params }: Props) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Developer</p>
-              <h1 className="text-xl font-semibold text-brand-text mb-3">{dev.name}</h1>
-              {dev.description && (
-                <p className="text-sm text-brand-muted leading-relaxed mb-5 max-w-2xl">{dev.description}</p>
+              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Developer analysis</p>
+              <h1 className="text-xl font-semibold text-brand-text">{dev.name}</h1>
+              {reviewed && (
+                <p className="text-xs text-brand-hint mt-2">
+                  Reviewed <time dateTime={dev.reviewed_at!}>{reviewed}</time>
+                </p>
               )}
-              <div className="flex flex-wrap gap-6">
-                {dev.founded_year && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-0.5">Founded</p>
-                    <p className="text-sm font-semibold text-brand-text">{dev.founded_year}</p>
-                  </div>
-                )}
-                {dev.portfolio_value && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-0.5">Portfolio</p>
-                    <p className="text-sm font-semibold text-brand-text">{dev.portfolio_value}</p>
-                  </div>
-                )}
-                {dev.delivered_units != null && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-0.5">Delivered units</p>
-                    <p className="text-sm font-semibold text-brand-text">{dev.delivered_units.toLocaleString()}</p>
-                  </div>
-                )}
-              </div>
             </div>
+            <AdminEditLink resource="developers" slug={dev.slug} label="Edit developer" />
           </div>
         </div>
 
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-5">
-            Projects by {dev.name}
-          </p>
-          {dev.projects.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm text-brand-hint">No projects listed yet.</p>
+        {/* 2. At a glance */}
+        {glance.length > 0 && (
+          <section className="mb-12">
+            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">At a glance</p>
+            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 sm:p-8">
+              <table className="w-full text-sm">
+                <tbody>
+                  {glance.map((row, i) => (
+                    <tr
+                      key={`${row.label}-${i}`}
+                      className={i > 0 ? 'border-t border-brand-border' : undefined}
+                    >
+                      <th
+                        scope="row"
+                        className="py-3 pr-6 text-left align-top font-normal text-brand-muted w-2/5"
+                      >
+                        {row.label}
+                      </th>
+                      <td className="py-3 align-top font-medium text-brand-text">{row.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </section>
+        )}
+
+        {/* 3. Under construction — read live from projects */}
+        <section className="mb-12">
+          <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-5">Under construction</p>
+          {dev.projects.length === 0 ? (
+            <p className="text-sm text-brand-hint py-8">No projects listed yet.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {dev.projects.map(p => (
@@ -114,7 +194,76 @@ export default async function DeveloperPage({ params }: Props) {
               ))}
             </div>
           )}
-        </div>
+        </section>
+
+        {/* 4. Delivered — not links, these buildings have no project page */}
+        {dev.delivered.length > 0 && (
+          <section className="mb-12">
+            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-5">Delivered</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {deliveredCards.map(d => (
+                <div
+                  key={d.id}
+                  className="bg-white border border-brand-border rounded-xl overflow-hidden"
+                >
+                  <div className="relative aspect-[4/3] bg-brand-surface overflow-hidden">
+                    {d.image_url ? (
+                      <img src={d.image_url} alt={d.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-7 h-7 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h3 className="text-sm font-medium text-brand-text truncate">{d.name}</h3>
+                    {d.location && (
+                      <p className="text-xs text-brand-muted mt-0.5 truncate">{d.location}</p>
+                    )}
+                    {d.year != null && (
+                      <p className="text-xs text-brand-hint mt-1">{d.year}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {overflowNames.length > 0 && (
+              <p className="mt-4 text-sm text-brand-muted">
+                Plus {fmtOverflowNames(overflowNames)}.
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* 5. Delivery record */}
+        {dev.delivery_record && (
+          <section className="mb-12">
+            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">Delivery record</p>
+            <p className="max-w-[36rem] text-sm text-brand-muted leading-relaxed whitespace-pre-line">
+              {dev.delivery_record}
+            </p>
+          </section>
+        )}
+
+        {/* 6. Performance — image and note, only together */}
+        {showPerformance && (
+          <section className="mb-12">
+            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">Performance</p>
+            <figure className="max-w-[48rem]">
+              <img
+                src={dev.performance_image_url!}
+                alt={`${dev.name} — building performance against its community`}
+                className="w-full rounded-xl border border-brand-border bg-white"
+              />
+              <figcaption className="max-w-[36rem] mt-4 text-sm text-brand-muted leading-relaxed whitespace-pre-line">
+                {dev.performance_note}
+              </figcaption>
+            </figure>
+          </section>
+        )}
 
       </div>
     </div>

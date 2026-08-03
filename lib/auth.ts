@@ -82,12 +82,22 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.id = user.id
+      if (user) {
+        token.id = user.id
+        // next-auth populates this by default; set it explicitly so the
+        // isAdmin check below doesn't rest on that implicit behaviour.
+        token.email = user.email
+      }
+      // Recomputed on every call rather than only at sign-in, so sessions issued
+      // before this flag existed pick it up without needing to sign in again.
+      // ADMIN_USERNAME is server-only; this is what carries the answer to the client.
+      token.isAdmin = token.email === process.env.ADMIN_USERNAME
       return token
     },
     session({ session, token }) {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string
+        ;(session.user as { isAdmin?: boolean }).isAdmin = Boolean(token.isAdmin)
       }
       return session
     },

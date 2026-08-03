@@ -53,7 +53,13 @@ export default async function DevelopersPage() {
                 className="group bg-white border border-brand-border rounded-xl p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-brand-surface flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  {/* Same rule as the developer page header: white behind a real
+                      logo, tint behind the initial fallback. */}
+                  <div
+                    className={`w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                      dev.logo_url ? 'bg-white' : 'bg-brand-surface'
+                    }`}
+                  >
                     {dev.logo_url ? (
                       <img src={dev.logo_url} alt={dev.name} className="w-full h-full object-contain" />
                     ) : (
@@ -64,9 +70,6 @@ export default async function DevelopersPage() {
                     <h2 className="text-sm font-semibold text-brand-text group-hover:text-brand-bronze transition-colors truncate">
                       {dev.name}
                     </h2>
-                    {dev.founded_year && (
-                      <p className="text-[11px] text-brand-hint">Est. {dev.founded_year}</p>
-                    )}
                   </div>
                   <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brand-surface text-brand-muted">
                     {dev.project_count} {dev.project_count === 1 ? 'project' : 'projects'}

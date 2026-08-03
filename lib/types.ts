@@ -1,13 +1,39 @@
+/** One row of the At a glance table. Free-form rather than fixed columns,
+ *  because the useful rows vary by developer. */
+export type GlanceRow = {
+  label: string
+  value: string
+}
+
 export type Developer = {
   id: string
   slug: string
   name: string
   logo_url: string | null
+  /** Short neutral summary — index card blurb and meta description.
+   *  Distinct from delivery_record, which is assessment. */
   description: string | null
-  founded_year: number | null
-  portfolio_value: string | null
-  delivered_units: number | null
-  website: string | null
+  /** Admin-only scoring input for the deal builder. Never rendered publicly. */
+  tier: number | null
+  at_a_glance: GlanceRow[]
+  /** Paragraph on their track record. */
+  delivery_record: string | null
+  /** Chart snapshot of one building against its community.
+   *  Rendered only when performance_note is also set. */
+  performance_image_url: string | null
+  performance_note: string | null
+  reviewed_at: string | null
+}
+
+/** A completed building that will never be listed as a project on the site. */
+export type DeliveredProject = {
+  id: string
+  developer_id: string
+  name: string
+  location: string | null
+  year: number | null
+  image_url: string | null
+  sort_order: number
 }
 
 export type UnitType = {
