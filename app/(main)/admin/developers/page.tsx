@@ -55,7 +55,14 @@ export default async function AdminDevelopersPage() {
                 href={`/admin/developers/${dev.slug}/edit`}
                 className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors group"
               >
-                <div className="w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                {/* Same rule as the public pages: white behind a real logo,
+                    tint behind the initial. Kept short so row height is
+                    unchanged, but wide so logos aren't squeezed square. */}
+                <div
+                  className={`rounded-lg border border-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                    dev.logo_url ? 'w-16 h-9 bg-white' : 'w-9 h-9 bg-gray-50'
+                  }`}
+                >
                   {dev.logo_url ? (
                     <img src={dev.logo_url} alt="" className="w-full h-full object-contain" />
                   ) : (

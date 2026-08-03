@@ -530,13 +530,23 @@ export default function ProjectDetail({
 
           {project.developer && (
             <div className="flex items-center gap-3 pt-5 border-t border-brand-border">
-              <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-                {project.developer.logo_url ? (
-                  <img src={project.developer.logo_url} alt={project.developer.name} className="w-full h-full object-contain" />
-                ) : (
+              {/* Split by branch: this block sits on the cream page background,
+                  not inside a card, so a real logo gets no background at all and
+                  the transparent PNG sits directly on the page. The initial
+                  fallback keeps its dark chip. */}
+              {project.developer.logo_url ? (
+                <div className="w-24 h-12 flex-shrink-0 flex items-center justify-center">
+                  <img
+                    src={project.developer.logo_url}
+                    alt={project.developer.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
                   <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
-                )}
-              </div>
+                </div>
+              )}
               <div>
                 <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
                 <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-bronze hover:underline">

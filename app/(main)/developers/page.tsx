@@ -56,8 +56,8 @@ export default async function DevelopersPage() {
                   {/* Same rule as the developer page header: white behind a real
                       logo, tint behind the initial fallback. */}
                   <div
-                    className={`w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                      dev.logo_url ? 'bg-white' : 'bg-brand-surface'
+                    className={`rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                      dev.logo_url ? 'w-24 h-12 bg-white' : 'w-12 h-12 bg-brand-surface'
                     }`}
                   >
                     {dev.logo_url ? (

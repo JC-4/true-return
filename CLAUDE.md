@@ -46,6 +46,25 @@ namespaced by path prefix. Compression is client-side via
 the output type matches `/jpe?g/`, and output defaults to the input's type.
 Forcing JPEG flattens transparent PNG logos onto a white box.
 
+## Logo tiles
+
+Developer logos are transparent PNGs, so whatever sits behind them shows
+through. **The tile background matches whatever surface it sits on** — there is
+no single correct colour:
+
+- Inside a white card (developer page header, `/developers` index cards, the
+  `/admin/developers` list) → `bg-white`.
+- Directly on the cream page background (the developer block under "About this
+  project" on the project page) → **no background at all**.
+
+Write the two branches separately rather than one element with a conditional
+class. A wrapper carrying a background for both branches is what put a
+transparent logo on black in the first place.
+
+The initial-letter fallback is a different thing and keeps its own tinted chip,
+square and at its own size. Only the logo branch follows the surface rule.
+Logo tiles are wide (roughly 2:1) so wide logos aren't squeezed into a square.
+
 ## Admin gating
 
 Admin pages and write routes check `session.user.email === ADMIN_USERNAME`,
