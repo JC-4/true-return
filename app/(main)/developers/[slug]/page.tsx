@@ -113,7 +113,7 @@ export default async function DeveloperPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-brand-bg">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
 
         <Link
           href="/developers"
@@ -125,24 +125,31 @@ export default async function DeveloperPage({ params }: Props) {
           All developers
         </Link>
 
-        {/* 1. Header */}
-        <div className="bg-white border border-brand-border rounded-xl p-8 mb-10">
-          <div className="flex flex-col sm:flex-row gap-6 items-start">
-            {/* White behind a real logo so a transparent PNG blends into the
-                card instead of reading as a grey square. The initial fallback
-                keeps the tint — it needs a container to sit in. */}
-            <div
-              className={`w-20 h-20 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                dev.logo_url ? 'bg-white' : 'bg-brand-surface'
-              }`}
-            >
-              {dev.logo_url ? (
-                <img src={dev.logo_url} alt={dev.name} className="w-full h-full object-contain" />
-              ) : (
-                <span className="text-2xl font-bold text-brand-muted">{dev.name.charAt(0)}</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
+        {/* 1. Header — identity left, at a glance right. Single column on
+               mobile with the left column first, by DOM order. */}
+        <div className="bg-white border border-brand-border rounded-xl p-6 sm:p-8 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+
+            <div className="min-w-0">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                {/* White behind a real logo so a transparent PNG blends into the
+                    card instead of reading as a grey square. The initial fallback
+                    keeps the tint and stays square — a 130px-wide box holding one
+                    letter reads as an empty bar. */}
+                <div
+                  className={`rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                    dev.logo_url ? 'w-[130px] h-16 bg-white' : 'w-20 h-20 bg-brand-surface'
+                  }`}
+                >
+                  {dev.logo_url ? (
+                    <img src={dev.logo_url} alt={dev.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-2xl font-bold text-brand-muted">{dev.name.charAt(0)}</span>
+                  )}
+                </div>
+                <AdminEditLink resource="developers" slug={dev.slug} label="Edit developer" />
+              </div>
+
               <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Developer analysis</p>
               <h1 className="text-xl font-semibold text-brand-text">{dev.name}</h1>
               {reviewed && (
@@ -150,37 +157,37 @@ export default async function DeveloperPage({ params }: Props) {
                   Reviewed <time dateTime={dev.reviewed_at!}>{reviewed}</time>
                 </p>
               )}
+              {dev.description && (
+                <p className="text-sm text-brand-muted leading-relaxed mt-5">{dev.description}</p>
+              )}
             </div>
-            <AdminEditLink resource="developers" slug={dev.slug} label="Edit developer" />
+
+            {glance.length > 0 && (
+              <div className="bg-brand-surface border border-brand-border rounded-xl p-5 sm:p-6">
+                <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-3">At a glance</p>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {glance.map((row, i) => (
+                      <tr
+                        key={`${row.label}-${i}`}
+                        className={i > 0 ? 'border-t border-brand-border' : undefined}
+                      >
+                        <th
+                          scope="row"
+                          className="py-2.5 pr-6 text-left align-top font-normal text-brand-muted w-2/5"
+                        >
+                          {row.label}
+                        </th>
+                        <td className="py-2.5 align-top font-medium text-brand-text">{row.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
           </div>
         </div>
-
-        {/* 2. At a glance */}
-        {glance.length > 0 && (
-          <section className="mb-12">
-            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">At a glance</p>
-            <div className="bg-brand-surface border border-brand-border rounded-xl p-6 sm:p-8">
-              <table className="w-full text-sm">
-                <tbody>
-                  {glance.map((row, i) => (
-                    <tr
-                      key={`${row.label}-${i}`}
-                      className={i > 0 ? 'border-t border-brand-border' : undefined}
-                    >
-                      <th
-                        scope="row"
-                        className="py-3 pr-6 text-left align-top font-normal text-brand-muted w-2/5"
-                      >
-                        {row.label}
-                      </th>
-                      <td className="py-3 align-top font-medium text-brand-text">{row.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
 
         {/* 3. Under construction — read live from projects */}
         <section className="mb-12">
@@ -238,27 +245,42 @@ export default async function DeveloperPage({ params }: Props) {
           </section>
         )}
 
-        {/* 5. Delivery record */}
+        {/* 5. Delivery record — prose left, image right. */}
         {dev.delivery_record && (
           <section className="mb-12">
             <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">Delivery record</p>
-            <p className="max-w-[36rem] text-sm text-brand-muted leading-relaxed whitespace-pre-line">
-              {dev.delivery_record}
-            </p>
+            {dev.delivery_record_image_url ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                <p className="text-sm text-brand-muted leading-relaxed whitespace-pre-line">
+                  {dev.delivery_record}
+                </p>
+                <img
+                  src={dev.delivery_record_image_url}
+                  alt={`${dev.name} — delivery record`}
+                  className="w-full rounded-xl border border-brand-border bg-white"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-brand-muted leading-relaxed whitespace-pre-line">
+                {dev.delivery_record}
+              </p>
+            )}
           </section>
         )}
 
-        {/* 6. Performance — image and note, only together */}
+        {/* 6. Performance — chart left, prose right. Reversed against the
+               delivery record above so the two rows don't read as a pattern.
+               Chart is first in the DOM, so it also leads on mobile. */}
         {showPerformance && (
           <section className="mb-12">
             <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">Performance</p>
-            <figure className="max-w-[48rem]">
+            <figure className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center m-0">
               <img
                 src={dev.performance_image_url!}
                 alt={`${dev.name} — building performance against its community`}
                 className="w-full rounded-xl border border-brand-border bg-white"
               />
-              <figcaption className="max-w-[36rem] mt-4 text-sm text-brand-muted leading-relaxed whitespace-pre-line">
+              <figcaption className="text-sm text-brand-muted leading-relaxed whitespace-pre-line">
                 {dev.performance_note}
               </figcaption>
             </figure>

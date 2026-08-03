@@ -78,6 +78,61 @@ function TextArea({
   )
 }
 
+/** Preview-with-replace image upload. Used for both the delivery record and
+ *  performance images — same route, same compression. */
+function ImageField({
+  label,
+  cta,
+  value,
+  uploading,
+  onUpload,
+  onClear,
+  hint,
+}: {
+  label: string
+  cta: string
+  value: string
+  uploading: boolean
+  onUpload: (file: File) => void | Promise<void>
+  onClear: () => void
+  hint?: string
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        {label}
+      </label>
+      {value ? (
+        <div className="space-y-2">
+          <img src={value} alt={label} className="w-full max-w-lg rounded-lg border border-gray-200" />
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Remove image
+          </button>
+        </div>
+      ) : (
+        <label className="flex items-center justify-center h-28 max-w-lg rounded-lg border border-dashed border-gray-200 bg-gray-50 cursor-pointer text-sm text-gray-400 hover:border-gray-300 transition-colors">
+          {uploading ? 'Uploading…' : cta}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (f) onUpload(f)
+            }}
+          />
+        </label>
+      )}
+      {hint && <p className="mt-1.5 text-xs text-gray-400">{hint}</p>}
+    </div>
+  )
+}
+
 function SectionHeader({ label, hint }: { label: string; hint?: string }) {
   return (
     <div className="mb-5">
@@ -196,6 +251,7 @@ export default function EditDeveloperClient({
 
   const [glance, setGlance] = useState<GlanceRow[]>(normaliseGlance(developer.at_a_glance))
   const [deliveryRecord, setDeliveryRecord] = useState(developer.delivery_record ?? '')
+  const [deliveryRecordImageUrl, setDeliveryRecordImageUrl] = useState(developer.delivery_record_image_url ?? '')
   const [performanceImageUrl, setPerformanceImageUrl] = useState(developer.performance_image_url ?? '')
   const [performanceNote, setPerformanceNote] = useState(developer.performance_note ?? '')
   const [reviewedAt, setReviewedAt] = useState(developer.reviewed_at ?? '')
@@ -314,6 +370,7 @@ export default function EditDeveloperClient({
         .map(r => ({ label: r.label.trim(), value: r.value.trim() }))
         .filter(r => r.label || r.value),
       delivery_record: deliveryRecord.trim() || null,
+      delivery_record_image_url: deliveryRecordImageUrl.trim() || null,
       performance_image_url: performanceImageUrl.trim() || null,
       performance_note: performanceNote.trim() || null,
       reviewed_at: reviewedAt || null,
@@ -411,7 +468,7 @@ export default function EditDeveloperClient({
               onChange={setDescription}
               rows={3}
               placeholder="Short neutral summary…"
-              hint="Card blurb on /developers and the page meta description. Not shown on the developer page itself."
+              hint="Shown in the developer page header, as the card blurb on /developers, and as the page meta description."
             />
 
             <div className="sm:max-w-[50%] sm:pr-2">
@@ -531,7 +588,7 @@ export default function EditDeveloperClient({
           </div>
 
           {/* ── Delivery record ────────────────────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-100 p-6">
+          <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
             <SectionHeader label="Delivery record" />
             <TextArea
               label="Paragraph"
@@ -539,6 +596,18 @@ export default function EditDeveloperClient({
               onChange={setDeliveryRecord}
               rows={10}
               placeholder="Their track record on handovers, build quality, snagging…"
+            />
+            <ImageField
+              label="Image"
+              cta="Upload image"
+              value={deliveryRecordImageUrl}
+              uploading={uploading === 'delivery-record'}
+              onClear={() => setDeliveryRecordImageUrl('')}
+              onUpload={async f => {
+                const url = await uploadImage(f, 'delivery-record')
+                if (url) setDeliveryRecordImageUrl(url)
+              }}
+              hint="Optional. Sits to the right of the paragraph; without it the prose runs full width."
             />
           </div>
 
@@ -669,43 +738,18 @@ export default function EditDeveloperClient({
               hint="Shown publicly only when both the image and the note are set."
             />
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Chart image
-              </label>
-              {performanceImageUrl ? (
-                <div className="space-y-2">
-                  <img
-                    src={performanceImageUrl}
-                    alt="Performance chart"
-                    className="w-full max-w-lg rounded-lg border border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPerformanceImageUrl('')}
-                    className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    Remove image
-                  </button>
-                </div>
-              ) : (
-                <label className="flex items-center justify-center h-28 max-w-lg rounded-lg border border-dashed border-gray-200 bg-gray-50 cursor-pointer text-sm text-gray-400 hover:border-gray-300 transition-colors">
-                  {uploading === 'performance' ? 'Uploading…' : 'Upload chart image'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={async e => {
-                      const f = e.target.files?.[0]
-                      e.target.value = ''
-                      if (!f) return
-                      const url = await uploadImage(f, 'performance')
-                      if (url) setPerformanceImageUrl(url)
-                    }}
-                  />
-                </label>
-              )}
-            </div>
+            <ImageField
+              label="Chart image"
+              cta="Upload chart image"
+              value={performanceImageUrl}
+              uploading={uploading === 'performance'}
+              onClear={() => setPerformanceImageUrl('')}
+              onUpload={async f => {
+                const url = await uploadImage(f, 'performance')
+                if (url) setPerformanceImageUrl(url)
+              }}
+              hint="Renders at about half the container width — roughly 600px."
+            />
 
             <TextArea
               label="Note"

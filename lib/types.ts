@@ -18,6 +18,8 @@ export type Developer = {
   at_a_glance: GlanceRow[]
   /** Paragraph on their track record. */
   delivery_record: string | null
+  /** Optional image beside delivery_record. Prose runs full width without it. */
+  delivery_record_image_url: string | null
   /** Chart snapshot of one building against its community.
    *  Rendered only when performance_note is also set. */
   performance_image_url: string | null
