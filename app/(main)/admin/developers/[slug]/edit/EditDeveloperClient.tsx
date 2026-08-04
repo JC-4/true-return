@@ -250,10 +250,12 @@ export default function EditDeveloperClient({
   const [tier, setTier] = useState(developer.tier?.toString() ?? '')
 
   const [glance, setGlance] = useState<GlanceRow[]>(normaliseGlance(developer.at_a_glance))
-  const [deliveryRecord, setDeliveryRecord] = useState(developer.delivery_record ?? '')
-  const [deliveryRecordImageUrl, setDeliveryRecordImageUrl] = useState(developer.delivery_record_image_url ?? '')
-  const [performanceImageUrl, setPerformanceImageUrl] = useState(developer.performance_image_url ?? '')
-  const [performanceNote, setPerformanceNote] = useState(developer.performance_note ?? '')
+  const [section1Heading, setSection1Heading] = useState(developer.section_1_heading ?? '')
+  const [section1Body, setSection1Body] = useState(developer.section_1_body ?? '')
+  const [section1ImageUrl, setSection1ImageUrl] = useState(developer.section_1_image_url ?? '')
+  const [section2Heading, setSection2Heading] = useState(developer.section_2_heading ?? '')
+  const [section2Body, setSection2Body] = useState(developer.section_2_body ?? '')
+  const [section2ImageUrl, setSection2ImageUrl] = useState(developer.section_2_image_url ?? '')
   const [reviewedAt, setReviewedAt] = useState(developer.reviewed_at ?? '')
 
   const keySeq = useRef(0)
@@ -369,10 +371,12 @@ export default function EditDeveloperClient({
       at_a_glance: glance
         .map(r => ({ label: r.label.trim(), value: r.value.trim() }))
         .filter(r => r.label || r.value),
-      delivery_record: deliveryRecord.trim() || null,
-      delivery_record_image_url: deliveryRecordImageUrl.trim() || null,
-      performance_image_url: performanceImageUrl.trim() || null,
-      performance_note: performanceNote.trim() || null,
+      section_1_heading: section1Heading.trim() || null,
+      section_1_body: section1Body.trim() || null,
+      section_1_image_url: section1ImageUrl.trim() || null,
+      section_2_heading: section2Heading.trim() || null,
+      section_2_body: section2Body.trim() || null,
+      section_2_image_url: section2ImageUrl.trim() || null,
       reviewed_at: reviewedAt || null,
     }
 
@@ -587,27 +591,37 @@ export default function EditDeveloperClient({
             </AddButton>
           </div>
 
-          {/* ── Delivery record ────────────────────────────────────────────── */}
+          {/* ── Section 1 ──────────────────────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
-            <SectionHeader label="Delivery record" />
+            <SectionHeader
+              label="Section 1"
+              hint="Prose with an optional image to its right. Shows whenever the body is set."
+            />
+            <Field
+              label="Heading"
+              value={section1Heading}
+              onChange={setSection1Heading}
+              placeholder="Delivery record"
+              hint="Optional. Renders in caps above the section. Blank means no heading."
+            />
             <TextArea
-              label="Paragraph"
-              value={deliveryRecord}
-              onChange={setDeliveryRecord}
+              label="Body"
+              value={section1Body}
+              onChange={setSection1Body}
               rows={10}
-              placeholder="Their track record on handovers, build quality, snagging…"
+              placeholder="Whatever this section is about…"
             />
             <ImageField
               label="Image"
               cta="Upload image"
-              value={deliveryRecordImageUrl}
-              uploading={uploading === 'delivery-record'}
-              onClear={() => setDeliveryRecordImageUrl('')}
+              value={section1ImageUrl}
+              uploading={uploading === 'section-1'}
+              onClear={() => setSection1ImageUrl('')}
               onUpload={async f => {
-                const url = await uploadImage(f, 'delivery-record')
-                if (url) setDeliveryRecordImageUrl(url)
+                const url = await uploadImage(f, 'section-1')
+                if (url) setSection1ImageUrl(url)
               }}
-              hint="Optional. Sits to the right of the paragraph; without it the prose runs full width."
+              hint="Optional. Sits to the right of the body; without it the prose runs full width."
             />
           </div>
 
@@ -731,32 +745,40 @@ export default function EditDeveloperClient({
             </AddButton>
           </div>
 
-          {/* ── Performance ────────────────────────────────────────────────── */}
+          {/* ── Section 2 ──────────────────────────────────────────────────── */}
           <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-5">
             <SectionHeader
-              label="Performance"
-              hint="Shown publicly only when both the image and the note are set."
+              label="Section 2"
+              hint="Prose with an optional image to its left. Shows whenever the body is set."
             />
 
-            <ImageField
-              label="Chart image"
-              cta="Upload chart image"
-              value={performanceImageUrl}
-              uploading={uploading === 'performance'}
-              onClear={() => setPerformanceImageUrl('')}
-              onUpload={async f => {
-                const url = await uploadImage(f, 'performance')
-                if (url) setPerformanceImageUrl(url)
-              }}
-              hint="Renders at about half the container width — roughly 600px."
+            <Field
+              label="Heading"
+              value={section2Heading}
+              onChange={setSection2Heading}
+              placeholder="Performance"
+              hint="Optional. Renders in caps above the section. Blank means no heading."
             />
 
             <TextArea
-              label="Note"
-              value={performanceNote}
-              onChange={setPerformanceNote}
+              label="Body"
+              value={section2Body}
+              onChange={setSection2Body}
               rows={7}
-              placeholder="What the chart shows…"
+              placeholder="Whatever this section is about…"
+            />
+
+            <ImageField
+              label="Image"
+              cta="Upload image"
+              value={section2ImageUrl}
+              uploading={uploading === 'section-2'}
+              onClear={() => setSection2ImageUrl('')}
+              onUpload={async f => {
+                const url = await uploadImage(f, 'section-2')
+                if (url) setSection2ImageUrl(url)
+              }}
+              hint="Optional. Sits to the left of the body; without it the prose runs full width. Renders at about half the container width, roughly 600px."
             />
           </div>
 

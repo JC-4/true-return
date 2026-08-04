@@ -11,19 +11,30 @@ export type Developer = {
   name: string
   logo_url: string | null
   /** Short neutral summary — index card blurb and meta description.
-   *  Distinct from delivery_record, which is assessment. */
+   *  Distinct from the prose sections below, which are assessment. */
   description: string | null
   /** Admin-only scoring input for the deal builder. Never rendered publicly. */
   tier: number | null
   at_a_glance: GlanceRow[]
-  /** Paragraph on their track record. */
-  delivery_record: string | null
-  /** Optional image beside delivery_record. Prose runs full width without it. */
-  delivery_record_image_url: string | null
-  /** Chart snapshot of one building against its community.
-   *  Rendered only when performance_note is also set. */
-  performance_image_url: string | null
-  performance_note: string | null
+
+  /* Two free-form prose sections rendered in fixed positions on the developer
+   * page. Each has an optional heading and an optional image, and each renders
+   * whenever its body is set. The subject is whatever the heading says it is —
+   * the columns are positional and name no subject of their own.
+   *
+   * Layout belongs to the position, not the content: section 1 puts its image
+   * to the right of the prose, section 2 to the left, deliberately alternating
+   * so the two rows don't read as a repeated pattern. Without an image, either
+   * body runs the full container width.
+   *
+   * A null heading means the section renders with no eyebrow above it. */
+  section_1_heading: string | null
+  section_1_body: string | null
+  section_1_image_url: string | null
+  section_2_heading: string | null
+  section_2_body: string | null
+  section_2_image_url: string | null
+
   reviewed_at: string | null
 }
 

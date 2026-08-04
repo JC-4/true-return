@@ -10,7 +10,7 @@ type Row = {
   name: string
   logo_url: string | null
   reviewed_at: string | null
-  delivery_record: string | null
+  section_1_body: string | null
   at_a_glance: unknown
   projects: { id: string }[] | null
 }
@@ -22,7 +22,7 @@ export default async function AdminDevelopersPage() {
 
   const { data, error } = await supabase
     .from('developers')
-    .select('id, slug, name, logo_url, reviewed_at, delivery_record, at_a_glance, projects(id)')
+    .select('id, slug, name, logo_url, reviewed_at, section_1_body, at_a_glance, projects(id)')
     .order('name')
 
   const developers = (data ?? []) as Row[]
@@ -48,7 +48,7 @@ export default async function AdminDevelopersPage() {
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-100">
           {developers.map(dev => {
             const glanceCount = Array.isArray(dev.at_a_glance) ? dev.at_a_glance.length : 0
-            const hasAnalysis = glanceCount > 0 || Boolean(dev.delivery_record)
+            const hasAnalysis = glanceCount > 0 || Boolean(dev.section_1_body)
             return (
               <Link
                 key={dev.id}
