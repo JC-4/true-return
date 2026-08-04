@@ -15,12 +15,20 @@ export const revalidate = 60
 
 /** Without this the route has no params to prerender, so Next renders it on
  *  demand and skips the route cache entirely — revalidate alone doesn't get
- *  you ISR on a dynamic segment. Slugs added later still resolve on demand. */
+ *  you ISR on a dynamic segment.
+ *
+ *  The list is limited to developers with at least one project; every other
+ *  slug 404s. A developer appears here on the first deploy after its first
+ *  project is added, because generateStaticParams runs at build time and
+ *  revalidate does not re-evaluate it. */
 export async function generateStaticParams() {
-  const { data, error } = await supabase.from('developers').select('slug')
+  const { data, error } = await supabase.from('developers').select('slug, projects!inner(id)')
   if (error) { console.error('[developer params]', error.message); return [] }
   return (data ?? []).map(({ slug }) => ({ slug }))
 }
+
+/** Anything outside generateStaticParams 404s rather than rendering on demand. */
+export const dynamicParams = false
 
 /** Delivered projects shown as cards. The rest are named in a plain text line. */
 const DELIVERED_CARD_LIMIT = 4

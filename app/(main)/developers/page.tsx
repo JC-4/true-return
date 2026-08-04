@@ -5,7 +5,7 @@ import type { DeveloperWithCount } from '@/lib/types'
 
 export const metadata: Metadata = {
   title: 'Developers — TrueReturn',
-  description: 'Dubai property developers — track record, portfolio, and active projects.',
+  description: 'UAE property developers: track record, portfolio and current projects.',
 }
 
 export const revalidate = 60
@@ -13,7 +13,10 @@ export const revalidate = 60
 async function getDevelopers(): Promise<DeveloperWithCount[]> {
   const { data, error } = await supabase
     .from('developers')
-    .select('*, projects(id)')
+    // !inner makes PostgREST inner join, so developers with no projects drop
+    // out. Their pages don't exist either — see generateStaticParams on
+    // /developers/[slug], which applies the same filter.
+    .select('*, projects!inner(id)')
     .order('name')
 
   if (error) { console.error('[developers]', error.message); return [] }
@@ -34,9 +37,9 @@ export default async function DevelopersPage() {
 
         <div className="mb-10">
           <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-2">Developers</p>
-          <h1 className="text-2xl font-semibold text-brand-text">Dubai developers</h1>
+          <h1 className="text-2xl font-semibold text-brand-text">Developer analysis</h1>
           <p className="text-sm text-brand-muted mt-1 leading-relaxed">
-            Track record, portfolio size, and active projects — assessed independently.
+            Track record, portfolio and current projects.
           </p>
         </div>
 
