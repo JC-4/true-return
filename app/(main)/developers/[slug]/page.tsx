@@ -318,7 +318,7 @@ export default async function DeveloperPage({ params }: Props) {
                 Independent advice
               </p>
               <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">
-                Thinking about a {dev.name} project?
+                Thinking about buying from {dev.name}?
               </h2>
               <p className="text-sm text-brand-muted mb-8 text-center">
                 I will tell you which of their buildings are worth the money and which are not. No cost to you.
