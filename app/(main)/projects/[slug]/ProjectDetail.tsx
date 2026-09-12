@@ -56,7 +56,9 @@ const PLAN_COLORS = {
 
 type PlanSegType = keyof typeof PLAN_COLORS
 
-type ProjectStat = { key: string; label: string; value: string }
+/** `label`/`value` feed the About block's cards; `line` is the same fact
+ *  written as prose for the hero's single summary line. */
+type ProjectStat = { key: string; label: string; value: string; line: string }
 
 const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
   downpayment:   'Downpayment',
@@ -101,6 +103,23 @@ function ConnectivityIcon({ label }: { label: string }) {
 
 // ─── Brochure form ────────────────────────────────────────────────────────────
 
+/** Secondary route beside the brochure submit button, matching the lead form.
+ *  Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER is unset. */
+function BrochureWhatsappLink({ projectName, label = 'or WhatsApp' }: { projectName: string; label?: string }) {
+  const href = whatsappHref(`Hi, I'd like the brochure for ${projectName}.`)
+  if (!href) return null
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="inline-flex items-center justify-center min-h-[48px] whitespace-nowrap text-sm font-medium text-brand-muted hover:text-brand-text underline underline-offset-4 decoration-brand-border hover:decoration-brand-text transition-colors"
+    >
+      {label}
+    </a>
+  )
+}
+
 function BrochureForm({ projectSlug, projectName }: { projectSlug: string; projectName: string }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -133,21 +152,10 @@ function BrochureForm({ projectSlug, projectName }: { projectSlug: string; proje
   }
 
   if (submitted) {
-    const href = whatsappHref(`Hi, I've just requested the brochure for ${projectName}.`)
     return (
-      <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-col items-start gap-2">
         <p className="text-sm font-semibold text-brand-text">Thanks, we&apos;ll send the brochure over shortly.</p>
-        {href && (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#25D366' }}
-          >
-            Contact us on WhatsApp
-          </a>
-        )}
+        <BrochureWhatsappLink projectName={projectName} label="Message us on WhatsApp" />
       </div>
     )
   }
@@ -167,14 +175,17 @@ function BrochureForm({ projectSlug, projectName }: { projectSlug: string; proje
         className={`${inputCls} w-full sm:w-36`}
       />
       <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email address" className={`${inputCls} w-full sm:w-44`} />
-      <button
-        type="submit"
-        disabled={loading || !name.trim() || !phone.trim()}
-        className="bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
-        style={{ backgroundColor: '#A0784A' }}
-      >
-        {loading ? 'Sending…' : 'Get brochure'}
-      </button>
+      <div className="flex items-center gap-4">
+        <button
+          type="submit"
+          disabled={loading || !name.trim() || !phone.trim()}
+          className="min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
+          style={{ backgroundColor: '#A0784A' }}
+        >
+          {loading ? 'Sending…' : 'Get brochure'}
+        </button>
+        <BrochureWhatsappLink projectName={projectName} />
+      </div>
       {error && <p className="w-full text-xs text-red-500 mt-1">{error}</p>}
     </form>
   )
@@ -479,19 +490,17 @@ export default function ProjectDetail({
   /** The three headline figures, derived once. The hero and the About block
    *  both show them, in a different order, so neither recomputes them. */
   const statFrom: ProjectStat | null = project.starting_price
-    ? { key: 'from', label: 'From', value: fmtPrice(project.starting_price) }
+    ? { key: 'from', label: 'From', value: fmtPrice(project.starting_price), line: `From ${fmtPrice(project.starting_price)}` }
     : null
   const statHandover: ProjectStat | null = fmtHandover(project.handover_date) !== '—'
-    ? { key: 'handover', label: 'Handover', value: fmtHandover(project.handover_date) }
+    ? { key: 'handover', label: 'Handover', value: fmtHandover(project.handover_date), line: `${fmtHandover(project.handover_date)} handover` }
     : null
   const statPlan: ProjectStat | null = firstPlanLabel
-    ? { key: 'plan', label: 'Payment plan', value: firstPlanLabel.replace(' payment plan', '') }
+    ? { key: 'plan', label: 'Payment plan', value: firstPlanLabel.replace(' payment plan', ''), line: firstPlanLabel }
     : null
   const isStat = (s: ProjectStat | null): s is ProjectStat => s !== null
   const heroStats  = [statFrom, statHandover, statPlan].filter(isStat)
   const aboutStats = [statHandover, statFrom, statPlan].filter(isStat)
-
-  const waHref = whatsappHref(`Hi, I'd like to know more about ${project.name}.`)
 
   const mapEmbedSrc = (() => {
     const html = project.map_embed_html
@@ -902,21 +911,16 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
-      className="relative overflow-hidden flex flex-col justify-end w-full md:aspect-[16/9] md:max-h-[600px]"
+      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[400px] md:min-h-0 md:aspect-[16/9] md:max-h-[600px]"
       style={{ backgroundColor: '#1C1B18' }}
     >
-      {/* On mobile the image is a short band in normal flow, so the identity,
-          stats and CTA below it all land in the first viewport. From md up it
-          goes back to being a full-bleed backdrop and the container's 16/9
-          keeps the desktop proportions unchanged. */}
+      {/* One treatment at every width: a full-bleed backdrop with the identity
+          block over it. A min-height on mobile buys the block room to sit on
+          the image rather than under it. */}
       {hero && (
-        <img
-          src={hero}
-          alt={project.name}
-          className="w-full h-[184px] object-cover md:absolute md:inset-0 md:h-full"
-        />
+        <img src={hero} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
 
       {/* Status badge */}
       {project.status && (
@@ -927,30 +931,25 @@ export default function ProjectDetail({
         </div>
       )}
 
-      {/* Identity, stats and the primary CTA */}
-      <div className="relative px-6 sm:px-10 pt-4 pb-5 sm:pb-6 max-w-6xl mx-auto w-full">
+      {/* Identity, the numbers as one line, and the single primary CTA */}
+      <div className="relative px-6 sm:px-10 pt-6 pb-6 max-w-6xl mx-auto w-full">
         {project.developer?.name && (
           <p className="text-brand-bronze-mid text-[11px] sm:text-xs tracking-widest uppercase mb-1.5">{project.developer.name}</p>
         )}
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-medium text-white leading-tight mb-2">{project.name}</h1>
-        <p className="text-xs sm:text-sm text-white/50 mb-4">
+        <p className="text-xs sm:text-sm text-white/50">
           {fmtLocation(project)}
         </p>
 
         {heroStats.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 mb-4 max-w-md">
-            {heroStats.map(stat => (
-              <div key={stat.key} className="rounded-xl px-2 py-2.5 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                <p className="text-base sm:text-lg font-bold text-white leading-tight">{stat.value}</p>
-                <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{stat.label}</p>
-              </div>
-            ))}
-          </div>
+          <p className="mt-2 text-sm sm:text-base text-white/85 font-medium">
+            {heroStats.map(stat => stat.line).join(' · ')}
+          </p>
         )}
 
         <button
           onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          className="w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-6 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="mt-5 w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-6 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
           style={{ backgroundColor: '#A0784A' }}
         >
           Get my analysis
@@ -959,52 +958,15 @@ export default function ProjectDetail({
     </div>
   )
 
-  /* Mobile-only sticky CTA. The tab bar is sticky at the top (top-16, z-20)
-     and this is pinned to the bottom, so the two never occupy the same space.
-     z-30 puts it above page content but below the site nav and the gallery
-     lightbox, both z-50, so it cannot cover either. */
-  const stickyMobileCta = waHref ? (
-    <div
-      className="md:hidden fixed bottom-0 left-0 right-0 z-30 px-4 pt-3 border-t border-white/10"
-      style={{
-        backgroundColor: 'rgba(28,27,24,0.96)',
-        backdropFilter: 'blur(8px)',
-        paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
-      }}
-    >
-      <a
-        href={waHref}
-        target="_blank"
-        rel="noopener"
-        className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        style={{ backgroundColor: '#25D366' }}
-      >
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-        </svg>
-        Message me on WhatsApp
-      </a>
-    </div>
-  ) : null
-
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    // pb on mobile so the fixed CTA never sits on top of the last content.
-    <div className={`bg-brand-bg min-h-screen ${waHref ? 'pb-24 md:pb-0' : ''}`}>
+    <div className="bg-brand-bg min-h-screen">
 
       {/* Scoped to this page: the site nav (64px) and the tab bar (52px) are
           both sticky, so anchors would otherwise land under them. */}
       <style>{`
         html { scroll-padding-top: 116px; }
-        ${waHref ? `
-        /* The sticky WhatsApp bar is fixed to the bottom on mobile and the
-           SecondaryPillNav floats there too, at z-50 — it would sit on top of
-           the bar and eat its taps. Reserve the bar's height so the pill nav
-           clears it. Mobile only: the bar is md:hidden. */
-        @media (max-width: 767px) {
-          :root { --floating-cta-h: calc(76px + env(safe-area-inset-bottom)); }
-        }` : ''}
         .unit-scroll::-webkit-scrollbar { display: none; }
         @media (min-width: 768px) {
           .unit-scroll {
@@ -1255,7 +1217,6 @@ export default function ProjectDetail({
         <FloorPlanLightbox url={floorPlanUrl} onClose={() => setFloorPlanUrl(null)} />
       )}
 
-      {stickyMobileCta}
     </div>
   )
 }

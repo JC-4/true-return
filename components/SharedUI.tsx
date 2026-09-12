@@ -43,11 +43,11 @@ export function SecondaryPillNav({ sections }: { sections: { id: string; label: 
   if (sections.length === 0) return null
 
   return (
-    // --floating-cta-h lets a page that pins its own bar to the bottom push
-    // this above it. Unset elsewhere (the shortlist route), where it is 0.
+    // Desktop only. On a phone the tab bar above already does this job, and a
+    // second floating nav competing with it was never worth the space.
     <div
-      className="fixed z-50"
-      style={{ bottom: 'calc(24px + var(--floating-cta-h, 0px))', left: '50%', transform: 'translateX(-50%)' }}
+      className="hidden md:block fixed z-50"
+      style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)' }}
     >
       <div
         ref={containerRef}

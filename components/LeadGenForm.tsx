@@ -33,9 +33,11 @@ const inputCls = (error: boolean) =>
 
 const BRONZE = '#A0784A'
 
-/** Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER is unset — better than a
- *  wa.me link that goes nowhere. */
-function WhatsappCta({ message, label }: { message: string; label: string }) {
+/** Secondary route to the same conversation, sat beside the submit button.
+ *  Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER is unset — better than a
+ *  wa.me link that goes nowhere. Kept at 48px tall so it is still a real tap
+ *  target on a phone despite reading as a link. */
+function WhatsappLink({ message, label = 'or WhatsApp' }: { message: string; label?: string }) {
   const href = whatsappHref(message)
   if (!href) return null
   return (
@@ -43,8 +45,7 @@ function WhatsappCta({ message, label }: { message: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener"
-      className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
-      style={{ backgroundColor: '#25D366' }}
+      className="inline-flex items-center justify-center min-h-[48px] whitespace-nowrap text-sm font-medium text-brand-muted hover:text-brand-text underline underline-offset-4 decoration-brand-border hover:decoration-brand-text transition-colors"
     >
       {label}
     </a>
@@ -183,7 +184,7 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           </svg>
         </div>
         <p className="text-sm font-semibold text-brand-text">Thanks — we'll be in touch shortly.</p>
-        <WhatsappCta message={enquiryMessage} label="Message me on WhatsApp" />
+        <WhatsappLink message={enquiryMessage} label="Message me on WhatsApp" />
       </div>
     )
   }
@@ -282,13 +283,16 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
             {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors disabled:opacity-60"
-          >
-            {loading ? 'Please wait…' : 'Continue →'}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
+            >
+              {loading ? 'Please wait…' : 'Continue →'}
+            </button>
+            <WhatsappLink message={enquiryMessage} />
+          </div>
         </>
       ) : (
         <>
@@ -343,26 +347,28 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 py-3 rounded-lg transition-colors disabled:opacity-60"
-          >
-            {loading ? 'Sending…' : 'Send enquiry'}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
+            >
+              {loading ? 'Sending…' : 'Send enquiry'}
+            </button>
+            <WhatsappLink message={enquiryMessage} />
+          </div>
 
         </>
       )}
 
       {sendError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex flex-col items-start gap-3">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <div>
             <p className="text-sm font-semibold text-red-700">{sendError}</p>
             <p className="text-xs text-red-600 mt-1">
-              Your details are still filled in — press the button again, or message us directly.
+              Your details are still filled in — press the button again, or use the WhatsApp link beside it.
             </p>
           </div>
-          <WhatsappCta message={enquiryMessage} label="Message me on WhatsApp instead" />
         </div>
       )}
     </form>
