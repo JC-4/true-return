@@ -60,6 +60,9 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
   const [timeline, setTimeline] = useState('')
   const [message, setMessage]   = useState('')
   const [leadId, setLeadId]     = useState<string | null>(null)
+  /** Honeypot. Hidden from people, so a non-empty value means a bot. Kept
+   *  in state like any other field so React owns the input. */
+  const [contactRef, setContactRef] = useState('')
   const [errors, setErrors]     = useState<Partial<Record<'name' | 'email' | 'phone' | 'budget' | 'timeline', string>>>({})
   const [loading, setLoading]   = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -102,6 +105,7 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           project_slug: projectName,
           source,
           referrer:     typeof document !== 'undefined' ? document.referrer : '',
+          contact_reference: contactRef,
         }),
       })
       const data = await res.json().catch(() => ({})) as { ok?: boolean; lead_id?: string; error?: string }
@@ -151,7 +155,10 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
         }),
       })
       if (!res.ok) {
-        setSendError("We couldn't attach those details to your enquiry.")
+        // Read the body: a 429 carries the wait time, which is the whole
+        // point of rejecting clearly rather than showing a generic failure.
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setSendError(data.error ?? "We couldn't attach those details to your enquiry.")
         return
       }
       setSubmitted(true)
@@ -185,6 +192,29 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
 
   return (
     <form onSubmit={step === 1 ? handleContinue : handleSubmit} noValidate className="space-y-4">
+
+      {/* Honeypot. Positioned off-screen rather than display:none, which more
+          bots know to skip, and hidden from assistive tech and the tab order
+          so nobody reaches it by accident. A neutral name keeps browser and
+          password-manager autofill away from it — an autofilled honeypot would
+          silently bin a real enquiry. */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}
+      >
+        <label htmlFor="contact-reference">Contact reference (leave blank)</label>
+        <input
+          id="contact-reference"
+          name="contact_reference"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore
+          value={contactRef}
+          onChange={e => setContactRef(e.target.value)}
+        />
+      </div>
 
       {/* Progress indicator */}
       <div className="flex items-center gap-2">
