@@ -3,7 +3,12 @@ import { useState, useEffect, useRef } from 'react'
 
 // ─── Secondary pill nav ───────────────────────────────────────────────────────
 
-export function SecondaryPillNav({ sections }: { sections: { id: string; label: string; locked?: boolean; color?: string }[] }) {
+export function SecondaryPillNav({ sections, desktopOnly = false }: {
+  sections: { id: string; label: string; locked?: boolean; color?: string }[]
+  /** Hide below md. Opt-in per call site: /projects/[slug] suppresses it on a
+   *  phone, everywhere else keeps it. Defaults to showing at every width. */
+  desktopOnly?: boolean
+}) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
   const containerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -43,10 +48,8 @@ export function SecondaryPillNav({ sections }: { sections: { id: string; label: 
   if (sections.length === 0) return null
 
   return (
-    // Desktop only. On a phone the tab bar above already does this job, and a
-    // second floating nav competing with it was never worth the space.
     <div
-      className="hidden md:block fixed z-50"
+      className={`${desktopOnly ? 'hidden md:block ' : ''}fixed z-50`}
       style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)' }}
     >
       <div

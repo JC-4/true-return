@@ -13,6 +13,7 @@ export default function ReturnAnalysisPanel({
   assumptions,
   defaultUnitTypeId,
   purchasePrice,
+  desktopOnlyNav = false,
 }: {
   project: Project
   showFullAnalysis: boolean
@@ -22,6 +23,9 @@ export default function ReturnAnalysisPanel({
   defaultUnitTypeId?: string | null
   /** Price to analyse for the seeded unit; null falls back to its price_from */
   purchasePrice?: number | null
+  /** Hide the section pill nav below md. Set by /projects/[slug]; the
+   *  shortlist route leaves it off so its nav survives on a phone. */
+  desktopOnlyNav?: boolean
 }) {
   const unitTypes = [...(project.unit_types ?? [])].sort((a, b) => {
     if (a.bedrooms === null) return 1
@@ -749,7 +753,7 @@ export default function ReturnAnalysisPanel({
   return (
     <div className="py-10 space-y-8">
 
-      <SecondaryPillNav sections={secondaryNavSections} />
+      <SecondaryPillNav sections={secondaryNavSections} desktopOnly={desktopOnlyNav} />
 
       {/* ── 1. Unit selection ─────────────────────────────────────────────── */}
       <div id="unit-selection">

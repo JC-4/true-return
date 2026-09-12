@@ -1016,7 +1016,7 @@ export default function ProjectDetail({
           {pubTab === 'overview' && (
             <>
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                <SecondaryPillNav sections={overviewNavSections} />
+                <SecondaryPillNav sections={overviewNavSections} desktopOnly />
                 {aboutSection}
                 {unitsAndPlanSection}
 
@@ -1044,7 +1044,7 @@ export default function ProjectDetail({
           {/* Return Analysis tab */}
           {pubTab === 'returns' && (
             <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-20">
-              <ReturnAnalysisPanel project={project} showFullAnalysis={false} />
+              <ReturnAnalysisPanel project={project} showFullAnalysis={false} desktopOnlyNav />
             </div>
           )}
 
@@ -1101,7 +1101,7 @@ export default function ProjectDetail({
           {authTab === 'overview' && (
             <>
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                <SecondaryPillNav sections={overviewNavSections} />
+                <SecondaryPillNav sections={overviewNavSections} desktopOnly />
                 {aboutSection}
                 {unitsAndPlanSection}
 
@@ -1137,7 +1137,7 @@ export default function ProjectDetail({
           {authTab === 'returns' && (
             <div className="max-w-6xl mx-auto px-6 sm:px-10 space-y-10">
               {myTakeSection}
-              <ReturnAnalysisPanel project={project} showFullAnalysis={true} />
+              <ReturnAnalysisPanel project={project} showFullAnalysis={true} desktopOnlyNav />
 
               {/* Documents */}
               {hasDocs && (
