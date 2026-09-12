@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
-import DealBuilder from '@/app/(main)/deals/new/DealBuilder'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
 import LeadGenForm from '@/components/LeadGenForm'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
@@ -13,6 +12,7 @@ import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
 import { fmtLocation } from '@/lib/format'
+import { whatsappHref } from '@/lib/whatsapp'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,8 +60,6 @@ const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
   handover:      'Handover',
   'post-handover': 'Post-handover',
 }
-
-const WHATSAPP = 'https://wa.me/971000000000'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -131,18 +129,21 @@ function BrochureForm({ projectSlug, projectName }: { projectSlug: string; proje
   }
 
   if (submitted) {
+    const href = whatsappHref(`Hi, I've just requested the brochure for ${projectName}.`)
     return (
       <div className="flex flex-col items-start gap-3">
         <p className="text-sm font-semibold text-brand-text">Thanks, we&apos;ll send the brochure over shortly.</p>
-        <a
-          href={`https://wa.me/971585940411?text=${encodeURIComponent(`Hi, I've just requested the brochure for ${projectName}.`)}`}
-          target="_blank"
-          rel="noopener"
-          className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#25D366' }}
-        >
-          Contact us on WhatsApp
-        </a>
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#25D366' }}
+          >
+            Contact us on WhatsApp
+          </a>
+        )}
       </div>
     )
   }
@@ -805,43 +806,6 @@ export default function ProjectDetail({
     </section>
   ) : null
 
-  const returnAnalysisTeaserSection = (
-    <section className="py-16 border-t border-brand-border">
-      <div
-        className="rounded-2xl px-8 py-10"
-        style={{ backgroundColor: '#1C1B18' }}
-      >
-        <div className="grid md:grid-cols-2 gap-8 items-center">
-          <div>
-            <p className="text-xs uppercase tracking-widest font-medium mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>Independent analysis</p>
-            <h2 className="text-2xl font-semibold text-white mb-3 leading-snug">See the real numbers before you commit</h2>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.55)' }}>IRR projections, yield scenarios, mortgage analysis and exit modelling — available to registered clients.</p>
-            <button
-              onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-              style={{ backgroundColor: '#A0784A', color: '#ffffff' }}
-            >
-              Get independent analysis →
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Net yield', value: '6.8%' },
-              { label: '5yr IRR', value: '14.2%' },
-              { label: 'Capital gain', value: 'AED 420K' },
-              { label: 'Deal score', value: '74 / 100' },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl p-4 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                <p className="text-xs uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
-                <p className="text-xl font-semibold" style={{ color: '#C9A96E', filter: 'blur(5px)', userSelect: 'none' }}>{value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-
   const amenitiesSection = amenities.length > 0 ? (
     <section id="amenities" className="py-16 border-t border-brand-border">
         <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
@@ -987,7 +951,6 @@ export default function ProjectDetail({
                 {unitsAndPlanSection}
 
                 {gallerySection}
-                {returnAnalysisTeaserSection}
                 {locationSection}
                 {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1081,7 +1044,6 @@ export default function ProjectDetail({
                 {unitsAndPlanSection}
 
                 {gallerySection}
-                {returnAnalysisTeaserSection}
                 {locationSection}
                 {amenitiesSection}
                 <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">

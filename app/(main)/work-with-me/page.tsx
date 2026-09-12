@@ -1,6 +1,9 @@
 import Link from 'next/link'
+import { whatsappHref } from '@/lib/whatsapp'
 
 export default function WorkWithMePage() {
+  const waHref = whatsappHref()
+
   /* PLACEHOLDER: Update each step with your actual process */
   const steps = [
     {
@@ -79,9 +82,11 @@ export default function WorkWithMePage() {
             Placeholder — short, direct call to action. What happens when they reach out, how quickly you respond, what they should have ready.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* PLACEHOLDER: Replace +971XXXXXXXXX with your WhatsApp number */}
+            {waHref && (
             <a
-              href="https://wa.me/971XXXXXXXXX"
+              href={waHref}
+              target="_blank"
+              rel="noopener"
               className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors text-sm"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -89,6 +94,7 @@ export default function WorkWithMePage() {
               </svg>
               WhatsApp me
             </a>
+            )}
             {/* PLACEHOLDER: Replace hello@yourdomain.com with your email */}
             <a
               href="mailto:hello@yourdomain.com"

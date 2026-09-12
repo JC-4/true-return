@@ -7,6 +7,7 @@ import { fmtLocation } from '@/lib/format'
 import { getShortlist, sortedEntries, deriveSteps, hasConclusion, isOwnerVisit } from '@/lib/shortlist'
 import { isPreviewParam, withPreview } from '@/lib/preview'
 import { PREPARER_NAME } from '@/lib/site'
+import { whatsappHref } from '@/lib/whatsapp'
 import ShortlistViewLogger from '@/components/ShortlistViewLogger'
 import ShortlistFooterNav from '@/components/ShortlistFooterNav'
 
@@ -18,8 +19,6 @@ export const metadata: Metadata = {
   title: 'Investment shortlist — TrueReturn',
   robots: { index: false, follow: false },
 }
-
-const WHATSAPP_NUMBER = '971585940411'
 
 export default async function ShortlistConclusionPage({ params, searchParams }: {
   params: Promise<{ token: string }>
@@ -54,9 +53,9 @@ export default async function ShortlistConclusionPage({ params, searchParams }: 
   const shortlistUrl = `${proto}://${host}/s/${encodeURIComponent(token)}`
   // No names anywhere — the token identifies the shortlist, and anyone the
   // link was forwarded to still arrives with context attached.
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  const waHref = whatsappHref(
     `Hi, I've been through this property shortlist and I'd like to discuss it: ${shortlistUrl}`
-  )}`
+  )
 
   return (
     <div className="bg-brand-bg min-h-screen">
@@ -127,10 +126,11 @@ export default async function ShortlistConclusionPage({ params, searchParams }: 
         )}
 
         {/* ── 3. Talk it through ─────────────────────────────────────────── */}
+        {waHref && (
         <div className="mt-10 flex flex-col items-start gap-3">
           <p className="text-sm text-brand-muted">Questions, or want to talk any of these through?</p>
           <a
-            href={whatsappHref}
+            href={waHref}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto text-sm font-medium text-white px-6 py-3.5 rounded-lg transition-opacity hover:opacity-90"
@@ -142,6 +142,7 @@ export default async function ShortlistConclusionPage({ params, searchParams }: 
             Message me on WhatsApp
           </a>
         </div>
+        )}
 
         {/* ── 4. Sign-off — closes like a letter, last thing before nav ──── */}
         {/* The page's only rule: everything above is content, this is the

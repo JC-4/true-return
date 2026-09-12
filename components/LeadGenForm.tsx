@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { whatsappHref } from '@/lib/whatsapp'
 
 interface Props {
   projectName: string
@@ -32,6 +33,24 @@ const inputCls = (error: boolean) =>
 
 const BRONZE = '#A0784A'
 
+/** Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER is unset — better than a
+ *  wa.me link that goes nowhere. */
+function WhatsappCta({ message, label }: { message: string; label: string }) {
+  const href = whatsappHref(message)
+  if (!href) return null
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
+      style={{ backgroundColor: '#25D366' }}
+    >
+      {label}
+    </a>
+  )
+}
+
 export default function LeadGenForm({ projectName, isProjectPage = true, source = 'Footer form' }: Props) {
   const [step, setStep]         = useState<1 | 2>(1)
   const [name, setName]         = useState('')
@@ -44,6 +63,9 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
   const [errors, setErrors]     = useState<Partial<Record<'name' | 'email' | 'phone' | 'budget' | 'timeline', string>>>({})
   const [loading, setLoading]   = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  /** Set when a request to /api/leads fails. The enquiry did not land, so the
+   *  form stays put and offers WhatsApp as the way through. */
+  const [sendError, setSendError] = useState<string | null>(null)
 
   function validateStep1() {
     const next: typeof errors = {}
@@ -65,6 +87,7 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
     const next = validateStep1()
     if (Object.keys(next).length > 0) { setErrors(next); return }
     setErrors({})
+    setSendError(null)
     setLoading(true)
     try {
       const res = await fetch('/api/leads', {
@@ -81,14 +104,22 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           referrer:     typeof document !== 'undefined' ? document.referrer : '',
         }),
       })
-      const data = await res.json() as { ok?: boolean; lead_id?: string }
-      if (data.lead_id) setLeadId(data.lead_id)
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; lead_id?: string; error?: string }
+      // No lead_id means nothing was recorded, whatever the status code says.
+      // Advancing here would collect budget and timeline with no lead to
+      // attach them to, and end on a success screen for an enquiry that never
+      // arrived. Stay on step 1 instead.
+      if (!res.ok || !data.lead_id) {
+        setSendError(data.error ?? "We couldn't send that just now.")
+        return
+      }
+      setLeadId(data.lead_id)
+      setStep(2)
     } catch {
-      // Non-fatal — proceed to step 2 regardless
+      setSendError('Network error — your enquiry was not sent.')
     } finally {
       setLoading(false)
     }
-    setStep(2)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -96,9 +127,20 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
     const next = validateStep2()
     if (Object.keys(next).length > 0) { setErrors(next); return }
     setErrors({})
+    setSendError(null)
+
+    // Belt and braces: step 1 only advances once a lead_id is in hand, so this
+    // should be unreachable. A PATCH carrying lead_id: null would create an
+    // orphan 'completed' event in Make with nothing to match it to.
+    if (!leadId) {
+      setSendError('Your details were not saved. Please start again or message us directly.')
+      setStep(1)
+      return
+    }
+
     setLoading(true)
     try {
-      await fetch('/api/leads', {
+      const res = await fetch('/api/leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,13 +150,21 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           message:  message.trim(),
         }),
       })
+      if (!res.ok) {
+        setSendError("We couldn't attach those details to your enquiry.")
+        return
+      }
+      setSubmitted(true)
     } catch {
-      // Non-fatal
+      setSendError('Network error — those details were not sent.')
     } finally {
       setLoading(false)
     }
-    setSubmitted(true)
   }
+
+  const enquiryMessage = isProjectPage
+    ? `Hi, I'm interested in more information about ${projectName}.`
+    : "Hi, I'm looking to invest in UAE property and would like some more information."
 
   if (submitted) {
     return (
@@ -126,15 +176,7 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           </svg>
         </div>
         <p className="text-sm font-semibold text-brand-text">Thanks — we'll be in touch shortly.</p>
-        <a
-          href={`https://wa.me/971585940411?text=${encodeURIComponent(isProjectPage ? `Hi, I'm interested in more information about ${projectName}.` : "Hi, I'm looking to invest in UAE property and would like some more information.")}`}
-          target="_blank"
-          rel="noopener"
-          className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#25D366' }}
-        >
-          Message me on WhatsApp
-        </a>
+        <WhatsappCta message={enquiryMessage} label="Message me on WhatsApp" />
       </div>
     )
   }
@@ -280,6 +322,18 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           </button>
 
         </>
+      )}
+
+      {sendError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex flex-col items-start gap-3">
+          <div>
+            <p className="text-sm font-semibold text-red-700">{sendError}</p>
+            <p className="text-xs text-red-600 mt-1">
+              Your details are still filled in — press the button again, or message us directly.
+            </p>
+          </div>
+          <WhatsappCta message={enquiryMessage} label="Message me on WhatsApp instead" />
+        </div>
       )}
     </form>
   )
