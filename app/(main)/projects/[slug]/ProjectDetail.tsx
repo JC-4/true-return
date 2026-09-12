@@ -14,7 +14,7 @@ import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
 import { fmtLocation } from '@/lib/format'
-import { whatsappHref } from '@/lib/whatsapp'
+import { whatsappLinkProps } from '@/lib/whatsapp'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,13 +106,11 @@ function ConnectivityIcon({ label }: { label: string }) {
 /** Secondary route beside the brochure submit button, matching the lead form.
  *  Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER is unset. */
 function BrochureWhatsappLink({ projectName, label = 'or WhatsApp' }: { projectName: string; label?: string }) {
-  const href = whatsappHref(`Hi, I'd like the brochure for ${projectName}.`)
-  if (!href) return null
+  const props = whatsappLinkProps(`Hi, I'd like the brochure for ${projectName}.`, 'Brochure')
+  if (!props) return null
   return (
     <a
-      href={href}
-      target="_blank"
-      rel="noopener"
+      {...props}
       className="inline-flex items-center justify-center min-h-[48px] whitespace-nowrap text-sm font-medium text-brand-muted hover:text-brand-text underline underline-offset-4 decoration-brand-border hover:decoration-brand-text transition-colors"
     >
       {label}
