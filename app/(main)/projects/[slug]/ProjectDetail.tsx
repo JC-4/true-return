@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
@@ -8,6 +9,7 @@ import LeadGenForm from '@/components/LeadGenForm'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
+import AdminEditLink from '@/components/AdminEditLink'
 import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
@@ -325,15 +327,46 @@ function FloorPlanLightbox({ url, onClose }: { url: string; onClose: () => void 
 
 export default function ProjectDetail({
   project,
-  insight,
-  isAdmin = false,
+  insight: insightProp,
   snapshotValues,
 }: {
   project: Project
+  /** Supplied by the token-gated share route, which renders on the server and
+   *  already knows the visitor is entitled to see it. The project page leaves
+   *  this undefined and lets the fetch below resolve it. */
   insight?: ProjectInsight
-  isAdmin?: boolean
   snapshotValues?: SnapshotValues
 }) {
+  // The project page is statically rendered, so the private layer cannot come
+  // from the server — reading the session there would opt the route out of the
+  // route cache. It is fetched here once the session resolves, the same way
+  // AdminEditLink resolves the admin affordance.
+  const { status } = useSession()
+  const [fetchedInsight, setFetchedInsight] = useState<ProjectInsight | null>(null)
+
+  // Every dependency here is a primitive. `session.user` is a fresh object on
+  // each provider render, so depending on it re-ran this effect after its own
+  // setState and hammered the endpoint in a loop. `status` says all it needs
+  // to: 'authenticated' already implies a user.
+  const hasInsightProp = !!insightProp
+  useEffect(() => {
+    // Nothing to do when the parent already supplied one (share route), or
+    // while the session is still loading, or for an anonymous visitor.
+    if (hasInsightProp || status !== 'authenticated') return
+    let cancelled = false
+    fetch(`/api/projects/${project.slug}/insight`)
+      .then(res => (res.ok ? res.json() as Promise<ProjectInsight> : null))
+      .then(data => { if (!cancelled && data) setFetchedInsight(data) })
+      .catch(() => { /* stay on the public view rather than half-render */ })
+    return () => { cancelled = true }
+  }, [hasInsightProp, status, project.slug])
+
+  // `{}` is truthy and that is load-bearing: the endpoint returns an empty
+  // object for a project with no analysis written yet, which still signals
+  // "authenticated" so the calculator renders. Until it resolves this is
+  // undefined and the public layout renders — no skeleton, nothing that would
+  // make the page look incomplete to the anonymous visitors it is cached for.
+  const insight = insightProp ?? fetchedInsight ?? undefined
   const isAuth = !!insight
 
   // Auth tab state
@@ -1020,17 +1053,9 @@ export default function ProjectDetail({
                   {label}
                 </button>
               ))}
-              {isAdmin && (
-                <Link
-                  href={`/admin/projects/${project.slug}/edit`}
-                  className="ml-auto text-xs text-brand-hint hover:text-brand-bronze transition-colors py-3.5 flex items-center gap-1"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit project
-                </Link>
-              )}
+              <div className="ml-auto py-3.5">
+                <AdminEditLink resource="projects" slug={project.slug} label="Edit project" />
+              </div>
             </div>
 
           </div>
