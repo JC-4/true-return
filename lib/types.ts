@@ -53,9 +53,12 @@ export type UnitType = {
   id: string
   project_id: string
   type: string
-  price_from: number
-  size_sqft_from: number
-  price_per_sqft: number
+  /* All three are nullable in Supabase and genuinely absent for some imported
+   * units — a land plot has no built area, and a developer may publish a type
+   * without a price. Typed honestly so call sites are forced to handle it. */
+  price_from: number | null
+  size_sqft_from: number | null
+  price_per_sqft: number | null
   bedrooms: number | null   // 0 = studio, 1/2/3 = residential, null = commercial
   typology: string | null   // distinguishing label within a bedroom count (e.g. "Suite", "Standard"); null if unique
   internal_sqft?: number | null
@@ -127,6 +130,14 @@ export type Project = {
    *  became a pair, and the About section renders the detail on its own in
    *  that case rather than an empty bold line. */
   highlights?: ProjectHighlight[] | null
+  /** What `starting_price` measures, so the hero stat can label it honestly.
+   *  'Average' for a figure taken from Modon's per-unit factsheet, 'From' for
+   *  a quoted entry price. Null falls back to 'From'. */
+  price_basis?: 'From' | 'Average' | null
+  /** Only set when a source states a launch explicitly. Never inferred from a
+   *  handover date. */
+  launch_date?: string | null
+  launch_price_aed?: number | null
   tagline?: string | null
   about_image_position?: string | null
 }

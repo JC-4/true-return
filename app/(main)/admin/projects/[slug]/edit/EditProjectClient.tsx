@@ -496,6 +496,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
   const [status, setStatus] = useState(project.status ?? '')
   const [handoverDate, setHandoverDate] = useState(project.handover_date ?? '')
   const [startingPrice, setStartingPrice] = useState(project.starting_price?.toString() ?? '')
+  const [priceBasis, setPriceBasis] = useState(project.price_basis ?? '')
+  const [launchDate, setLaunchDate] = useState(project.launch_date ?? '')
+  const [launchPrice, setLaunchPrice] = useState(project.launch_price_aed?.toString() ?? '')
   const [emirate, setEmirate] = useState(project.emirate ?? 'Dubai')
   const [location, setLocation] = useState(project.location ?? '')
   const [serviceChargeRate, setServiceChargeRate] = useState(
@@ -705,6 +708,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
       status: status || null,
       handover_date: handoverDate || null,
       starting_price: startingPrice ? parseFloat(startingPrice) : null,
+      price_basis: priceBasis || null,
+      launch_date: launchDate || null,
+      launch_price_aed: launchPrice ? parseFloat(launchPrice) : null,
       emirate,
       location: location.trim() || null,
       service_charge_rate: serviceChargeRate ? parseFloat(serviceChargeRate) : null,
@@ -894,6 +900,44 @@ export default function EditProjectClient({ project }: { project: Project }) {
                 value={serviceChargeRate}
                 onChange={setServiceChargeRate}
                 placeholder="e.g. 18"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Price basis
+                </label>
+                <select
+                  value={priceBasis}
+                  onChange={e => setPriceBasis(e.target.value as '' | 'From' | 'Average')}
+                  className={inputCls}
+                >
+                  <option value="">— not set (shows &ldquo;From&rdquo;) —</option>
+                  <option value="From">From</option>
+                  <option value="Average">Average</option>
+                </select>
+                <p className="mt-1.5 text-xs text-gray-400">
+                  What the starting price measures. Labels the hero stat on the
+                  project page. Use Average for a developer factsheet figure
+                  that averages a unit type rather than quoting an entry price.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field
+                label="Launch date"
+                type="date"
+                value={launchDate}
+                onChange={setLaunchDate}
+                hint="Only when a source states it. Never inferred from handover."
+              />
+              <MoneyField
+                label="Launch price (AED)"
+                value={launchPrice}
+                onChange={setLaunchPrice}
+                placeholder="e.g. 1,200,000"
               />
             </div>
 

@@ -540,8 +540,11 @@ export default function ProjectDetail({
 
   /** The three headline figures, derived once. The hero and the About block
    *  both show them, in a different order, so neither recomputes them. */
+  // The label says what the number is. A Modon factsheet figure is an average
+  // across a unit type, not an entry price, and calling it "From" would
+  // understate it.
   const statFrom: ProjectStat | null = project.starting_price
-    ? { key: 'from', label: 'From', value: fmtPrice(project.starting_price) }
+    ? { key: 'from', label: project.price_basis ?? 'From', value: fmtPrice(project.starting_price) }
     : null
   const statHandover: ProjectStat | null = fmtHandover(project.handover_date) !== '—'
     ? { key: 'handover', label: 'Handover', value: fmtHandover(project.handover_date) }
@@ -734,11 +737,13 @@ export default function ProjectDetail({
                 >
                   {fmtPrice(ut.price_from)}
                 </p>
+                {/* A land plot has no built area, and some imported types have
+                    no published size. Render the line only when there is one. */}
                 <p
                   className="text-xs"
                   style={{ color: isSelected ? 'rgb(var(--tl-rgb) / 0.45)' : 'var(--c-hint)' }}
                 >
-                  from {ut.size_sqft_from.toLocaleString()} sqft
+                  {ut.size_sqft_from != null ? `from ${ut.size_sqft_from.toLocaleString()} sqft` : '\u00A0'}
                 </p>
                 {/* Fixed height so cards without a floor plan match the others */}
                 <div className="mt-3 h-4 flex items-center">

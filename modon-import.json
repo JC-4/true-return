@@ -1,0 +1,1751 @@
+{
+  "written_to_supabase": true,
+  "note": "Exactly what was written for the Modon import. 11 projects + 31 unit_types. tagline/description/highlights deliberately null. Reem Hills and Maysan excluded.",
+  "developer": {
+    "name": "Modon",
+    "id": "948d45f9-5d24-49a9-9f17-30d348097350"
+  },
+  "conventions": {
+    "handover_date": "first day of the stated quarter",
+    "sizes": "Modon publishes sqm; size_sqft_from is sqft (x10.7639)",
+    "price_basis": "From where per-unit pricing exists (headline = cheapest unit, or Modon's stated FAQ entry price where lower); Average only where no per-unit breakdown",
+    "payment_plans": "Phoenix three-part schedule stored as segments (downpayment/construction/handover); the site derives Modon's two-part display ratio from them",
+    "payment_plan_confirmed": "false on all — scraped, never read off a reservation form"
+  },
+  "projects": [
+    {
+      "slug": "bashayer-residences",
+      "supabase": {
+        "projects": {
+          "slug": "bashayer-residences",
+          "name": "Bashayer",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2030-04-01",
+          "starting_price": 2500000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-14.jpg?sfvrsn=ddc45709_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-13.jpg?sfvrsn=31e34628_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-12.jpg?sfvrsn=f26c037d_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-11.jpg?sfvrsn=911fe9c9_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-07.jpg?sfvrsn=845da16_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-06.jpg?sfvrsn=a7e43b93_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-05.jpg?sfvrsn=5e6da587_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-18.jpg?sfvrsn=b03e1d2e_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-17.jpg?sfvrsn=f47c4d09_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-16.jpg?sfvrsn=d3d78492_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-15.jpg?sfvrsn=428ba9e8_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-10.jpg?sfvrsn=a7d07649_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-09.jpg?sfvrsn=72e4f184_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/bashayer/gallery/bashayer-image-08.jpg?sfvrsn=9be418e1_1"
+          ],
+          "amenities": [
+            "Gated Community",
+            "Community Centre",
+            "Children's Play Area",
+            "Waterfront Location",
+            "Swimming Pool",
+            "Park & Green Spaces",
+            "Padel Courts",
+            "Multi-Sports Court",
+            "Cycling & Jogging Trails",
+            "Gym"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "50/50 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 40,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 50,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "When is the expected handover date for Bashayer?",
+              "a": "The villas are scheduled for handover in Q1 2030, while the expected handover date for the apartments is Q2 2030."
+            },
+            {
+              "q": "Are Bashayer home owners eligible for the 10-year UAE Golden Visa?",
+              "a": "Yes, purchasing a property in Bashayer qualifies the buyer to apply for the Golden Visa, as the starting prices for apartments and villas exceed the minimum threshold of AED 2 million."
+            },
+            {
+              "q": "Is Bashayer a freehold development?",
+              "a": "Yes, all nationalities can purchase property in Bashayer with full ownership rights."
+            },
+            {
+              "q": "What is the starting price for properties in Bashayer?",
+              "a": "Prices for a one-bedroom apartment start from AED 2.5 million. Modon offers an attractive 50/50 payment plan with a 5% down payment on booking, 45% paid during construction and the final 50% due upon handover."
+            },
+            {
+              "q": "What amenities are available to residents of Bashayer?",
+              "a": "Bashayer features a community centre, a children’s play area, a swimming pool, a park, green spaces, padel courts, a multi-sports court, a gym as well as cycling and jogging trails."
+            },
+            {
+              "q": "What types of residential properties are available in Bashayer?",
+              "a": "The final phase of Bashayer will offer four- to five-bedroom villas and one- to four-bedroom apartments, townhomes, and penthouses."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "1-Bedroom apartment",
+            "bedrooms": 1,
+            "size_sqft_from": 872,
+            "price_from": 2500000,
+            "price_per_sqft": 2866.97,
+            "_source": "modon",
+            "_size_sqm": 81.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "2-Bedroom apartment",
+            "bedrooms": 2,
+            "size_sqft_from": 1389,
+            "price_from": 3150000,
+            "price_per_sqft": 2267.82,
+            "_source": "modon",
+            "_size_sqm": 129.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "3-Bedroom apartment",
+            "bedrooms": 3,
+            "size_sqft_from": 1916,
+            "price_from": 4600000,
+            "price_per_sqft": 2400.84,
+            "_source": "modon",
+            "_size_sqm": 178.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "2-Bedroom townhouse",
+            "bedrooms": 2,
+            "size_sqft_from": 1765,
+            "price_from": 4300000,
+            "price_per_sqft": 2436.26,
+            "_source": "modon",
+            "_size_sqm": 164.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "4-Bedroom townhouse",
+            "bedrooms": 4,
+            "size_sqft_from": 2723,
+            "price_from": 6200000,
+            "price_per_sqft": 2276.9,
+            "_source": "modon",
+            "_size_sqm": 253.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "Penthouse",
+            "bedrooms": null,
+            "size_sqft_from": 4198,
+            "price_from": 9000000,
+            "price_per_sqft": 2143.88,
+            "_source": "modon",
+            "_size_sqm": 390.0,
+            "_price_label": "Average price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "handover",
+          "modon": "Q2 2030",
+          "phoenix": "Q4 2029",
+          "kept": "Q2 2030"
+        },
+        {
+          "field": "starting_price",
+          "modon": 2500000,
+          "phoenix": 2350000,
+          "kept": 2500000
+        },
+        {
+          "field": "payment_plan",
+          "modon": "50/50",
+          "phoenix": "10/40/50",
+          "kept": "50/50",
+          "phoenix_status": "Reported schedule"
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "CSV name 'Bashayer Residences' vs Modon 'Bashayer' — kept Modon (naming precedence).",
+        "Phoenix sub-phases disagree on handover: 2029, Q2 2030, Q3 2029, Q4 2029",
+        "Phoenix sub-phase prices differ: 2,350,000, 2,500,000",
+        "Phoenix payment plan is headed '50/50' but its schedule reads 10/40/50 — the steps were taken as Phoenix's value.",
+        "Payment-plan milestone labels inferred from the 50/50 ratio; Modon states the ratio only.",
+        "6 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/bashayer",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-residences-1",
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-residences-2",
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-residences-3-4",
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-residences-5-6",
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-final-phase-modon-hudayriyat-island-abu-dhabi"
+        ]
+      }
+    },
+    {
+      "slug": "bashayer-villas",
+      "supabase": {
+        "projects": {
+          "slug": "bashayer-villas",
+          "name": "Bashayer Villas",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": null,
+          "handover_date": "2028-07-01",
+          "starting_price": 6000000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://abudhabioffplan.info/media/projects/3fbbcab8f98f41c893b1f7b1844db57613594354.webp"
+          ],
+          "amenities": [],
+          "connectivity": [],
+          "payment_plans": [],
+          "faqs": [],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": null,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "Villas",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "csv",
+        "handover_date": "phoenix",
+        "starting_price": "phoenix",
+        "payment_plans": null,
+        "unit_types": "phoenix",
+        "amenities": null,
+        "images": "phoenix",
+        "faqs": null,
+        "connectivity": null
+      },
+      "disagreements": [],
+      "missing": [
+        "amenities",
+        "connectivity/drive times",
+        "faqs",
+        "launch_date",
+        "launch_price_aed",
+        "payment_plans",
+        "unit_type sizes/prices"
+      ],
+      "notes": [
+        "Phoenix states a payment plan with no numeric schedule (option: 'Developer schedule', status: Source conflict) — no ratio taken from Phoenix.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null.",
+        "Not listed on modon.com (delisted or sold out) — status left null for manual review."
+      ],
+      "source_urls": {
+        "modon": null,
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/bashayer-villas"
+        ]
+      }
+    },
+    {
+      "slug": "hudayriyat-golf-estates",
+      "supabase": {
+        "projects": {
+          "slug": "hudayriyat-golf-estates",
+          "name": "Hudayriyat Golf Estates",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2030-07-01",
+          "starting_price": 4200000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/exterior/hudayriyat-golf-estates-view.jpg?sfvrsn=88bbbae6_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/exterior/hudayriyat-golf-estates-view-3.jpg?sfvrsn=7936c356_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/exterior/hudayriyat-golf-estates-view-5.jpg?sfvrsn=58771c5f_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/exterior/hudayriyat-golf-estates-view-4.jpg?sfvrsn=24e3ea0f_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/exterior/hudayriyat-golf-estates-view-2.jpg?sfvrsn=d686cb19_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/interior/mth_modon_west-golf-townhouses_view-37_a02.jpg?sfvrsn=45afed15_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/interior/mth_modon_west-golf-townhouses_view-42_a02.jpg?sfvrsn=61baa810_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/interior/mth_modon_west-golf-townhouses_view-34_a02.jpg?sfvrsn=6f5714ca_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/interior/mth_modon_west-golf-townhouses_view-35_a02.jpg?sfvrsn=893d1934_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/hudayriyat-golf-estate/gallery/interior/mth_modon_west-golf-townhouses_view-41_a02.jpg?sfvrsn=f70f90e2_1"
+          ],
+          "amenities": [
+            "18-Hole Golf Course",
+            "Country Clubhouse",
+            "Dining & Retail",
+            "Wellness Centre",
+            "Multi-Sports Courts",
+            "Community Centre",
+            "Private School",
+            "Cycling Trails",
+            "Parks & Green Spaces",
+            "Coworking Spaces"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "40/60 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 5,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 35,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 60,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "Are the Villas and Townhomes available for purchase by all nationalities?",
+              "a": "Yes, the Villas and Townhomes are open to buyers of all nationalities and are offered on a freehold basis."
+            },
+            {
+              "q": "Is the community gated and secure?",
+              "a": "Yes, the Townhome community, Villa community, and Waterfront community, are gated with 24-hour private security."
+            },
+            {
+              "q": "Can the property be resold before handover?",
+              "a": "Yes, the villa may be resold prior to handover, provided that at least 20% of the total payment has been made,"
+            },
+            {
+              "q": "Are pets allowed?",
+              "a": "Yes, pets are allowed and a dog park is located in the community area."
+            },
+            {
+              "q": "When will the community be ready for handover?",
+              "a": "The community will be ready for handover by August 2030."
+            },
+            {
+              "q": "What sustainability features are included?",
+              "a": "Villas have a Pearl 3.0 rating as per Abu Dhabi Municipality."
+            },
+            {
+              "q": "Can I select my properties landscaping?",
+              "a": "All units come with garden space provisions, giving you the option to build your own landscape, as desired."
+            },
+            {
+              "q": "Why buy a property on Hudayriyat Golf Estates?",
+              "a": "It’s ultra-low-density golf-front living within an active island. You get privacy, space, and luxury villas with"
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 5,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "3-bedroom Townhouses",
+            "bedrooms": 3,
+            "size_sqft_from": 2196,
+            "price_from": 4200000,
+            "price_per_sqft": 1912.57,
+            "_source": "modon",
+            "_size_sqm": 204.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "4-bedroom Townhouses",
+            "bedrooms": 4,
+            "size_sqft_from": 2551,
+            "price_from": 4900000,
+            "price_per_sqft": 1920.82,
+            "_source": "modon",
+            "_size_sqm": 237.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "4-bedroom Golf Homes",
+            "bedrooms": 4,
+            "size_sqft_from": 4004,
+            "price_from": 7400000,
+            "price_per_sqft": 1848.15,
+            "_source": "modon",
+            "_size_sqm": 372.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "5-bedroom Range Villas",
+            "bedrooms": 5,
+            "size_sqft_from": 5888,
+            "price_from": 10300000,
+            "price_per_sqft": 1749.32,
+            "_source": "modon",
+            "_size_sqm": 547.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "6-bedroom Fairway Villas",
+            "bedrooms": 6,
+            "size_sqft_from": 9795,
+            "price_from": 26800000,
+            "price_per_sqft": 2736.09,
+            "_source": "modon",
+            "_size_sqm": 910.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "6-bedroom Golf Mansions",
+            "bedrooms": 6,
+            "size_sqft_from": 12378,
+            "price_from": 35800000,
+            "price_per_sqft": 2892.23,
+            "_source": "modon",
+            "_size_sqm": 1150.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "Par 3 Villas",
+            "bedrooms": null,
+            "size_sqft_from": 2530,
+            "price_from": 4900000,
+            "price_per_sqft": 1936.76,
+            "_source": "modon",
+            "_size_sqm": 235.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "Par 4 Villas",
+            "bedrooms": null,
+            "size_sqft_from": 3520,
+            "price_from": 6600000,
+            "price_per_sqft": 1875.0,
+            "_source": "modon",
+            "_size_sqm": 327.0,
+            "_price_label": "Average price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "starting_price",
+          "modon": 4200000,
+          "phoenix": 4250000,
+          "kept": 4200000
+        },
+        {
+          "field": "payment_plan",
+          "modon": "40/60",
+          "phoenix": "5/35/60",
+          "kept": "40/60",
+          "phoenix_status": "Reported schedule"
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "Payment-plan milestone labels inferred from the 40/60 ratio; Modon states the ratio only.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/hudayriyat-golf-estates",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/hudayriyat-golf-estates-modon-abu-dhabi"
+        ]
+      }
+    },
+    {
+      "slug": "al-naseem-community",
+      "supabase": {
+        "projects": {
+          "slug": "al-naseem-community",
+          "name": "Al Naseem Community",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2027-10-01",
+          "starting_price": 7800000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/inna_dudai_vp001_cam-6_day_ver-025_mod_style.jpg?sfvrsn=6e61dfd3_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/modon_alnaseem-villas_light_cgi02_living-area.jpg?sfvrsn=fbe31b66_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/modon_alnaseem-villas_light_cgi04_show-kitche-opt01.jpg?sfvrsn=5b497af5_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/modon_alnaseem-villas_light_cgi06-majlis.jpg?sfvrsn=80256dd7_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/inna_dudai_vp001_cam-1_evening_ver-025_cal_style.jpg?sfvrsn=dc873035_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/inna_dudai_vp001_cam-5_day_ver-025_cal_style.jpg?sfvrsn=9f06c59_3"
+          ],
+          "amenities": [
+            "Community Centre",
+            "Gym",
+            "Swimming Pool",
+            "Pedestrian Paths",
+            "Cycle Routes",
+            "Basketball Court",
+            "Schools",
+            "Outdoor Play Area"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "40/60 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 30,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 60,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "When is the expected handover date for Al Naseem Community?",
+              "a": "The first phase of the development is scheduled for handover in Q4 2027."
+            },
+            {
+              "q": "Does purchasing a villa in Al Naseem Community qualify the owner for the 10-year UAE Golden Visa?",
+              "a": "Yes, buyers of all properties in Al Naseem Community are eligible to apply for the Golden Visa, subject to current government regulations."
+            },
+            {
+              "q": "Is Al Naseem Community a freehold development?",
+              "a": "Yes, properties at Al Naseem Community can be fully owned by all nationalities."
+            },
+            {
+              "q": "What is the starting price for properties in Al Naseem Community?",
+              "a": "The starting price for a four-bedroom villa is AED 7.8 million. Modon offers an attractive 40/60 payment plan."
+            },
+            {
+              "q": "How close is Al Naseem Community to key attractions on Hudayriyat Island?",
+              "a": "The project offers exceptional convenience, with major island leisure hubs, such as Surf Abu Dhabi, 321 Sports and the Marsana retail and dining complex, all located within a short drive."
+            },
+            {
+              "q": "What amenities are included in Al Naseem Community?",
+              "a": "Al Naseem Community provides a wide variety of luxury amenities, such as a community centre, a gym, a swimming pool, pedestrian paths, cycle routes, basketball courts, schools and an outdoor play area."
+            },
+            {
+              "q": "What are the architectural styles of the villas in Al Naseem Community?",
+              "a": "The villas feature two distinct elegant façade styles: the warm and traditional South Californian style and the Modern Contemporary style, characterised by a sleek, minimalist aesthetic with extensive glazing."
+            },
+            {
+              "q": "What types of properties are available in Al Naseem Community?",
+              "a": "The development features luxury four- to six-bedroom standalone villas over a Ground + 1 Floor structure. Each villa is set within a generous private plot, providing maximum space and privacy."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "5-Bedroom Villa",
+            "bedrooms": 5,
+            "size_sqft_from": 6318,
+            "price_from": 9000000,
+            "price_per_sqft": 1424.5,
+            "_source": "modon",
+            "_size_sqm": 587.0,
+            "_price_label": "Starting Price"
+          },
+          {
+            "type": "6-Bedroom Villa",
+            "bedrooms": 6,
+            "size_sqft_from": null,
+            "price_from": 10000000,
+            "price_per_sqft": null,
+            "_source": "modon",
+            "_size_sqm": null,
+            "_price_label": "Starting price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "starting_price",
+          "modon": 9000000,
+          "phoenix": 7800000,
+          "kept": 9000000
+        },
+        {
+          "field": "payment_plan",
+          "modon": "40/60",
+          "phoenix": "10/30/60",
+          "kept": "40/60",
+          "phoenix_status": "Reported schedule"
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "Phoenix payment plan is headed '40/60' but its schedule reads 10/30/60 — the steps were taken as Phoenix's value.",
+        "Payment-plan milestone labels inferred from the 40/60 ratio; Modon states the ratio only.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null.",
+        "Headline price 7,800,000 taken from Modon's FAQ entry price, below the cheapest factsheet unit (9,000,000)."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/al-naseem-community",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/al-naseem-community"
+        ]
+      }
+    },
+    {
+      "slug": "nawayef-park-views",
+      "supabase": {
+        "projects": {
+          "slug": "nawayef-park-views",
+          "name": "Nawayef Park Views",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2028-01-01",
+          "starting_price": 2000000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp06_interior_kitchen_rev05.jpg?sfvrsn=9707d233_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp08_interior_kitchen_rev03.jpg?sfvrsn=697d97a3_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp03_interioramenities_lobby_rev06.jpg?sfvrsn=658ade8b_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp05_interior_powderroom_rev04.jpg?sfvrsn=69447967_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp01_interioramenities_kids-room_rev04.jpg?sfvrsn=c3f2fe0_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp02_interior_living_rev05.jpg?sfvrsn=16fce899_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp11_exterior_kidpool_rev06a652500a-c30b-4541-aa4a-940fbc1604c1.jpg?sfvrsn=a4a96bf8_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp12_exterior_generale_rev05.jpg?sfvrsn=e4e22331_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp04_exterior_pool_rev044924c565-a6ec-4f1e-9119-4a21459bfaf5.jpg?sfvrsn=19001a9a_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp06_exterior_padel_rev04.jpg?sfvrsn=4ca7ab9e_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp02_exterior_general_rev04.jpg?sfvrsn=9478cb54_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp01_exterior_aerial_skyextension_rev03.jpg?sfvrsn=39cef154_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp02_exterior_aerial_rev04-(edited).jpg?sfvrsn=6e151b22_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/me1806_vp01_exterior_entrance_rev042c69b51d-77e7-47bd-92a2-8ab39c347eb8.jpg?sfvrsn=788b6dc7_3"
+          ],
+          "amenities": [
+            "Gym",
+            "Clubhouse",
+            "Yoga zone",
+            "Coworking space",
+            "Lap swimming pool",
+            "Games Room",
+            "Concierge and valet",
+            "Beach",
+            "Park"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "60/40 payment plan",
+              "segments": [
+                {
+                  "label": "During construction",
+                  "percent": 60,
+                  "color": "bronze"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 40,
+                  "color": "bronze-mid"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "When is the expected handover date for Nawayef Park Views?",
+              "a": "Nawayef Park Views is scheduled for handover in Q1 2028."
+            },
+            {
+              "q": "Are Nawayef Park Views homeowners eligible for the 10-year UAE Golden Visa?",
+              "a": "Yes, buyers of properties in Nawayef Park Views are qualified to apply for the Golden Visa, as all prices meet or exceed the minimum threshold required."
+            },
+            {
+              "q": "Is Nawayef Park Views a freehold development?",
+              "a": "Yes, properties at Nawayef Park Views can be fully owned by all nationalities."
+            },
+            {
+              "q": "What is the starting price for an apartment in Nawayef Park Views?",
+              "a": "The starting price for a spacious one-bedroom apartment is AED 2 million. Modon offers an attractive 60/40 payment plan with a 10% downpayment on booking, 50% paid in structured instalments during construction and the final 40% due upon handover."
+            },
+            {
+              "q": "Which facilities does Nawayef Park Views offer?",
+              "a": "The development includes a gym, a yoga zone, shaded green spaces with BBQ areas, a lap pool and a children’s pool with a splash area and a play area, supporting an active, wellness-focused lifestyle. Residents can also enjoy easy access to a park, a beach, healthcare facilities and a vibrant souq plaza with fine dining, luxury retail and wellness spaces."
+            },
+            {
+              "q": "What types of properties are available in Nawayef Park Views?",
+              "a": "Nawayef Park Views features elegant one- to four-bedroom apartments, inspired by Mediterranean architecture."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": null,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "Apartments",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "phoenix",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed",
+        "unit_type sizes/prices"
+      ],
+      "notes": [
+        "Modon factsheet is project-level (titled 'Nawayef Park Views'), not per-unit.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/nawayef-parkviews",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-park-views"
+        ]
+      }
+    },
+    {
+      "slug": "nawayef-east",
+      "supabase": {
+        "projects": {
+          "slug": "nawayef-east",
+          "name": "Nawayef East",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2028-07-01",
+          "starting_price": 6600000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-5.jpg?sfvrsn=f41dcd25_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-48588d6f4-9763-4272-ad30-aa7f76863398.jpg?sfvrsn=d98cb768_3",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-4.jpg?sfvrsn=bfbd4d69_5",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-3.jpg?sfvrsn=2397517a_5",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-2.jpg?sfvrsn=9bbf6375_5",
+            "https://www.modon.com/images/modoncorporatelibraries/about-us/ne-gallery-1.jpg?sfvrsn=eb23aed4_5"
+          ],
+          "amenities": [
+            "Jogging Trails",
+            "Swimming Pool",
+            "Mosque",
+            "Gym",
+            "Play Area",
+            "Club House",
+            "Verdant Parkland",
+            "Tennis"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "40/60 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 30,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 60,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "When is the expected handover date for Nawayef East?",
+              "a": "Nawayef East is scheduled for handover in December 2028."
+            },
+            {
+              "q": "Are Nawayef East home owners eligible for the 10-year UAE Golden Visa?",
+              "a": "Yes, the starting property prices at Nawayef East significantly exceed the required threshold, qualifying the buyer to apply for the Golden Visa."
+            },
+            {
+              "q": "Is Nawayef East a freehold development?",
+              "a": "Yes, properties at Nawayef East can be fully owned by all nationalities."
+            },
+            {
+              "q": "What is the starting price for a villa in Nawayef East?",
+              "a": "The starting price for Nawayef East Homes is AED 6.6 million. Modon offers a flexible 40/60 payment plan with a 10% downpayment, 30% paid in structured instalments during construction and the final 60% due upon handover."
+            },
+            {
+              "q": "What amenities are available to residents of Nawayef East?",
+              "a": "Residents have access to a wealth of luxury amenities, including a jogging trail, a swimming pool, a tennis court, a gym, a play area, a club house, a mosque, verdant parkland and many more."
+            },
+            {
+              "q": "What is the architectural style of the residences in Nawayef East?",
+              "a": "Nawayef Hills offers a collection of villas that celebrate architectural diversity and refined living. The community blends Southern Californian–inspired homes with striking contemporary villas featuring distinctive architectural cladding, creating a visually engaging streetscape.\nThis thoughtful mix of styles and materials enhances the overall urban fabric, giving the neighborhood a strong sense of identity, exclusivity, and timeless appeal, and establishing Nawayef Hills as a unique residential destination in Abu Dhabi."
+            },
+            {
+              "q": "What types of residential properties are available in Nawayef East?",
+              "a": "The Premium to ultra-luxury residences in Nawayef East are presented in three distinct configurations: Homes (four to five bedrooms), Heights (five to seven bedrooms) and Mansions (six to eight bedrooms). Each property features a spacious terrace, a swimming pool, a majlis area and an expansive garden."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "East Hill - Mansions",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "modon",
+            "_size_sqm": null,
+            "_price_label": "Starting price"
+          },
+          {
+            "type": "East Hill - Homes",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": 6600000,
+            "price_per_sqft": null,
+            "_source": "modon",
+            "_size_sqm": null,
+            "_price_label": "Starting price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "phoenix",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "payment_plan",
+          "modon": "40/60",
+          "phoenix": "10/30/60",
+          "kept": "40/60",
+          "phoenix_status": "Reported schedule"
+        },
+        {
+          "field": "unit_types",
+          "csv": [
+            "Villas"
+          ],
+          "scraped": [
+            "East Hill - Mansions",
+            "East Hill - Homes"
+          ],
+          "scraped_source": "modon",
+          "kept": [
+            "East Hill - Mansions",
+            "East Hill - Homes"
+          ],
+          "note": "CSV and source name different property types — CSV may be a deliberate override."
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "Modon factsheet is project-level (titled 'East Hill - Heights'), not per-unit.",
+        "Phoenix payment plan is headed '40/60' but its schedule reads 10/30/60 — the steps were taken as Phoenix's value.",
+        "Payment-plan milestone labels inferred from the 40/60 ratio; Modon states the ratio only.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/nawayef-east",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-east"
+        ]
+      }
+    },
+    {
+      "slug": "nawayef-village",
+      "supabase": {
+        "projects": {
+          "slug": "nawayef-village",
+          "name": "Nawayef Village",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2029-01-01",
+          "starting_price": 4100000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi25_03.jpg?sfvrsn=9658b498_1",
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi22_02.jpg?sfvrsn=3fbad26_1",
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi21_04a.jpg?sfvrsn=1709fa31_1",
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi20_05a.jpg?sfvrsn=943468f3_1",
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi06_07.jpg?sfvrsn=53e2767a_1",
+            "https://www.modon.com/images/modoncorporatelibraries/projects/project-gallery/modon_nawayefvillage_cgi07_07.jpg?sfvrsn=6920ecad_1"
+          ],
+          "amenities": [
+            "Gated Community",
+            "Walking distance to Retail Avenue",
+            "Community Centres and Pools",
+            "Walking Paths",
+            "Parks and Green Spaces",
+            "Close Proximity to Beach",
+            "Schools / Medical Facilities"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "50/50 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 40,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 50,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "When is the expected handover date for Nawayef Village?",
+              "a": "Nawayef Village is scheduled for handover from Q1 2029."
+            },
+            {
+              "q": "Are Nawayef Village home owners eligible for the 10-year UAE Golden Visa?",
+              "a": "Yes, purchasing a property in Nawayef Village qualifies the buyer to apply for the Golden Visa, subject to current government regulations."
+            },
+            {
+              "q": "Is Nawayef Village a freehold development?",
+              "a": "Yes, properties at Nawayef Village can be fully owned by all nationalities."
+            },
+            {
+              "q": "What is the starting price for properties in Nawayef Village?",
+              "a": "The starting price is AED 4.1 million. Modon offers an attractive 50/50 payment plan."
+            },
+            {
+              "q": "What kind of recreational facilities are close to Nawayef Village?",
+              "a": "The neighborhood lies within walking distance from a vibrant retail avenue with a boutique cinema, with parks, schools, a health centre and a beach just minutes away."
+            },
+            {
+              "q": "What are the key lifestyle amenities at Nawayef Village?",
+              "a": "The secure gated development offers residents an exclusive suite of amenities, including landscaped parks, community centres with swimming pools as well as dedicated walking and cycling paths."
+            },
+            {
+              "q": "What is the architectural style of Nawayef Village homes?",
+              "a": "The design is inspired by Tuscan architecture."
+            },
+            {
+              "q": "What types of properties are available in Nawayef Village?",
+              "a": "Nawayef Village offers a choice of three- to five-bedroom townhouses – the first ones on Hudayriyat Island – and twin villas."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "Townhouses",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          },
+          {
+            "type": "Villas",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "phoenix",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "payment_plan",
+          "modon": "50/50",
+          "phoenix": "10/40/50",
+          "kept": "50/50",
+          "phoenix_status": "Reported schedule"
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed",
+        "unit_type sizes/prices"
+      ],
+      "notes": [
+        "Modon factsheet is project-level (titled 'Nawayef Village'), not per-unit.",
+        "Payment-plan milestone labels inferred from the 50/50 ratio; Modon states the ratio only.",
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/nawayef-village",
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-village"
+        ]
+      }
+    },
+    {
+      "slug": "nawayef-west",
+      "supabase": {
+        "projects": {
+          "slug": "nawayef-west",
+          "name": "Nawayef West",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": null,
+          "handover_date": "2027-10-01",
+          "starting_price": 6000000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://abudhabioffplan.info/media/projects/90ddf4918a6ded8661b0eabbc8bcf552a90f5657.webp"
+          ],
+          "amenities": [],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "10/30/60 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 30,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 60,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "Villas",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          },
+          {
+            "type": "Mansions",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": null,
+            "price_per_sqft": null,
+            "_source": "phoenix"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "csv",
+        "handover_date": "phoenix",
+        "starting_price": "phoenix",
+        "payment_plans": "phoenix",
+        "unit_types": "phoenix",
+        "amenities": null,
+        "images": "phoenix",
+        "faqs": null,
+        "connectivity": null
+      },
+      "disagreements": [],
+      "missing": [
+        "amenities",
+        "connectivity/drive times",
+        "faqs",
+        "launch_date",
+        "launch_price_aed",
+        "unit_type sizes/prices"
+      ],
+      "notes": [
+        "Phoenix sub-phases disagree on handover: Q1 2028, Q4 2026, Q4 2027",
+        "Phoenix sub-phase prices differ: 6,000,000, 6,600,000, 19,000,000, 41,000,000",
+        "Phoenix payment plan is headed '40/60' but its schedule reads 10/30/60 — the steps were taken as Phoenix's value.",
+        "4 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null.",
+        "Not listed on modon.com (delisted or sold out) — status left null for manual review."
+      ],
+      "source_urls": {
+        "modon": null,
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-west",
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-west-b",
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-west-heights",
+          "https://abudhabioffplan.info/hudayriyat-island/nawayef-west-mansions"
+        ]
+      }
+    },
+    {
+      "slug": "wadeem-plots",
+      "supabase": {
+        "projects": {
+          "slug": "wadeem-plots",
+          "name": "Wadeem Plots",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Hudayriyat Island",
+          "emirate": "Abu Dhabi",
+          "status": null,
+          "handover_date": "2028-10-01",
+          "starting_price": 3700000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://abudhabioffplan.info/media/projects/20486af9718dd3110d7c098f76b5aed1f54025dc.avif",
+            "https://abudhabioffplan.info/media/projects/92bb2800a928da386c92a11fedb8cd885afae032.avif",
+            "https://abudhabioffplan.info/media/projects/c0f21684c344946359a5997ae6b2cfb3bf8ec770.avif",
+            "https://abudhabioffplan.info/media/projects/b251e74cdfa7f44e1aa18aa118f9c7c1a785f79a.avif",
+            "https://abudhabioffplan.info/media/projects/e56510836cc88999949f4d286da81dd99290930c.avif",
+            "https://abudhabioffplan.info/media/projects/3a37bb773c27237a62f9961e5cbc1f181859b88e.avif",
+            "https://abudhabioffplan.info/media/projects/35212ec43f7b651e59f51c37af10ec7dd08bd6ad.avif",
+            "https://abudhabioffplan.info/media/projects/b8994c40bbd94c2004231e02531cb66c7507d596.avif",
+            "https://abudhabioffplan.info/media/projects/6ce742640e191d78589787fea9b74281c400e606.avif",
+            "https://abudhabioffplan.info/media/projects/8b7be3a8eabd88b9b7fc90bb678be09ad6751f2b.avif",
+            "https://abudhabioffplan.info/media/projects/d3ae68ae12cff9639047721f80a71f18a9c55fb2.avif",
+            "https://abudhabioffplan.info/media/projects/1c41cae46c795e5d5952d19047b554fc7ac885af.avif",
+            "https://abudhabioffplan.info/media/projects/7fc4a6ce8b2bf66c3a3fb3b8e14bcdb66b2b0900.avif",
+            "https://abudhabioffplan.info/media/projects/8b9ad0dcf95fde6f8d62f894f36d9e1ea3ad8490.avif",
+            "https://abudhabioffplan.info/media/projects/a44f17e1bc771978e7dbe4fa5320016b9623b87f.avif",
+            "https://abudhabioffplan.info/media/projects/a05749646c9cb05398d24209b545ca96b99a7fed.avif"
+          ],
+          "amenities": [],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "10/40/50 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 10,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 40,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 50,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 10,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "Plots",
+            "bedrooms": null,
+            "size_sqft_from": null,
+            "price_from": 3700000,
+            "price_per_sqft": null,
+            "typology": "Land plot for custom-build villa",
+            "_source": "csv/jackson"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "csv",
+        "handover_date": "phoenix",
+        "starting_price": "phoenix",
+        "payment_plans": "phoenix",
+        "unit_types": "phoenix",
+        "amenities": null,
+        "images": "phoenix",
+        "faqs": null,
+        "connectivity": null
+      },
+      "disagreements": [],
+      "missing": [
+        "amenities",
+        "connectivity/drive times",
+        "faqs",
+        "launch_date",
+        "launch_price_aed",
+        "unit_type sizes/prices"
+      ],
+      "notes": [
+        "1 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null.",
+        "Not listed on modon.com (delisted or sold out) — status left null for manual review.",
+        "PRODUCT IS LAND PLOTS for custom-build villas, not built units. Phoenix's 'Villas, Townhouses' is wrong and was discarded on instruction."
+      ],
+      "source_urls": {
+        "modon": null,
+        "phoenix": [
+          "https://abudhabioffplan.info/hudayriyat-island/wadeem-modon-hudayriat-island"
+        ]
+      }
+    },
+    {
+      "slug": "muheira",
+      "supabase": {
+        "projects": {
+          "slug": "muheira",
+          "name": "Muheira",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Al Reem Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2029-04-01",
+          "starting_price": 1600000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-buildings-view.jpg?sfvrsn=8ae04f4c_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-podium-pool.jpg?sfvrsn=6d5b710f_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-indoor-kids-play-mezzanine.jpg?sfvrsn=d9d60bbc_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-indoor-kids-play.jpg?sfvrsn=f63d4f62_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-lobby.jpg?sfvrsn=2fc00e82_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-private-dining.jpg?sfvrsn=7c15452_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-3-bed-corner-unit.jpg?sfvrsn=75d5a55c_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-games-lounge.jpg?sfvrsn=54714fee_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-standard-corner-unit-living-3bed.jpg?sfvrsn=ed487891_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/muhiera-b/gallery/muheira-master-bedroom.jpg?sfvrsn=2c025299_1"
+          ],
+          "amenities": [
+            "BBQ and picnic areas",
+            "Children's play area",
+            "Children's play room",
+            "Children's pool",
+            "Cinema room",
+            "Gym and Yoga studio",
+            "Outdoor fitness",
+            "Outdoor lounge",
+            "Padel court",
+            "Roof terrace and BBQ garden"
+          ],
+          "connectivity": [],
+          "payment_plans": [
+            {
+              "name": "50/50 payment plan",
+              "segments": [
+                {
+                  "label": "Downpayment",
+                  "percent": 5,
+                  "color": "bronze"
+                },
+                {
+                  "label": "During construction",
+                  "percent": 45,
+                  "color": "bronze-mid"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 50,
+                  "color": "bronze-light"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "Where exactly is the project located?",
+              "a": "The development is situated within easy walking distance of the Abu Dhabi Global Market (ADGM) international financial district. This prime location ensures residents are at the heart of the capital’s financial and retail hub."
+            },
+            {
+              "q": "What is the expected completion date?",
+              "a": "The estimated handover for this refined community is scheduled for Q2 2029."
+            },
+            {
+              "q": "What types of residences are available in Muheira?",
+              "a": "Muheira features a curated selection of contemporary 1, 2, and 3-bedroom apartments."
+            },
+            {
+              "q": "What world-class amenities are available for residents?",
+              "a": "Muheira offers a resort-inspired living experience, distinguished by a suite of premium amenities. Residents enjoy access to a 25-metre lap pool, dedicated children’s playrooms and outdoor play areas, as well as curated BBQ and picnic spaces. The wellness offering includes a state-of-the-art gym and yoga studio, outdoor fitness stations, and a tranquil outdoor lounge, complemented by an exclusive cinema room and further bespoke facilities."
+            },
+            {
+              "q": "Are the properties in Muheira freehold?",
+              "a": "Muheira is a freehold development, inviting both local and international investors to secure property within one of Abu Dhabi’s most prestigious and sought-after neighbourhoods."
+            },
+            {
+              "q": "Does purchase of Muheira qualify for the UAE Golden Visa?",
+              "a": "Property investments in Muheira exceeding AED 2,000,000 typically enable owners to apply for the prestigious 10-year UAE Golden Visa, ensuring long-term security and residency within the Emirates."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": 5,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "1-Bedroom Apartment",
+            "bedrooms": 1,
+            "size_sqft_from": 797,
+            "price_from": 1600000,
+            "price_per_sqft": 2007.53,
+            "_source": "modon",
+            "_size_sqm": 74.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "2-Bedroom Apartment",
+            "bedrooms": 2,
+            "size_sqft_from": 1216,
+            "price_from": 2800000,
+            "price_per_sqft": 2302.63,
+            "_source": "modon",
+            "_size_sqm": 113.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "3-Bedroom Apartment",
+            "bedrooms": 3,
+            "size_sqft_from": 2024,
+            "price_from": 4300000,
+            "price_per_sqft": 2124.51,
+            "_source": "modon",
+            "_size_sqm": 188.0,
+            "_price_label": "Average price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": null
+      },
+      "disagreements": [
+        {
+          "field": "starting_price",
+          "modon": 1600000,
+          "phoenix": 1200000,
+          "kept": 1600000
+        },
+        {
+          "field": "payment_plan",
+          "modon": "50/50",
+          "phoenix": "5/45/50",
+          "kept": "50/50",
+          "phoenix_status": "Reported schedule"
+        }
+      ],
+      "missing": [
+        "connectivity/drive times",
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "Payment-plan milestone labels inferred from the 50/50 ratio; Modon states the ratio only.",
+        "2 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/muheira",
+        "phoenix": [
+          "https://abudhabioffplan.info/al-reem-island/muheira"
+        ]
+      }
+    },
+    {
+      "slug": "tara-park",
+      "supabase": {
+        "projects": {
+          "slug": "tara-park",
+          "name": "Tara Park",
+          "developer_id": "948d45f9-5d24-49a9-9f17-30d348097350",
+          "location": "Al Reem Island",
+          "emirate": "Abu Dhabi",
+          "status": "off_plan",
+          "handover_date": "2030-04-01",
+          "starting_price": 1680000,
+          "price_basis": "From",
+          "launch_date": null,
+          "launch_price_aed": null,
+          "description": null,
+          "tagline": null,
+          "highlights": null,
+          "images": [
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-swimming-pool-zoomed-out-view.jpg?sfvrsn=f0e6fea3_5",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-pool-aerial-view.jpg?sfvrsn=9c7acb05_5",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-swimming-pool-view.jpg?sfvrsn=c1c16395_5",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-jogging-track.jpg?sfvrsn=1555478a_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-outside-view.jpg?sfvrsn=157967e2_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-retail-courtyard.jpg?sfvrsn=a7d88e7b_7",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-entrance.jpg?sfvrsn=bd454ab_5",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-swimming-pool-1.jpg?sfvrsn=d830b26c_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-swimming-pool.jpg?sfvrsn=70c6a0c7_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/exterior/tara-park-living-room-balcony-view.jpg?sfvrsn=acb4ef3d_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-lobby.jpg?sfvrsn=4065ea95_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-coworking-area-1.jpg?sfvrsn=f1fcc77b_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-coworking-area-2.jpg?sfvrsn=af28f51b_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-coworking-area.jpg?sfvrsn=788487a8_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-gym.jpg?sfvrsn=3a3e9466_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-kids-area.jpg?sfvrsn=35051ac9_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-livin-room-1.jpg?sfvrsn=6dd3cf0f_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-living-room.jpg?sfvrsn=4c74b598_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-kitchen.jpg?sfvrsn=d97f2c1c_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-bedroom.jpg?sfvrsn=e7d836eb_1",
+            "https://www.modon.com/images/modoncorporatelibraries/real-estate/tara-a/gallery/interior/tara-park-bathroom.jpg?sfvrsn=4100e432_1"
+          ],
+          "amenities": [
+            "Swimming Pools",
+            "Children playroom",
+            "Shaded garden lounge",
+            "Coworking & study zone",
+            "Communal dining lounge",
+            "Outdoor workspaces",
+            "Padel",
+            "Multi-sports court",
+            "Gym",
+            "Yoga studio"
+          ],
+          "connectivity": [
+            {
+              "label": "Zayed International Airport",
+              "time": "25 min"
+            },
+            {
+              "label": "Downtown Abu Dhabi and the Abu Dha",
+              "time": "5 min"
+            }
+          ],
+          "payment_plans": [
+            {
+              "name": "40/60 payment plan",
+              "segments": [
+                {
+                  "label": "During construction",
+                  "percent": 40,
+                  "color": "bronze"
+                },
+                {
+                  "label": "On handover",
+                  "percent": 60,
+                  "color": "bronze-mid"
+                }
+              ]
+            }
+          ],
+          "faqs": [
+            {
+              "q": "Where exactly is the project located?",
+              "a": "Tara Park is ideally situated in the heart of Reem Island, Abu Dhabi, directly opposite the premier lifestyle destination, Reem Mall. This prime location ensures that shopping, dining, and entertainment are just steps away, while other key landmarks like Al Fay Park, Sorbonne University, and Repton School are also just moments from the residence. Its strategic placement provides effortless connectivity, only 5 minutes from Downtown Abu Dhabi and the Abu Dhabi Global Market (ADGM), and 25 minutes from Zayed International Airport."
+            },
+            {
+              "q": "What is the expected handover for the project?",
+              "a": "The estimated handover for this refined community is scheduled on early Q2 2030."
+            },
+            {
+              "q": "What types of residences are available in Tara Park and what types or configurations are offered?",
+              "a": "Tara Park consists of two residential towers offering a variety of 1, 2, and 3-bedroom apartments in total of 494 units.\n1-Bedroom\nNo. of units: 156\nAverage unit size: 83 sqm\n2-Bedroom\nNo. of units: 310\nAverage unit size: 138 sqm\n3-Bedroom\nNo. of units: 28\nAverage unit size: 198 sqm"
+            },
+            {
+              "q": "What world-class amenities are available for residents?",
+              "a": "Residents will enjoy exclusive access to a comprehensive range of amenities, including security services, a central swimming pool, a padel court, a multi-purpose sports court, a fitness studio, and a yoga studio. Tara Park will also feature open-air workspaces, a shaded garden lounge, a communal dining lounge, a dedicated co-working and study zone, a one-of-a-kind children’s playroom, a retail courtyard, an early learning centre, an art studio, and a social kitchen.\nAdditional retail shops, and dining outlets are available as part of the retail offering of Tara Park but will not be presented or managed by Modon.\nDisclaimer: Please note the amenities may be updated before handover."
+            },
+            {
+              "q": "Are the properties in Tara Park freehold?",
+              "a": "Tara Park is a freehold development, inviting both local and international investors to secure property within one of Abu Dhabi’s most prestigious and sought-after neighborhoods."
+            },
+            {
+              "q": "Does purchase of Tara Park qualify for the UAE Golden Visa?",
+              "a": "Property investments in Tara Park exceeding AED 2,000,000 typically enable owners to apply for the prestigious 10-year Golden Visa, ensuring long-term security and residency within the Emirates."
+            },
+            {
+              "q": "Are there schools and hospitals nearby?",
+              "a": "Yes, residents are just minutes away from world-class schools and hospitals including Sorbonne University, Repton School, and Cleveland Clinic Abu Dhabi."
+            },
+            {
+              "q": "Are the apartments equipped with smart home features?",
+              "a": "Yes, each apartment is provisioned for home automation, allowing for smart home functionality."
+            },
+            {
+              "q": "What is the payment structure?",
+              "a": "A relaxed 40/60 payment plan applies (5% on booking, 35% staggered, and 60% on completion). No alternative plans are available currently."
+            }
+          ],
+          "brochure_url": null,
+          "map_embed_html": null,
+          "downpayment_pct": null,
+          "payment_plan_confirmed": false
+        },
+        "unit_types": [
+          {
+            "type": "1-Bedroom Apartment",
+            "bedrooms": 1,
+            "size_sqft_from": 872,
+            "price_from": 1680000,
+            "price_per_sqft": 1926.61,
+            "_source": "modon",
+            "_size_sqm": 81.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "2-Bedroom Apartment",
+            "bedrooms": 2,
+            "size_sqft_from": 1292,
+            "price_from": 2680000,
+            "price_per_sqft": 2074.3,
+            "_source": "modon",
+            "_size_sqm": 120.0,
+            "_price_label": "Average price"
+          },
+          {
+            "type": "3-Bedroom Apartment",
+            "bedrooms": 3,
+            "size_sqft_from": 2002,
+            "price_from": 3680000,
+            "price_per_sqft": 1838.16,
+            "_source": "modon",
+            "_size_sqm": 186.0,
+            "_price_label": "Average price"
+          }
+        ]
+      },
+      "field_sources": {
+        "name": "modon",
+        "handover_date": "modon",
+        "starting_price": "modon",
+        "payment_plans": "modon",
+        "unit_types": "modon",
+        "amenities": "modon",
+        "images": "modon",
+        "faqs": "modon",
+        "connectivity": "modon"
+      },
+      "disagreements": [
+        {
+          "field": "handover",
+          "modon": "Q2 2030",
+          "phoenix": "Q4 2029",
+          "kept": "Q2 2030"
+        },
+        {
+          "field": "starting_price",
+          "modon": 1680000,
+          "phoenix": 1640000,
+          "kept": 1680000
+        }
+      ],
+      "missing": [
+        "launch_date",
+        "launch_price_aed"
+      ],
+      "notes": [
+        "Phoenix sub-phases disagree on handover: Q2 2030, Q4 2029",
+        "Phoenix sub-phase prices differ: 1,640,000, 1,680,000",
+        "Phoenix states a payment plan with no numeric schedule (option: 'Developer schedule', status: Source conflict) — no ratio taken from Phoenix.",
+        "Payment-plan milestone labels inferred from the 40/60 ratio; Modon states the ratio only.",
+        "2 'launch' mention(s) found in prose; none stated an explicit launch date or price, so both left null."
+      ],
+      "source_urls": {
+        "modon": "https://www.modon.com/real-estate/tara-park",
+        "phoenix": [
+          "https://abudhabioffplan.info/al-reem-island/tara-park-reem-island-abu-dhabi",
+          "https://abudhabioffplan.info/al-reem-island/tara-park-2"
+        ]
+      }
+    }
+  ]
+}

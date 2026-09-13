@@ -800,7 +800,7 @@ export default function ReturnAnalysisPanel({
                   style={active ? { backgroundColor: 'var(--c-warn)' } : {}}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{ut.typology ?? ut.type}</span>
                   <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 12 }}>
-                    From {fmtA(ut.price_from)}
+                    {ut.price_from != null ? `From ${fmtA(ut.price_from)}` : 'Price on request'}
                   </span>
                   {ut.internal_sqft != null && (
                     <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 11 }}>
