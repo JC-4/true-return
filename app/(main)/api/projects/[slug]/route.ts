@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase, createServiceClient } from '@/lib/supabase'
+import { revalidateProject } from '@/lib/revalidate'
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -49,6 +50,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .eq('id', id)
     if (utError) return NextResponse.json({ error: utError.message }, { status: 500 })
   }
+
+  // Only after every write has succeeded — revalidating earlier would publish
+  // a page rebuilt from a half-applied save.
+  revalidateProject(slug)
 
   return NextResponse.json({ ok: true })
 }
