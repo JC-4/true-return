@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { Project } from '@/lib/types'
-import { fmtLocation, projectPriceRange } from '@/lib/format'
+import { fmtLocation, projectPriceRange, statusLabel } from '@/lib/format'
 
 // Compact price without the AED prefix, so ranges don't repeat it
 function fmtPriceValue(n: number) {
@@ -13,14 +13,6 @@ function fmtHandover(iso: string | null) {
   const d = new Date(iso)
   const q = Math.ceil((d.getMonth() + 1) / 3)
   return `Q${q} ${d.getFullYear()}`
-}
-
-function statusLabel(s: string | null) {
-  if (!s) return null
-  if (s === 'off_plan') return 'Off plan'
-  if (s === 'under_construction') return 'Under construction'
-  if (s === 'ready') return 'Ready'
-  return s
 }
 
 export default function ProjectCard({ project }: { project: Project }) {

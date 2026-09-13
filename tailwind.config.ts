@@ -59,8 +59,6 @@ const config: Config = {
       },
       fontFamily: {
         sans:    ['var(--font-schibsted-grotesk)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        /* Reserved for the project name in the /projects/[slug] hero. */
-        display: ['var(--font-instrument-serif)', 'ui-serif', 'Georgia', 'serif'],
       },
     },
   },

@@ -13,7 +13,7 @@ import AdminEditLink from '@/components/AdminEditLink'
 import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
-import { fmtLocation } from '@/lib/format'
+import { fmtLocation, statusLabel } from '@/lib/format'
 import { whatsappLinkProps } from '@/lib/whatsapp'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,12 +31,10 @@ function fmtHandover(iso: string | null) {
   return `Q${q} ${d.getFullYear()}`
 }
 
-function statusLabel(s: string | null) {
-  if (!s) return null
-  if (s === 'off_plan') return 'Off plan'
-  if (s === 'under_construction') return 'Under construction'
-  if (s === 'ready') return 'Ready'
-  return s
+/** A project not yet released takes registrations; everything else, including
+ *  a sold-out one, is still worth an enquiry about the next release. */
+function ctaLabel(s: string | null) {
+  return s === 'launching_soon' ? 'Register your interest' : 'Get prices and availability'
 }
 
 function segmentBg(color: PaymentSegment['color']) {
@@ -56,7 +54,7 @@ const PLAN_COLORS = {
 
 type PlanSegType = keyof typeof PLAN_COLORS
 
-/** `label`/`value` feed both the About block's cards and the hero's stat row. */
+/** Feeds the hero's stat row, the only place these numbers are now stated. */
 type ProjectStat = { key: string; label: string; value: string }
 
 const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
@@ -492,7 +490,6 @@ export default function ProjectDetail({
     : null
   const isStat = (s: ProjectStat | null): s is ProjectStat => s !== null
   const heroStats  = [statFrom, statHandover, statPlan].filter(isStat)
-  const aboutStats = [statHandover, statFrom, statPlan].filter(isStat)
 
   const mapEmbedSrc = (() => {
     const html = project.map_embed_html
@@ -533,17 +530,10 @@ export default function ProjectDetail({
               }}
             />
           )}
+          {/* The stat cards that sat here moved into the hero, which is now
+              the single place these numbers are stated. The gradient stays —
+              it keeps the image from fighting the copy beside it. */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgb(var(--ink-rgb) / 0.88) 0%, rgb(var(--ink-rgb) / 0.05) 55%)' }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
-            <div className="grid grid-cols-3 gap-2">
-              {aboutStats.map(stat => (
-                <div key={stat.key} className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgb(var(--tl-rgb) / 0.12)' }}>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-on-inverse)', lineHeight: 1.2 }}>{stat.value}</p>
-                  <p className="text-xs mt-1" style={{ color: 'rgb(var(--tl-rgb) / 0.6)' }}>{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Right: description + developer */}
@@ -907,12 +897,13 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
-      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[400px] md:min-h-0 md:aspect-[16/9] md:max-h-[600px]"
+      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)] md:min-h-0 md:aspect-[16/9] md:max-h-[600px]"
       style={{ backgroundColor: 'var(--c-inverse)' }}
     >
       {/* One treatment at every width: a full-bleed backdrop with the identity
-          block over it. A min-height on mobile buys the block room to sit on
-          the image rather than under it. */}
+          block over it. On a phone the hero takes the viewport less the 64px
+          sticky nav, so the whole identity block lands above the fold; desktop
+          keeps the 16:9 frame and its 600px cap. */}
       {hero && (
         <img src={hero} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
       )}
@@ -931,23 +922,25 @@ export default function ProjectDetail({
 
       {/* Identity, the headline numbers, and the single primary CTA */}
       <div className="relative px-6 sm:px-10 pt-6 pb-6 max-w-6xl mx-auto w-full">
-        {project.developer?.name && (
-          <p className="text-brand-tl/65 text-xs sm:text-sm mb-2">{project.developer.name}</p>
-        )}
-        {/* The one place Instrument Serif appears. */}
-        <h1 className="font-display font-normal text-4xl sm:text-5xl md:text-6xl text-brand-tl leading-[1.05] mb-2">
+        <h1 className="font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
           {project.name}
         </h1>
-        <p className="text-xs sm:text-sm text-brand-tl/55">
+        {project.developer?.name && (
+          <p className="text-sm text-brand-tl/[0.72] mt-3">by {project.developer.name}</p>
+        )}
+        <p className="text-sm text-brand-tl/[0.72] mt-1">
           {fmtLocation(project)}
         </p>
 
+        {/* Only the stats that have data. Two rules and a flex row, so a
+            project missing its handover or plan closes up instead of leaving
+            a gap; with nothing known the row and its rules do not render. */}
         {heroStats.length > 0 && (
-          <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3">
+          <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3 border-y border-brand-tl/20 py-4">
             {heroStats.map(stat => (
               <div key={stat.key}>
-                <dt className="text-xs text-brand-tl/55">{stat.label}</dt>
-                <dd className="text-sm sm:text-base font-medium text-brand-tl mt-0.5">{stat.value}</dd>
+                <dt className="text-xs text-brand-tl/[0.72]">{stat.label}</dt>
+                <dd className="text-base font-medium text-brand-tl mt-0.5">{stat.value}</dd>
               </div>
             ))}
           </dl>
@@ -955,9 +948,9 @@ export default function ProjectDetail({
 
         <button
           onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          className="btn-on-ink mt-6 w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-6 rounded-lg text-sm font-semibold"
+          className="btn-on-ink mt-6 w-full min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
         >
-          Get my analysis
+          {ctaLabel(project.status)}
         </button>
       </div>
     </div>

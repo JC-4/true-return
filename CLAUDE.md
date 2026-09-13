@@ -15,6 +15,13 @@ directory in this repo**. Schema changes are applied directly against Supabase
 and are not represented in git, so a checkout does not describe the schema it
 expects. Check the live schema before assuming a column exists.
 
+`projects.status` is a CHECK constraint, currently `off_plan`,
+`launching_soon`, `limited_availability`, `sold_out`, `under_construction`,
+`ready`. It is mirrored in three places that must be changed together:
+`STATUS_LABELS` in `lib/format.ts`, the admin edit `<select>`, and the
+`/projects` filter `<select>`. An unmapped status falls through to its raw
+slug in the UI rather than erroring, so a drift here is silent.
+
 ## Rendering
 
 `/developers` and `/developers/[slug]` are public, indexable and statically
