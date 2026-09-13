@@ -65,10 +65,13 @@ in `lib/format.ts`, the admin edit `<select>`, and the `/projects` filter
 `<select>`. An unmapped status falls through to its raw slug in the UI rather
 than erroring, so a drift here is silent.
 
-Status also drives the hero CTA: `ctaLabel` in `ProjectDetail.tsx` returns
-"Register your interest" for `launching_soon` and "Get prices and availability"
-for everything else including null. A new status value needs a decision there
-too, not just a label.
+Status also drives the hero CTA, via `CTA_LABELS` in `ProjectDetail.tsx`:
+`launching_soon` reads "Register your interest", `limited_availability` and
+`off_plan` both read "Get prices and availability", and **null reads "Enquire
+about this project"** — deliberately vaguer, because a project with no status
+is the one we are least able to promise prices for. A new status value needs a
+decision there too, not just a label; an unmapped one falls through to the null
+wording rather than erroring, so a drift here is silent in the same way.
 
 ## Rendering
 

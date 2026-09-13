@@ -32,10 +32,22 @@ function fmtHandover(iso: string | null) {
   return `Q${q} ${d.getFullYear()}`
 }
 
-/** A project not yet released takes registrations; everything else, including
- *  a sold-out one, is still worth an enquiry about the next release. */
+/** The CTA follows the project's status. One not yet released takes
+ *  registrations; one that is on sale can promise numbers. A project with no
+ *  status set is the case we know least about, so it gets the general wording
+ *  rather than an offer of prices we may not hold yet.
+ *
+ *  Mirrors the `projects_status_check` constraint alongside `STATUS_LABELS` in
+ *  `lib/format.ts`. An unmapped status falls through to the null wording, which
+ *  is safe but vaguer than a new status probably deserves. */
+const CTA_LABELS: Record<string, string> = {
+  launching_soon:       'Register your interest',
+  limited_availability: 'Get prices and availability',
+  off_plan:             'Get prices and availability',
+}
+
 function ctaLabel(s: string | null) {
-  return s === 'launching_soon' ? 'Register your interest' : 'Get prices and availability'
+  return (s && CTA_LABELS[s]) || 'Enquire about this project'
 }
 
 /** Sits at the bottom of the hero, under the CTA. Decorative — the travelling
