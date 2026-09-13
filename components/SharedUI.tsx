@@ -8,12 +8,11 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
   /** Hide below md. Opt-in per call site: /projects/[slug] suppresses it on a
    *  phone, everywhere else keeps it. Defaults to showing at every width. */
   desktopOnly?: boolean
-  /** Hold it back until the caller says otherwise — /projects/[slug] keeps it
-   *  out of the way until the hero has been scrolled past. Defaults to shown,
-   *  so the shortlist route and the returns panel are unaffected.
-   *
-   *  Hidden rather than unmounted: the section observer below has to keep
-   *  running so the right pill is already active when it does appear. */
+  /** Hold the nav back without unmounting it. No call site passes this today —
+   *  /projects/[slug] briefly gated on scroll position and no longer does — but
+   *  it stays because unmounting is the wrong way to hide this: the section
+   *  observer below has to keep running so the correct pill is already active
+   *  when it reappears. Defaults to shown. */
   revealed?: boolean
 }) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
@@ -70,7 +69,12 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
     >
       <div
         ref={containerRef}
-        className="relative inline-flex items-center bg-brand-raise p-1"
+        /* The surface is opaque, so the pill renders identically over the dark
+           hero and the light page body — nothing about it changes mid-scroll.
+           The border is what defines its edge over the body, where the surface
+           and the page are the same --paper; over the hero the scrim does that
+           on its own. */
+        className="relative inline-flex items-center bg-brand-raise border border-brand-border p-1"
         style={{ borderRadius: '9999px', boxShadow: '0 8px 24px rgb(var(--ink-rgb) / 0.16)' }}
       >
         <div
@@ -89,7 +93,9 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
             ref={el => { if (el) pillRefs.current.set(id, el); else pillRefs.current.delete(id) }}
             onClick={() => handleClick(id)}
             className="relative z-10 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap border-0 bg-transparent transition-colors inline-flex items-center gap-1.5"
-            style={{ color: activeId === id ? 'var(--c-on-accent)' : (color ?? 'var(--c-hint)') }}
+            /* --c-muted, not --c-hint: these are 12px interactive labels and
+               hint only reaches 3.3:1 on --paper, short of AA. */
+            style={{ color: activeId === id ? 'var(--c-on-accent)' : (color ?? 'var(--c-muted)') }}
           >
             {locked && (
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

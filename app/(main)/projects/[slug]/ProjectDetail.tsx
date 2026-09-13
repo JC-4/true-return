@@ -63,7 +63,7 @@ function ScrollCue() {
   return (
     <div
       aria-hidden="true"
-      className={`relative flex justify-center pb-5 pointer-events-none transition-opacity duration-500 ${
+      className={`relative flex justify-center pb-5 pointer-events-none md:hidden transition-opacity duration-500 ${
         retired ? 'opacity-0' : 'opacity-100'
       }`}
     >
@@ -420,22 +420,6 @@ export default function ProjectDetail({
   const [activePlanIndex, setActivePlanIndex] = useState(0)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
-
-  // The pill nav is held back until the hero is off screen: the hero is a full
-  // viewport with its own CTA, and a second navigation layer floating over it
-  // competes with that.
-  const heroRef = useRef<HTMLDivElement | null>(null)
-  const [pastHero, setPastHero] = useState(false)
-  useEffect(() => {
-    const el = heroRef.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      ([entry]) => setPastHero(!entry.isIntersecting),
-      { threshold: 0 }
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
 
   // Documents tab state
   const [activeDocTab, setActiveDocTab] = useState(0)
@@ -946,7 +930,6 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
-      ref={heroRef}
       className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)]"
       style={{ backgroundColor: 'var(--c-inverse)' }}
     >
@@ -1054,7 +1037,7 @@ export default function ProjectDetail({
        *  always scroll clear of it instead of ending underneath it. */}
       {!isAuth && (
         <div className="max-w-6xl mx-auto px-6 sm:px-10 md:pb-28">
-          <SecondaryPillNav sections={overviewNavSections} desktopOnly revealed={pastHero} />
+          <SecondaryPillNav sections={overviewNavSections} desktopOnly />
           {aboutSection}
           {unitsAndPlanSection}
 
@@ -1116,7 +1099,7 @@ export default function ProjectDetail({
           {authTab === 'overview' && (
             <>
               <div className="max-w-6xl mx-auto px-6 sm:px-10 md:pb-28">
-                <SecondaryPillNav sections={overviewNavSections} desktopOnly revealed={pastHero} />
+                <SecondaryPillNav sections={overviewNavSections} desktopOnly />
                 {aboutSection}
                 {unitsAndPlanSection}
 
