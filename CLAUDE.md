@@ -35,6 +35,67 @@ Note that props passed to a client component are serialised into the RSC
 payload of a public page even when the component renders nothing — don't pass
 admin URLs or non-public values into one.
 
+## The project page layout split
+
+`/projects/[slug]` renders one of two layouts, and **`insight` is the switch**:
+
+```ts
+const insight = insightProp ?? fetchedInsight ?? undefined
+const isAuth  = !!insight
+```
+
+The client-side fetch of `/api/projects/[slug]/insight` in `ProjectDetail.tsx`
+is **not** an enhancement to one tab — it decides which layout renders at all.
+Remove it and every signed-in visitor collapses onto the public layout, losing
+the Return Analysis tab, My Take, the documents viewer, the `AdminEditLink` in
+the tab row, and the `calcInitialValues` seeding from `insight.defaultParams`.
+It has to stay client-side: reading the session on the server would opt the
+route out of the route cache (see **Rendering**).
+
+`/projects/[slug]/insight/[id]` renders the same component with
+`insight={insight ?? {}}`. **`{}` is truthy and that is load-bearing** — the
+share route always gets the authenticated layout, even for a project with no
+analysis written yet. The same is true of the API, which returns `{}` rather
+than 404 for that case. Don't "tidy" either into a nullish value.
+
+`/s/[token]` does **not** use `ProjectDetail`. It composes
+`ReturnAnalysisPanel` and `BrochureTab` directly and reads documents from its
+own token-scoped endpoint, so it is unaffected by any of the above.
+
+### The public layout has no tab bar
+
+The public layout is overview-only; its Return Analysis and Brochure tabs were
+removed, and a bar with one item is just a heading. The authenticated layout
+keeps its own three-tab bar.
+
+Because of that, `scroll-padding-top` is conditional:
+
+```ts
+html { scroll-padding-top: ${isAuth ? 116 : 64}px; }
+```
+
+64px is the sticky site nav; the authenticated layout adds a 52px sticky tab
+bar on top of it. Hardcoding 116px again would drop every in-page anchor 52px
+short of its target on the public page.
+
+### Deliberately unreachable code — do not delete
+
+Removing the public tabs orphaned code that is **kept on purpose**, for the
+brochure CTA section and the client-facing analysis view:
+
+- `BrochureForm` and `BrochureWhatsappLink` in `ProjectDetail.tsx` (and with
+  them that file's `whatsappLinkProps` import — `lib/whatsapp.ts` itself is
+  still live via `LeadFormShared`).
+- `LockedAnalysisPanel` in `ProjectDetail.tsx`, which was already unrendered
+  before the tabs came out.
+- The whole `showFullAnalysis={false}` branch of `ReturnAnalysisPanel` — the
+  `locked:` pill flags, the `blur-sm select-none` treatments and the
+  `showFullAnalysis ? … : …` split. Every remaining caller passes `true`, so
+  the prop is currently a constant. Don't collapse it.
+
+`noUnusedLocals` is off and there is no eslintrc, so none of this fails a
+build while it waits.
+
 ## Images
 
 Uploads go through per-resource routes (`/api/projects/[slug]/images`,

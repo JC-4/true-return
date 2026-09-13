@@ -377,11 +377,9 @@ export default function ProjectDetail({
   const insight = insightProp ?? fetchedInsight ?? undefined
   const isAuth = !!insight
 
-  // Auth tab state
+  // Auth tab state. There is no public equivalent — the public layout renders
+  // overview only.
   const [authTab, setAuthTab] = useState<'overview' | 'returns' | 'brochure'>('overview')
-
-  // Public tab state
-  const [pubTab, setPubTab] = useState<'overview' | 'returns' | 'brochure'>('overview')
 
   // Lightbox state
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -389,7 +387,6 @@ export default function ProjectDetail({
   const [activePlanIndex, setActivePlanIndex] = useState(0)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
-  const pubTabRef = useRef<HTMLDivElement | null>(null)
 
   // Documents tab state
   const [activeDocTab, setActiveDocTab] = useState(0)
@@ -971,10 +968,12 @@ export default function ProjectDetail({
   return (
     <div className="theme-os bg-brand-bg min-h-screen">
 
-      {/* Scoped to this page: the site nav (64px) and the tab bar (52px) are
-          both sticky, so anchors would otherwise land under them. */}
+      {/* Scoped to this page: the site nav (64px) is always sticky, and the
+          auth layout adds a sticky tab bar (52px) on top of it. The public
+          layout has no tab bar, so reserving for one would drop anchors 52px
+          short of their target. */}
       <style>{`
-        html { scroll-padding-top: 116px; }
+        html { scroll-padding-top: ${isAuth ? 116 : 64}px; }
         .unit-scroll::-webkit-scrollbar { display: none; }
         @media (min-width: 768px) {
           .unit-scroll {
@@ -991,82 +990,32 @@ export default function ProjectDetail({
       {heroEl}
 
       {/* ── PUBLIC LAYOUT ── */}
+      {/* Overview is the only public view, so there is no tab bar — a bar with
+       *  one item is just a heading. Return analysis and the brochure form sit
+       *  behind the authenticated layout below. */}
       {!isAuth && (
-        <>
-          {/* Tab bar */}
-          <div ref={pubTabRef} className="sticky top-16 z-20 bg-brand-raise border-b border-brand-border">
-            <div className="max-w-6xl mx-auto px-6 sm:px-10 flex items-center">
-              {([
-                { key: 'overview', label: 'Overview' },
-                { key: 'returns',  label: 'Return Analysis' },
-                { key: 'brochure', label: 'Brochure' },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setPubTab(key)
-                    const el = pubTabRef.current
-                    if (el) window.scrollTo({ top: el.offsetTop - el.offsetHeight, behavior: 'instant' })
-                  }}
-                  className={`py-3.5 mr-6 text-sm font-medium border-b-2 transition-colors ${
-                    pubTab === key
-                      ? 'border-brand-text text-brand-text'
-                      : 'border-transparent text-brand-muted hover:text-brand-text'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+        <div className="max-w-6xl mx-auto px-6 sm:px-10">
+          <SecondaryPillNav sections={overviewNavSections} desktopOnly />
+          {aboutSection}
+          {unitsAndPlanSection}
+
+          {gallerySection}
+          {locationSection}
+          {amenitiesSection}
+          <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
+              <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer&apos;s agent. No cost to you.</p>
             </div>
+            <button
+              onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
+            >
+              Get independent advice →
+            </button>
           </div>
-
-          {/* Overview tab */}
-          {pubTab === 'overview' && (
-            <>
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                <SecondaryPillNav sections={overviewNavSections} desktopOnly />
-                {aboutSection}
-                {unitsAndPlanSection}
-
-                {gallerySection}
-                {locationSection}
-                {amenitiesSection}
-                <div className="py-10 border-t border-brand-border flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-brand-text">Want independent analysis on this project?</p>
-                    <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer's agent. No cost to you.</p>
-                  </div>
-                  <button
-                    onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
-                  >
-                    Get independent advice →
-                  </button>
-                </div>
-                {faqSection}
-              </div>
-            </>
-          )}
-
-          {/* Return Analysis tab */}
-          {pubTab === 'returns' && (
-            <div className="max-w-6xl mx-auto px-6 sm:px-10 pb-20">
-              <ReturnAnalysisPanel project={project} showFullAnalysis={false} desktopOnlyNav />
-            </div>
-          )}
-
-          {/* Brochure tab */}
-          {pubTab === 'brochure' && (
-            <div className="max-w-6xl mx-auto px-6 sm:px-10 py-12">
-              <div className="max-w-lg">
-                <p className="text-sm font-medium text-brand-muted mb-4">Download brochure</p>
-                <p className="text-sm text-brand-muted mb-6">Leave your details and we&apos;ll send you the full brochure, floor plans and payment schedule.</p>
-                <BrochureForm projectSlug={project.slug} projectName={project.name} />
-              </div>
-            </div>
-          )}
-
-        </>
+          {faqSection}
+        </div>
       )}
 
       {/* ── AUTH LAYOUT ── */}
@@ -1196,7 +1145,7 @@ export default function ProjectDetail({
       )}
 
       {/* ── Lead gen footer (hidden on the brochure tab) ───────────────────── */}
-      {(isAuth ? authTab : pubTab) !== 'brochure' && (
+      {(!isAuth || authTab !== 'brochure') && (
         <section id="lead-gen-form" className="border-t border-brand-border bg-brand-raise">
           <div className="px-6 sm:px-10 py-16 sm:py-20">
             <div style={{ maxWidth: 600, margin: '0 auto' }}>
