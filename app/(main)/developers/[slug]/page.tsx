@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { requireStaticParams } from '@/lib/static-params'
 import ProjectCard from '@/components/ProjectCard'
 import AdminEditLink from '@/components/AdminEditLink'
 import LeadGenForm from '@/components/LeadGenForm'
@@ -23,8 +24,7 @@ export const revalidate = 60
  *  revalidate does not re-evaluate it. */
 export async function generateStaticParams() {
   const { data, error } = await supabase.from('developers').select('slug, projects!inner(id)')
-  if (error) { console.error('[developer params]', error.message); return [] }
-  return (data ?? []).map(({ slug }) => ({ slug }))
+  return requireStaticParams('developers/[slug]', data, error).map(({ slug }) => ({ slug }))
 }
 
 /** Anything outside generateStaticParams 404s rather than rendering on demand. */

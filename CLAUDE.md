@@ -33,6 +33,18 @@ rendered with `revalidate = 60`. Two things keep them that way:
   not cache a dynamic segment — without a params list Next renders on demand
   and skips the route cache.
 
+**An empty `generateStaticParams` fails the build on purpose.** Next treats an
+empty param list as success: the route prerenders nothing, silently falls back
+to on-demand rendering, and `next build` exits 0. Nothing in the output says
+the route cache is gone, and `revalidate` never re-runs `generateStaticParams`,
+so it stays gone until the next deploy. This has happened — a transient
+`ECONNRESET` to Supabase mid-build took the old `if (error) return []` path and
+shipped a build with no prerendered slugs.
+
+Both list queries now go through `requireStaticParams` in `lib/static-params.ts`,
+which throws during a production build on either a query error or an empty
+result, and only logs in dev. Don't reintroduce a bare `return []`.
+
 Admin-only affordances on these pages resolve client-side via
 `components/AdminEditLink.tsx`, which reads an `isAdmin` flag set on the
 session in `lib/auth.ts`. `ADMIN_USERNAME` is server-only and must stay that

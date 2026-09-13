@@ -10,7 +10,6 @@ import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
 import AdminEditLink from '@/components/AdminEditLink'
-import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
 import { fmtLocation, statusLabel } from '@/lib/format'
@@ -498,14 +497,6 @@ export default function ProjectDetail({
     return match ? match[1] : null
   })()
 
-  const overviewNavSections = [
-    { id: 'about', label: 'About' },
-    { id: 'units', label: 'Unit Types' },
-    ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
-    ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
-    ...((connectivity.length > 0 || mapEmbedSrc) ? [{ id: 'location', label: 'Location' }] : []),
-  ]
-
   // ─── Shared section content ────────────────────────────────────────────────
 
   const aboutSection = (
@@ -547,22 +538,20 @@ export default function ProjectDetail({
             {project.tagline && (
               <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
             )}
+            {/* Plain list: the facts are already parallel, so a rule between
+                them separates the items without a tick implying each one is a
+                benefit being ticked off. */}
             {project.highlights && project.highlights.length > 0 && (
-              <div className="flex flex-col gap-2.5 mb-6">
+              <ul className="mb-6 border-t border-brand-border">
                 {project.highlights.map((h, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <div
-                      className="flex-shrink-0 mt-0.5"
-                      style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'var(--c-surface)', border: '0.5px solid var(--c-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="var(--c-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-brand-muted leading-relaxed">{h}</span>
-                  </div>
+                  <li
+                    key={i}
+                    className="text-sm text-brand-muted leading-relaxed py-3 border-b border-brand-border"
+                  >
+                    {h}
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
 
@@ -897,13 +886,13 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
-      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)] md:min-h-0 md:aspect-[16/9] md:max-h-[600px]"
+      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)]"
       style={{ backgroundColor: 'var(--c-inverse)' }}
     >
       {/* One treatment at every width: a full-bleed backdrop with the identity
-          block over it. On a phone the hero takes the viewport less the 64px
-          sticky nav, so the whole identity block lands above the fold; desktop
-          keeps the 16:9 frame and its 600px cap. */}
+          block anchored to the bottom of it. The hero takes the viewport less
+          the 64px sticky nav at every width, so the identity block always
+          lands above the fold. */}
       {hero && (
         <img src={hero} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
       )}
@@ -914,44 +903,49 @@ export default function ProjectDetail({
       {/* Status badge */}
       {project.status && (
         <div className="absolute top-4 left-6 sm:top-6 sm:left-10">
-          <span className="bg-brand-tl/15 text-brand-tl border border-brand-tl/25 backdrop-blur-sm text-xs font-medium px-3 py-1 rounded-full">
+          <span className="bg-brand-tl/15 text-brand-tl border border-brand-tl/25 backdrop-blur-sm text-xs font-medium px-3 py-1 rounded-[3px]">
             {statusLabel(project.status)}
           </span>
         </div>
       )}
 
-      {/* Identity, the headline numbers, and the single primary CTA */}
-      <div className="relative px-6 sm:px-10 pt-6 pb-6 max-w-6xl mx-auto w-full">
-        <h1 className="font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
-          {project.name}
-        </h1>
-        {project.developer?.name && (
-          <p className="text-sm text-brand-tl/[0.72] mt-3">by {project.developer.name}</p>
-        )}
-        <p className="text-sm text-brand-tl/[0.72] mt-1">
-          {fmtLocation(project)}
-        </p>
+      {/* Identity, the headline numbers, and the single primary CTA.
+       *  The outer div holds the page's content gutter; the inner one caps the
+       *  block at a readable measure and keeps it left-aligned, so the copy
+       *  does not stretch the full width of a desktop frame. */}
+      <div className="relative px-6 sm:px-10 pt-6 pb-6 sm:pb-12 max-w-6xl mx-auto w-full">
+        <div className="max-w-[640px]">
+          <h1 className="font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
+            {project.name}
+          </h1>
+          {project.developer?.name && (
+            <p className="text-sm text-brand-tl/[0.72] mt-3">by {project.developer.name}</p>
+          )}
+          <p className="text-sm text-brand-tl/[0.72] mt-1">
+            {fmtLocation(project)}
+          </p>
 
-        {/* Only the stats that have data. Two rules and a flex row, so a
-            project missing its handover or plan closes up instead of leaving
-            a gap; with nothing known the row and its rules do not render. */}
-        {heroStats.length > 0 && (
-          <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3 border-y border-brand-tl/20 py-4">
-            {heroStats.map(stat => (
-              <div key={stat.key}>
-                <dt className="text-xs text-brand-tl/[0.72]">{stat.label}</dt>
-                <dd className="text-base font-medium text-brand-tl mt-0.5">{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+          {/* Only the stats that have data. Two rules and a flex row, so a
+              project missing its handover or plan closes up instead of leaving
+              a gap; with nothing known the row and its rules do not render. */}
+          {heroStats.length > 0 && (
+            <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3 border-y border-brand-tl/20 py-4">
+              {heroStats.map(stat => (
+                <div key={stat.key}>
+                  <dt className="text-xs text-brand-tl/[0.72]">{stat.label}</dt>
+                  <dd className="text-base font-medium text-brand-tl mt-0.5">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
 
-        <button
-          onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          className="btn-on-ink mt-6 w-full min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
-        >
-          {ctaLabel(project.status)}
-        </button>
+          <button
+            onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+            className="btn-on-ink mt-6 w-full sm:max-w-xs min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
+          >
+            {ctaLabel(project.status)}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -988,7 +982,6 @@ export default function ProjectDetail({
        *  behind the authenticated layout below. */}
       {!isAuth && (
         <div className="max-w-6xl mx-auto px-6 sm:px-10">
-          <SecondaryPillNav sections={overviewNavSections} desktopOnly />
           {aboutSection}
           {unitsAndPlanSection}
 
@@ -1050,7 +1043,6 @@ export default function ProjectDetail({
           {authTab === 'overview' && (
             <>
               <div className="max-w-6xl mx-auto px-6 sm:px-10">
-                <SecondaryPillNav sections={overviewNavSections} desktopOnly />
                 {aboutSection}
                 {unitsAndPlanSection}
 

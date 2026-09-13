@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { supabase } from '@/lib/supabase'
 import type { Project } from '@/lib/types'
 import ProjectDetail from './ProjectDetail'
+import { requireStaticParams } from '@/lib/static-params'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -25,8 +26,7 @@ export const revalidate = 60
  *  worse failure than a cold first render. */
 export async function generateStaticParams() {
   const { data, error } = await supabase.from('projects').select('slug')
-  if (error) { console.error('[project params]', error.message); return [] }
-  return (data ?? []).map(({ slug }) => ({ slug }))
+  return requireStaticParams('projects/[slug]', data, error).map(({ slug }) => ({ slug }))
 }
 
 async function getProject(slug: string): Promise<Project | null> {
