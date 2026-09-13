@@ -169,6 +169,21 @@
   background-color: color-mix(in srgb, var(--c-on-inverse) 82%, var(--c-inverse));
 }
 
+/* ── Site nav height ───────────────────────────────────────────────────────
+   The sticky site nav is h-16 plus a 1px bottom border, so it occupies 65px,
+   not the 64 its class name suggests. Anything sized or offset against it
+   reads this rather than restating the number: the project hero's
+   full-viewport height, that page's scroll-padding, and the authenticated tab
+   bar that pins directly beneath it.
+
+   Nav publishes its measured height here on mount and on resize. It measures
+   the bar row plus the border rather than the <nav> itself, because the <nav>
+   grows when the mobile menu opens and the things reading this want the height
+   of the fixed bar. The value below is the first-paint fallback. */
+:root {
+  --site-nav-height: 65px;
+}
+
 /* ── Pill nav footprint ────────────────────────────────────────────────────
    The pill nav is fixed to the bottom of the viewport, and at md and up it
    shares that space with the project hero's CTA. Both sides read the same

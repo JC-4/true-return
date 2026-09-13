@@ -40,6 +40,8 @@ export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
   const isAdmin = !!session?.user
 
@@ -53,15 +55,38 @@ export default function Nav() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Publish the sticky bar's height so the project hero can size itself to the
+  // viewport less the nav, instead of both restating the number. Measures the
+  // bar row plus the nav's border, not the <nav> element: the <nav> grows when
+  // the mobile menu expands, and the hero wants the height of the fixed bar.
+  useEffect(() => {
+    const publish = () => {
+      const bar = barRef.current
+      const nav = navRef.current
+      if (!bar || !nav) return
+      const h = bar.getBoundingClientRect().height +
+        parseFloat(getComputedStyle(nav).borderBottomWidth || '0')
+      if (h > 0) document.documentElement.style.setProperty('--site-nav-height', `${h}px`)
+    }
+    publish()
+    const ro = new ResizeObserver(publish)
+    if (barRef.current) ro.observe(barRef.current)
+    window.addEventListener('resize', publish)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', publish)
+    }
+  }, [])
+
   // Close mobile menu on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
   const calcActive = pathname.startsWith('/calculators')
 
   return (
-    <nav className="theme-os bg-brand-inverse border-b border-brand-inverse-line sticky top-0 z-50">
+    <nav ref={navRef} className="theme-os bg-brand-inverse border-b border-brand-inverse-line sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16">
+        <div ref={barRef} className="flex items-center justify-between h-16">
           <Link href="/" className="text-brand-on-inverse font-semibold text-lg tracking-tight">
             Offplan Source
           </Link>

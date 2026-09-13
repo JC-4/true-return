@@ -930,7 +930,7 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
-      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)]"
+      className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh_-_var(--site-nav-height))]"
       style={{ backgroundColor: 'var(--c-inverse)' }}
     >
       {/* One treatment at every width: a full-bleed backdrop with the identity
@@ -1007,12 +1007,13 @@ export default function ProjectDetail({
   return (
     <div className="theme-os bg-brand-bg min-h-screen">
 
-      {/* Scoped to this page: the site nav (64px) is always sticky, and the
-          auth layout adds a sticky tab bar (52px) on top of it. The public
-          layout has no tab bar, so reserving for one would drop anchors 52px
-          short of their target. */}
+      {/* Scoped to this page: the site nav is always sticky, and the auth
+          layout adds a sticky tab bar on top of it. The public layout has no
+          tab bar, so reserving for one would drop anchors short of their
+          target. The nav's height comes from the nav itself — see
+          --site-nav-height in globals.css. */}
       <style>{`
-        html { scroll-padding-top: ${isAuth ? 116 : 64}px; }
+        html { scroll-padding-top: ${isAuth ? 'calc(var(--site-nav-height) + 52px)' : 'var(--site-nav-height)'}; }
         .unit-scroll::-webkit-scrollbar { display: none; }
         @media (min-width: 768px) {
           .unit-scroll {
@@ -1064,7 +1065,7 @@ export default function ProjectDetail({
       {isAuth && (
         <>
           {/* Two-tab bar + scroll nav for overview */}
-          <div ref={scrollNavRef} className="sticky top-16 z-20 bg-brand-raise border-b border-brand-border">
+          <div ref={scrollNavRef} className="sticky top-[var(--site-nav-height)] z-20 bg-brand-raise border-b border-brand-border">
             {/* Tab row */}
             <div className={`max-w-6xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
               {([
