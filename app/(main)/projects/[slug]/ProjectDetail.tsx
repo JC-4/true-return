@@ -6,6 +6,7 @@ import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
 import LeadGenForm from '@/components/LeadGenForm'
+import LeadFormDialog from '@/components/LeadFormDialog'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
@@ -420,6 +421,10 @@ export default function ProjectDetail({
   const [activePlanIndex, setActivePlanIndex] = useState(0)
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
+
+  // Holds the source of whichever CTA opened the dialog, so a conversion can
+  // be traced back to the button rather than just to "a modal". null = shut.
+  const [leadDialogSource, setLeadDialogSource] = useState<string | null>(null)
 
   // The payment plan bars fill once, when the block first comes into view.
   // 'pending' renders them collapsed; the observer flips it to 'shown' and
@@ -865,7 +870,7 @@ export default function ProjectDetail({
       >
         <p className="text-sm" style={{ color: 'var(--c-on-inverse)' }}>Not sure which unit is right for your budget and goals?</p>
         <button
-          onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => setLeadDialogSource('Unit help modal')}
           className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
           style={{ border: '0.5px solid rgb(var(--tl-rgb) / 0.55)', color: 'var(--c-on-inverse)', backgroundColor: 'transparent' }}
         >
@@ -1032,7 +1037,7 @@ export default function ProjectDetail({
           )}
 
           <button
-            onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => setLeadDialogSource('Hero modal')}
             className="hero-rise hero-rise-5 btn-on-ink mt-6 w-full sm:max-w-xs min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
           >
             {ctaLabel(project.status)}
@@ -1095,7 +1100,7 @@ export default function ProjectDetail({
               <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer&apos;s agent. No cost to you.</p>
             </div>
             <button
-              onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => setLeadDialogSource('Overview CTA modal')}
               className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
             >
               Get independent advice →
@@ -1157,7 +1162,7 @@ export default function ProjectDetail({
                     <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer's agent. No cost to you.</p>
                   </div>
                   <button
-                    onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => setLeadDialogSource('Overview CTA modal')}
                     className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
                   >
                     Get independent advice →
@@ -1244,6 +1249,13 @@ export default function ProjectDetail({
           </div>
         </section>
       )}
+
+      <LeadFormDialog
+        open={leadDialogSource !== null}
+        onClose={() => setLeadDialogSource(null)}
+        projectName={project.name}
+        source={leadDialogSource ?? 'Hero modal'}
+      />
 
       {lightboxIndex !== null && (
         <Lightbox

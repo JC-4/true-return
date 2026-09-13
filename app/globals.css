@@ -257,6 +257,70 @@
   }
 }
 
+/* ── Lead form dialog ──────────────────────────────────────────────────────
+   The <dialog> is a full-bleed transparent layer at every width; the panel
+   inside it carries the surface. On a phone the panel fills that layer,
+   because a small centred box with a five-field form in it ends up with the
+   keyboard over half the content. From sm up the layer becomes a centring
+   flex container and the panel is a card in the middle of it.
+
+   The panel is centred with flex rather than by sizing the <dialog> itself:
+   the UA stylesheet pins a modal dialog with inset: 0, and an absolutely
+   positioned box with both top and bottom set stretches to fill regardless of
+   height: auto. Sizing the dialog therefore cannot produce a content-height
+   box, however the height is declared.
+
+   display is set on [open] only. Unconditionally it would beat the UA's
+   `dialog:not([open]) { display: none }` and leave the dialog on screen while
+   it is shut. */
+.lead-dialog {
+  padding: 0;
+  border: 0;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overscroll-behavior: contain;
+}
+
+.lead-dialog[open] {
+  display: flex;
+}
+
+.lead-dialog::backdrop {
+  /* ::backdrop inherits from the originating element in current engines and
+     from nothing in older ones. --ink-rgb is on :root, so it resolves either
+     way; verified rendering rather than assumed. */
+  background: rgb(var(--ink-rgb) / 0.6);
+}
+
+.lead-dialog-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 640px) {
+  .lead-dialog[open] {
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .lead-dialog-panel {
+    width: min(30rem, 100%);
+    height: auto;
+    max-height: 100%;
+    border-radius: 3px;
+    box-shadow: 0 24px 64px rgb(var(--ink-rgb) / 0.28);
+  }
+}
+
 /* ── Hero scroll cue ───────────────────────────────────────────────────────
    The project hero fills the viewport, so nothing below it is visible until
    the reader scrolls. A hairline track with a brighter fill travelling down
