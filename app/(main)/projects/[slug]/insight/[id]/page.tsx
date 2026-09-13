@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const project = await getProject(slug)
   return {
-    title: project ? `${project.name} — Insight — TrueReturn` : 'Insight — TrueReturn',
+    title: project ? `${project.name} — Insight — Offplan Source` : 'Insight — Offplan Source',
     robots: { index: false, follow: false },
   }
 }

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import DealBuilder from './DealBuilder'
 
-export const metadata: Metadata = { title: 'New Deal — TrueReturn' }
+export const metadata: Metadata = { title: 'New Deal — Offplan Source' }
 
 export default async function NewDealPage() {
   const session = await getServerSession(authOptions)

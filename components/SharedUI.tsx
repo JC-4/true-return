@@ -54,13 +54,13 @@ export function SecondaryPillNav({ sections, desktopOnly = false }: {
     >
       <div
         ref={containerRef}
-        className="relative inline-flex items-center bg-white p-1"
-        style={{ borderRadius: '9999px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+        className="relative inline-flex items-center bg-brand-raise p-1"
+        style={{ borderRadius: '9999px', boxShadow: '0 8px 24px rgb(var(--ink-rgb) / 0.16)' }}
       >
         <div
           className="absolute top-1 bottom-1"
           style={{
-            backgroundColor: '#1C1B18',
+            backgroundColor: 'var(--c-accent)',
             borderRadius: '9999px',
             left: slider.left,
             width: slider.width,
@@ -73,7 +73,7 @@ export function SecondaryPillNav({ sections, desktopOnly = false }: {
             ref={el => { if (el) pillRefs.current.set(id, el); else pillRefs.current.delete(id) }}
             onClick={() => handleClick(id)}
             className="relative z-10 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap border-0 bg-transparent transition-colors inline-flex items-center gap-1.5"
-            style={{ color: activeId === id ? '#fff' : (color ?? '#8e8e8e') }}
+            style={{ color: activeId === id ? 'var(--c-on-accent)' : (color ?? 'var(--c-hint)') }}
           >
             {locked && (
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +126,7 @@ export function Tooltip({ text }: { text: string }) {
         onMouseLeave={() => setOpen(false)}
         onClick={() => { if (open) setOpen(false); else openTip() }}
         className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0 leading-none border"
-        style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC', color: '#9B9589' }}
+        style={{ backgroundColor: 'var(--c-surface)', borderColor: 'var(--c-border)', color: 'var(--c-hint)' }}
         aria-label="More info"
       >
         ?
@@ -141,15 +141,15 @@ export function Tooltip({ text }: { text: string }) {
             left: pos.left,
             transform: 'translate(-50%, calc(-100% - 8px))',
             zIndex: 9999,
-            backgroundColor: '#1C1B18',
-            color: 'rgba(255,255,255,0.8)',
+            backgroundColor: 'var(--c-inverse)',
+            color: 'var(--c-on-inverse)',
             pointerEvents: 'none',
           }}
         >
           {text}
           <div
             className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
-            style={{ borderTopColor: '#1C1B18' }}
+            style={{ borderTopColor: 'var(--c-inverse)' }}
           />
         </div>
       )}

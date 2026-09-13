@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const project = await getProject(slug)
   if (!project) return {}
   return {
-    title: `${project.name} — TrueReturn`,
+    title: `${project.name} — Offplan Source`,
     description: project.description?.slice(0, 160) ?? undefined,
   }
 }

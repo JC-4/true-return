@@ -48,7 +48,7 @@ export default function BrochureTab({ slug, endpoint }: {
   if (loading) {
     return (
       <div className="py-16 flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-brand-bronze border-t-transparent animate-spin" />
+        <div className="w-5 h-5 rounded-full border-2 border-brand-text border-t-transparent animate-spin" />
       </div>
     )
   }
@@ -56,7 +56,7 @@ export default function BrochureTab({ slug, endpoint }: {
   if (error) {
     return (
       <div className="py-16 text-center">
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-brand-neg">{error}</p>
       </div>
     )
   }
@@ -64,7 +64,7 @@ export default function BrochureTab({ slug, endpoint }: {
   if (!docs || docs.length === 0) {
     return (
       <div className="py-20 flex flex-col items-center gap-3 text-center">
-        <svg className="w-10 h-10 text-brand-hint/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-10 h-10 text-brand-hint-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
@@ -75,18 +75,17 @@ export default function BrochureTab({ slug, endpoint }: {
 
   return (
     <div className="py-10">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Documents</p>
+      <p className="text-sm font-medium text-brand-muted mb-6">Documents</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {docs.map(doc => {
           const { display, ext } = fileLabel(doc.name)
           const isPdf = doc.mimeType === 'application/pdf' || ext === 'PDF'
           return (
-            <div key={doc.name} className="bg-white border border-brand-border rounded-xl p-5 flex flex-col gap-4">
+            <div key={doc.name} className="bg-brand-raise border border-brand-border rounded-xl p-5 flex flex-col gap-4">
               {/* Icon + name */}
               <div className="flex items-start gap-3">
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[10px] font-bold"
-                  style={{ backgroundColor: isPdf ? '#A0784A' : '#6B7280' }}
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isPdf ? 'bg-brand-accent text-brand-on-accent' : 'bg-brand-hint text-brand-on-accent'}`}
                 >
                   {ext}
                 </div>
@@ -112,7 +111,7 @@ export default function BrochureTab({ slug, endpoint }: {
                   Open
                 </a>
               ) : (
-                <p className="mt-auto text-xs text-red-400">
+                <p className="mt-auto text-xs text-brand-neg">
                   {doc.signError ?? 'Unable to generate link'}
                 </p>
               )}

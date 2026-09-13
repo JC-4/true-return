@@ -40,25 +40,24 @@ function statusLabel(s: string | null) {
 }
 
 function segmentBg(color: PaymentSegment['color']) {
-  if (color === 'bronze') return 'var(--brand-bronze)'
-  if (color === 'bronze-mid') return 'var(--brand-bronze-mid)'
-  return 'var(--brand-bronze-light)'
+  if (color === 'bronze') return 'var(--c-accent)'
+  if (color === 'bronze-mid') return 'var(--c-accent-mid)'
+  return 'var(--c-accent-soft)'
 }
 
 // ── Payment plan colour scale (by segment type, not slab colour) ──────────────
 
 const PLAN_COLORS = {
-  downpayment:   '#3D2008',
-  construction:  '#8B5E2A',
-  handover:      '#C9A96E',
-  'post-handover': '#E8D5B0',
+  downpayment:   'var(--c-plan-1)',
+  construction:  'var(--c-plan-2)',
+  handover:      'var(--c-plan-3)',
+  'post-handover': 'var(--c-plan-4)',
 } as const
 
 type PlanSegType = keyof typeof PLAN_COLORS
 
-/** `label`/`value` feed the About block's cards; `line` is the same fact
- *  written as prose for the hero's single summary line. */
-type ProjectStat = { key: string; label: string; value: string; line: string }
+/** `label`/`value` feed both the About block's cards and the hero's stat row. */
+type ProjectStat = { key: string; label: string; value: string }
 
 const PLAN_SEG_LABELS: Record<PlanSegType, string> = {
   downpayment:   'Downpayment',
@@ -126,7 +125,7 @@ function BrochureForm({ projectSlug, projectName }: { projectSlug: string; proje
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const inputCls = 'border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text bg-white focus:outline-none focus:ring-1 focus:ring-brand-bronze focus:border-brand-bronze placeholder:text-brand-hint'
+  const inputCls = 'border border-brand-border rounded-lg px-3 py-2 text-sm text-brand-text bg-brand-raise focus:outline-none focus:ring-1 focus:ring-brand-accent focus:border-brand-accent placeholder:text-brand-hint'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -177,14 +176,13 @@ function BrochureForm({ projectSlug, projectName }: { projectSlug: string; proje
         <button
           type="submit"
           disabled={loading || !name.trim() || !phone.trim()}
-          className="min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
-          style={{ backgroundColor: '#A0784A' }}
+          className="btn-primary min-h-[48px] text-sm font-medium px-5 rounded-lg disabled:opacity-50 whitespace-nowrap"
         >
           {loading ? 'Sending…' : 'Get brochure'}
         </button>
         <BrochureWhatsappLink projectName={projectName} />
       </div>
-      {error && <p className="w-full text-xs text-red-500 mt-1">{error}</p>}
+      {error && <p className="w-full text-xs text-brand-neg mt-1">{error}</p>}
     </form>
   )
 }
@@ -207,7 +205,7 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
             >
               <span className="text-sm font-medium text-brand-text">{faq.q}</span>
               <svg
-                className="w-4 h-4 flex-shrink-0 text-brand-bronze transition-transform duration-200"
+                className="w-4 h-4 flex-shrink-0 text-brand-accent transition-transform duration-200"
                 style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
               >
@@ -225,7 +223,7 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
                 <p className={`text-sm leading-relaxed pb-4 ${isInvestment ? 'text-brand-hint italic' : 'text-brand-muted'}`}>
                   {faq.a}
                   {isInvestment && (
-                    <>{' '}<Link href="/contact" className="text-brand-bronze hover:underline not-italic font-medium">Get in touch for an honest view →</Link></>
+                    <>{' '}<Link href="/contact" className="text-brand-accent hover:underline not-italic font-medium">Get in touch for an honest view →</Link></>
                   )}
                 </p>
               </div>
@@ -241,7 +239,7 @@ function FaqAccordion({ faqs }: { faqs: { q: string; a: string }[] }) {
 
 function LockedAnalysisPanel({ project }: { project: Project }) {
   return (
-    <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
+    <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--c-inverse)' }}>
       {/* Blurred mock metrics */}
       <div className="px-8 py-10 select-none" aria-hidden="true">
         <div className="grid sm:grid-cols-3 gap-6 mb-8">
@@ -250,44 +248,43 @@ function LockedAnalysisPanel({ project }: { project: Project }) {
             { label: 'IRR (5yr)', value: '14.2%' },
             { label: 'Total return', value: 'AED 420K' },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-white/5 rounded-xl p-5">
-              <p className="text-white/30 text-xs uppercase tracking-widest mb-2">{label}</p>
-              <p className="text-white text-2xl font-bold blur-sm">{value}</p>
+            <div key={label} className="bg-brand-tl/5 rounded-xl p-5">
+              <p className="text-brand-tl/45 text-xs mb-2">{label}</p>
+              <p className="text-brand-tl text-2xl font-bold blur-sm">{value}</p>
             </div>
           ))}
         </div>
-        <div className="bg-white/5 rounded-xl p-5">
+        <div className="bg-brand-tl/5 rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <span className="text-lg font-bold text-emerald-400 blur-sm">A</span>
+            <div className="w-10 h-10 rounded-xl bg-brand-pos-soft flex items-center justify-center">
+              <span className="text-lg font-bold text-brand-pos blur-sm">A</span>
             </div>
             <div>
-              <p className="text-white text-sm font-semibold blur-sm">74 / 100</p>
-              <p className="text-white/30 text-xs">Deal score</p>
+              <p className="text-brand-tl text-sm font-semibold blur-sm">74 / 100</p>
+              <p className="text-brand-tl/30 text-xs">Deal score</p>
             </div>
           </div>
-          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full w-3/4 bg-emerald-500/40 rounded-full" />
+          <div className="w-full h-1.5 bg-brand-tl/10 rounded-full overflow-hidden">
+            <div className="h-full w-3/4 bg-brand-pos rounded-full" />
           </div>
         </div>
       </div>
 
       {/* Lock overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/60 backdrop-blur-[2px]">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-brand-ink/70 backdrop-blur-[2px]">
         <div className="flex flex-col items-center gap-3 text-center px-6">
-          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-            <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-12 h-12 rounded-full bg-brand-tl/10 flex items-center justify-center">
+            <svg className="w-6 h-6 text-brand-tl/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
           <div>
-            <p className="text-white font-semibold text-base">Independent analysis locked</p>
-            <p className="text-white/50 text-sm mt-1 max-w-xs">Sign in to see yield, IRR and deal score for {project.name}.</p>
+            <p className="text-brand-tl font-semibold text-base">Independent analysis locked</p>
+            <p className="text-brand-tl/50 text-sm mt-1 max-w-xs">Sign in to see yield, IRR and deal score for {project.name}.</p>
           </div>
           <Link
             href={`/login?callbackUrl=${encodeURIComponent(`/projects/${project.slug}`)}`}
-            className="bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors mt-1"
-            style={{ backgroundColor: '#A0784A' }}
+            className="btn-primary text-sm font-medium px-6 py-2.5 rounded-lg mt-1"
           >
             Sign in to unlock →
           </Link>
@@ -313,12 +310,12 @@ function FloorPlanLightbox({ url, onClose }: { url: string; onClose: () => void 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}
+      style={{ backgroundColor: 'rgb(var(--ink-rgb) / 0.94)' }}
       onClick={onClose}
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white text-2xl leading-none"
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-brand-tl/70 hover:text-brand-tl text-2xl leading-none"
         aria-label="Close"
       >
         ×
@@ -488,13 +485,13 @@ export default function ProjectDetail({
   /** The three headline figures, derived once. The hero and the About block
    *  both show them, in a different order, so neither recomputes them. */
   const statFrom: ProjectStat | null = project.starting_price
-    ? { key: 'from', label: 'From', value: fmtPrice(project.starting_price), line: `From ${fmtPrice(project.starting_price)}` }
+    ? { key: 'from', label: 'From', value: fmtPrice(project.starting_price) }
     : null
   const statHandover: ProjectStat | null = fmtHandover(project.handover_date) !== '—'
-    ? { key: 'handover', label: 'Handover', value: fmtHandover(project.handover_date), line: `${fmtHandover(project.handover_date)} handover` }
+    ? { key: 'handover', label: 'Handover', value: fmtHandover(project.handover_date) }
     : null
   const statPlan: ProjectStat | null = firstPlanLabel
-    ? { key: 'plan', label: 'Payment plan', value: firstPlanLabel.replace(' payment plan', ''), line: firstPlanLabel }
+    ? { key: 'plan', label: 'Payment plan', value: firstPlanLabel.replace(' payment plan', '') }
     : null
   const isStat = (s: ProjectStat | null): s is ProjectStat => s !== null
   const heroStats  = [statFrom, statHandover, statPlan].filter(isStat)
@@ -522,7 +519,7 @@ export default function ProjectDetail({
       <div className="grid md:grid-cols-2 gap-8 items-stretch">
 
         {/* Left: image with stats overlay */}
-        <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: '#1C1B18', height: '100%', minHeight: '480px' }}>
+        <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--c-inverse)', height: '100%', minHeight: '480px' }}>
           {(project.about_image_url ?? images[0]) && (
             <img
               src={project.about_image_url ?? images[0]}
@@ -539,13 +536,13 @@ export default function ProjectDetail({
               }}
             />
           )}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(28,27,24,0.85) 0%, rgba(28,27,24,0.05) 55%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgb(var(--ink-rgb) / 0.88) 0%, rgb(var(--ink-rgb) / 0.05) 55%)' }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
             <div className="grid grid-cols-3 gap-2">
               {aboutStats.map(stat => (
-                <div key={stat.key} className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: '#ffffff', fontFamily: 'var(--font-poppins, Poppins, sans-serif)', lineHeight: 1.2 }}>{stat.value}</p>
-                  <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{stat.label}</p>
+                <div key={stat.key} className="rounded-xl px-3 py-3 text-center" style={{ backgroundColor: 'rgb(var(--tl-rgb) / 0.12)' }}>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-on-inverse)', lineHeight: 1.2 }}>{stat.value}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgb(var(--tl-rgb) / 0.6)' }}>{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -559,7 +556,7 @@ export default function ProjectDetail({
               keeps the tagline and highlights from being spread apart if this
               column ever goes back to justify-between. */}
           <div>
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">About this project</p>
+            <p className="text-sm font-medium text-brand-muted mb-3">About this project</p>
             {project.tagline && (
               <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
             )}
@@ -569,10 +566,10 @@ export default function ProjectDetail({
                   <div key={i} className="flex items-start gap-2.5">
                     <div
                       className="flex-shrink-0 mt-0.5"
-                      style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: '#F4F3F0', border: '0.5px solid #E5E3DC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: 18, height: 18, borderRadius: '50%', backgroundColor: 'var(--c-surface)', border: '0.5px solid var(--c-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2 2 4-4" stroke="#A0784A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M2 5l2 2 4-4" stroke="var(--c-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                     <span className="text-sm text-brand-muted leading-relaxed">{h}</span>
@@ -584,7 +581,7 @@ export default function ProjectDetail({
 
           {project.developer && (
             <div className="pt-5 border-t border-brand-border">
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Developer</p>
+              <p className="text-sm font-medium text-brand-muted mb-3">Developer</p>
               <div className="flex items-center gap-3">
                 {/* Split by branch: this block sits on the cream page background,
                     not inside a card, so a real logo gets no background at all and
@@ -599,13 +596,13 @@ export default function ProjectDetail({
                     />
                   </div>
                 ) : (
-                  <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-                    <span className="text-white text-xs font-semibold">{project.developer.name.charAt(0)}</span>
+                  <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--c-inverse)' }}>
+                    <span className="text-brand-tl text-xs font-semibold">{project.developer.name.charAt(0)}</span>
                   </div>
                 )}
                 <div>
                   <p className="text-sm font-medium text-brand-text">{project.developer.name}</p>
-                  <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-bronze hover:underline">
+                  <Link href={`/developers/${project.developer.slug}`} className="text-xs text-brand-accent hover:underline">
                     View all projects →
                   </Link>
                 </div>
@@ -623,7 +620,7 @@ export default function ProjectDetail({
     <section id="units" className="py-16 border-t border-brand-border">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-2">Unit types</p>
+          <p className="text-sm font-medium text-brand-muted mb-2">Unit types</p>
           <h2 className="text-2xl font-semibold text-brand-text">Choose your unit</h2>
         </div>
         <span className="text-xs text-brand-hint">Prices from, indicative</span>
@@ -651,16 +648,15 @@ export default function ProjectDetail({
                 className="relative border rounded-xl p-4 w-44 flex-shrink-0 md:w-auto transition-colors"
                 style={{
                   cursor: 'pointer',
-                  backgroundColor: isSelected ? '#1C1B18' : '#ffffff',
-                  borderColor: isSelected ? '#C9A96E' : '#E5E3DC',
+                  backgroundColor: isSelected ? 'var(--c-inverse)' : 'var(--c-raise)',
+                  borderColor: isSelected ? 'var(--c-accent-mid)' : 'var(--c-border)',
                   borderWidth: isSelected ? 2 : 1,
                 }}
               >
                 {/* Badge marks the featured unit whether or not it's selected */}
                 {isFeatured && (
                   <div
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 text-white text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full whitespace-nowrap"
-                    style={{ backgroundColor: '#A0784A' }}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-brand-accent text-brand-on-accent text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap"
                   >
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -669,20 +665,20 @@ export default function ProjectDetail({
                   </div>
                 )}
                 <p
-                  className="text-xs uppercase tracking-widest font-medium mb-2"
-                  style={{ color: isSelected ? 'rgba(255,255,255,0.5)' : '#9B9589' }}
+                  className="text-xs font-medium mb-2"
+                  style={{ color: isSelected ? 'rgb(var(--tl-rgb) / 0.55)' : 'var(--c-hint)' }}
                 >
                   {ut.type}
                 </p>
                 <p
                   className="text-xl font-semibold mb-1"
-                  style={{ color: isSelected ? '#C9A96E' : '#A0784A' }}
+                  style={{ color: isSelected ? 'var(--c-accent-mid)' : 'var(--c-accent)' }}
                 >
                   {fmtPrice(ut.price_from)}
                 </p>
                 <p
                   className="text-xs"
-                  style={{ color: isSelected ? 'rgba(255,255,255,0.4)' : '#9B9589' }}
+                  style={{ color: isSelected ? 'rgb(var(--tl-rgb) / 0.45)' : 'var(--c-hint)' }}
                 >
                   from {ut.size_sqft_from.toLocaleString()} sqft
                 </p>
@@ -694,7 +690,7 @@ export default function ProjectDetail({
                       onClick={e => { e.stopPropagation(); setFloorPlanUrl(ut.floor_plan_url!) }}
                       className="text-[11px] underline underline-offset-2 transition-opacity hover:opacity-70"
                       style={{
-                        color: isSelected ? 'rgba(255,255,255,0.55)' : '#9B9589',
+                        color: isSelected ? 'rgb(var(--tl-rgb) / 0.6)' : 'var(--c-hint)',
                         background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
                       }}
                     >
@@ -715,11 +711,11 @@ export default function ProjectDetail({
 
         return (
           <div id="payment-plan" className="mt-14">
-            <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-6">Payment plan</p>
+            <p className="text-sm font-medium text-brand-muted mb-6">Payment plan</p>
 
             {/* Plan selector — only shown when multiple plans exist */}
             {plans.length > 1 && (
-              <div style={{ display: 'inline-flex', background: '#F4F3F0', borderRadius: 9999, padding: 4, marginBottom: 16, gap: 0 }}>
+              <div style={{ display: 'inline-flex', background: 'var(--c-surface)', borderRadius: 9999, padding: 4, marginBottom: 16, gap: 0 }}>
                 {plans.map((p, i) => (
                   <button
                     key={i}
@@ -731,8 +727,8 @@ export default function ProjectDetail({
                       borderRadius: 9999,
                       border: 'none',
                       cursor: 'pointer',
-                      background: activePlanIndex === i ? '#1C1B18' : 'transparent',
-                      color: activePlanIndex === i ? '#fff' : '#9B9589',
+                      background: activePlanIndex === i ? 'var(--c-inverse)' : 'transparent',
+                      color: activePlanIndex === i ? 'var(--c-on-accent)' : 'var(--c-hint)',
                       transition: 'background 0.2s, color 0.2s',
                     }}
                   >
@@ -742,7 +738,7 @@ export default function ProjectDetail({
               </div>
             )}
 
-            <div style={{ background: '#F4F3F0', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
+            <div style={{ background: 'var(--c-surface)', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
               {/* One row per actual segment — the merged view hid the
                   instalment schedule, and the bar makes the shape readable. */}
               <div>
@@ -751,32 +747,36 @@ export default function ProjectDetail({
                   const isHandover = type === 'handover'
                   // Labels that just restate the percentage add nothing beside it
                   const label = /^\s*\d+(\.\d+)?\s*%\s*$/.test(seg.label ?? '') ? '' : seg.label?.trim()
-                  const middle = [label, seg.date?.trim()].filter(Boolean).join(' · ') || PLAN_SEG_LABELS[type]
+                  const middleLabel = label || PLAN_SEG_LABELS[type]
+                  const middleDate  = seg.date?.trim()
                   return (
                     <div
                       key={i}
                       className="flex items-center gap-4 sm:gap-5 px-4 sm:px-7 py-4"
                       style={{
-                        borderTop: i > 0 ? '0.5px solid #E5E3DC' : undefined,
-                        background: isHandover ? 'rgba(160,120,74,0.10)' : undefined,
+                        borderTop: i > 0 ? '0.5px solid var(--c-border)' : undefined,
+                        background: isHandover ? 'var(--c-accent-soft)' : undefined,
                       }}
                     >
                       <div className="w-[92px] sm:w-[116px] flex-shrink-0">
-                        <p style={{ fontSize: 18, fontWeight: 600, color: '#A0784A', margin: '0 0 6px', lineHeight: 1 }}>
+                        <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--c-accent)', margin: '0 0 6px', lineHeight: 1 }}>
                           {seg.percent}%
                         </p>
-                        <div style={{ height: 4, borderRadius: 2, background: 'rgba(28,27,24,0.08)', overflow: 'hidden' }}>
+                        <div style={{ height: 4, borderRadius: 2, background: 'rgb(var(--td-rgb) / 0.10)', overflow: 'hidden' }}>
                           <div style={{
                             width: `${Math.max(0, Math.min(100, seg.percent))}%`,
                             height: '100%',
                             borderRadius: 2,
-                            background: PLAN_COLORS[type] ?? '#C9A96E',
+                            background: PLAN_COLORS[type] ?? 'var(--c-accent-mid)',
                           }} />
                         </div>
                       </div>
-                      <p style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#5C5852', margin: 0 }}>{middle}</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, color: 'var(--c-text)', margin: 0 }}>{middleLabel}</p>
+                        {middleDate && <p style={{ fontSize: 12, color: 'var(--c-hint)', margin: 0, marginTop: 1 }}>{middleDate}</p>}
+                      </div>
                       {selectedUnitPrice > 0 && (
-                        <p style={{ fontSize: 13, fontWeight: 500, color: '#1C1B18', margin: 0, whiteSpace: 'nowrap' }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-inverse)', margin: 0, whiteSpace: 'nowrap' }}>
                           {aed(selectedUnitPrice * seg.percent / 100)}
                         </p>
                       )}
@@ -797,14 +797,13 @@ export default function ProjectDetail({
 
       {/* The section's single CTA */}
       <div
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl px-5 py-4 mt-6"
-        style={{ backgroundColor: '#A0784A' }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl px-5 py-4 mt-6 bg-brand-accent"
       >
-        <p className="text-sm" style={{ color: '#ffffff' }}>Not sure which unit is right for your budget and goals?</p>
+        <p className="text-sm" style={{ color: 'var(--c-on-inverse)' }}>Not sure which unit is right for your budget and goals?</p>
         <button
           onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
           className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
-          style={{ border: '0.5px solid rgba(255,255,255,0.5)', color: '#ffffff', backgroundColor: 'transparent' }}
+          style={{ border: '0.5px solid rgb(var(--tl-rgb) / 0.55)', color: 'var(--c-on-inverse)', backgroundColor: 'transparent' }}
         >
           Get unit recommendation →
         </button>
@@ -818,7 +817,7 @@ export default function ProjectDetail({
 
   const locationSection = (connectivity.length > 0 || mapEmbedSrc) ? (
     <section id="location" className="py-16 border-t border-brand-border">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Location</p>
+        <p className="text-sm font-medium text-brand-muted mb-4">Location</p>
         {mapEmbedSrc && (
           <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: connectivity.length > 0 ? 24 : 0 }}>
             <iframe
@@ -835,10 +834,10 @@ export default function ProjectDetail({
         {connectivity.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {connectivity.map((item, i) => (
-              <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#F4F3F0', borderColor: '#E5E3DC' }}>
+              <div key={i} className="bg-brand-surface border border-brand-border rounded-lg px-3 py-2.5 flex items-center gap-2" style={{ backgroundColor: 'var(--c-surface)', borderColor: 'var(--c-border)' }}>
                 <ConnectivityIcon label={item.label} />
                 <span className="text-sm text-brand-muted truncate">{item.label}</span>
-                <span className="ml-auto text-xs font-medium text-brand-bronze flex-shrink-0">{item.time}</span>
+                <span className="ml-auto text-xs font-medium text-brand-accent flex-shrink-0">{item.time}</span>
               </div>
             ))}
           </div>
@@ -848,20 +847,20 @@ export default function ProjectDetail({
 
   const faqSection = faqs.length > 0 ? (
     <section id="faq" className="py-16 border-t border-brand-border">
-      <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">FAQ</p>
+      <p className="text-sm font-medium text-brand-muted mb-4">FAQ</p>
       <FaqAccordion faqs={faqs} />
     </section>
   ) : null
 
   const amenitiesSection = amenities.length > 0 ? (
     <section id="amenities" className="py-16 border-t border-brand-border">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Amenities</p>
+        <p className="text-sm font-medium text-brand-muted mb-4">Amenities</p>
         <div className="flex flex-wrap gap-2">
           {amenities.map((a, i) => (
             <span
               key={i}
               className="text-sm px-4 py-2 rounded-full border"
-              style={{ backgroundColor: '#ffffff', borderColor: '#E5E3DC', color: '#5C5852' }}
+              style={{ backgroundColor: 'var(--c-raise)', borderColor: 'var(--c-border)', color: 'var(--c-muted)' }}
             >
               {a}
             </span>
@@ -874,30 +873,32 @@ export default function ProjectDetail({
 
   const myTakeSection = hasMytake ? (
     <section className="py-10">
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#1C1B18' }}>
-        <div className="px-8 py-5 border-b border-white/10 flex items-center gap-2.5">
-          <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#A0784A' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="on-ink rounded-2xl overflow-hidden bg-brand-inverse">
+        <div className="px-8 py-5 border-b border-brand-tl/10 flex items-center gap-2.5">
+          <svg className="w-4 h-4 flex-shrink-0 text-brand-tl/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
           </svg>
-          <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A0784A' }}>Independent Analysis</span>
+          <h2 className="text-sm font-medium text-brand-tl">Independent analysis</h2>
         </div>
-        <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+        <div className="grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-brand-tl/10">
           {insight?.insight_opinion && (
             <div className="px-8 py-7">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-3">Opinion</p>
-              <p className="text-sm text-white/75 leading-relaxed">{insight.insight_opinion}</p>
+              <h3 className="text-sm font-medium text-brand-tl/55 mb-3">Opinion</h3>
+              <p className="text-sm text-brand-tl/80 leading-relaxed">{insight.insight_opinion}</p>
             </div>
           )}
           {insight?.insight_projections && (
             <div className="px-8 py-7">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-3">Projections</p>
-              <p className="text-sm text-white/75 leading-relaxed">{insight.insight_projections}</p>
+              <h3 className="text-sm font-medium text-brand-tl/55 mb-3">Projections</h3>
+              <p className="text-sm text-brand-tl/80 leading-relaxed">{insight.insight_projections}</p>
             </div>
           )}
           {insight?.insight_risks && (
             <div className="px-8 py-7">
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgb(251 191 36 / 0.6)' }}>Risks</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'rgb(255 255 255 / 0.65)' }}>{insight.insight_risks}</p>
+              {/* The one coloured label in the block: risk is the thing worth
+                  flagging, so it keeps a hue where the rest stays monochrome. */}
+              <h3 className="text-sm font-medium text-brand-warn mb-3">Risks</h3>
+              <p className="text-sm text-brand-tl/80 leading-relaxed">{insight.insight_risks}</p>
             </div>
           )}
         </div>
@@ -910,7 +911,7 @@ export default function ProjectDetail({
   const heroEl = (
     <div
       className="relative overflow-hidden flex flex-col justify-end w-full min-h-[400px] md:min-h-0 md:aspect-[16/9] md:max-h-[600px]"
-      style={{ backgroundColor: '#1C1B18' }}
+      style={{ backgroundColor: 'var(--c-inverse)' }}
     >
       {/* One treatment at every width: a full-bleed backdrop with the identity
           block over it. A min-height on mobile buys the block room to sit on
@@ -918,37 +919,46 @@ export default function ProjectDetail({
       {hero && (
         <img src={hero} alt={project.name} className="absolute inset-0 w-full h-full object-cover" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
+      {/* The identity block is tall, so the scrim has to carry further up the
+          frame than a single-line title needed. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/95 via-brand-ink/70 to-brand-ink/10 pointer-events-none" />
 
       {/* Status badge */}
       {project.status && (
         <div className="absolute top-4 left-6 sm:top-6 sm:left-10">
-          <span className="bg-brand-bronze text-white text-xs font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#A0784A' }}>
+          <span className="bg-brand-tl/15 text-brand-tl border border-brand-tl/25 backdrop-blur-sm text-xs font-medium px-3 py-1 rounded-full">
             {statusLabel(project.status)}
           </span>
         </div>
       )}
 
-      {/* Identity, the numbers as one line, and the single primary CTA */}
+      {/* Identity, the headline numbers, and the single primary CTA */}
       <div className="relative px-6 sm:px-10 pt-6 pb-6 max-w-6xl mx-auto w-full">
         {project.developer?.name && (
-          <p className="text-brand-bronze-mid text-[11px] sm:text-xs tracking-widest uppercase mb-1.5">{project.developer.name}</p>
+          <p className="text-brand-tl/65 text-xs sm:text-sm mb-2">{project.developer.name}</p>
         )}
-        <h1 className="text-2xl sm:text-3xl md:text-5xl font-medium text-white leading-tight mb-2">{project.name}</h1>
-        <p className="text-xs sm:text-sm text-white/50">
+        {/* The one place Instrument Serif appears. */}
+        <h1 className="font-display font-normal text-4xl sm:text-5xl md:text-6xl text-brand-tl leading-[1.05] mb-2">
+          {project.name}
+        </h1>
+        <p className="text-xs sm:text-sm text-brand-tl/55">
           {fmtLocation(project)}
         </p>
 
         {heroStats.length > 0 && (
-          <p className="mt-2 text-sm sm:text-base text-white/85 font-medium">
-            {heroStats.map(stat => stat.line).join(' · ')}
-          </p>
+          <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3">
+            {heroStats.map(stat => (
+              <div key={stat.key}>
+                <dt className="text-xs text-brand-tl/55">{stat.label}</dt>
+                <dd className="text-sm sm:text-base font-medium text-brand-tl mt-0.5">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
         )}
 
         <button
           onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-          className="mt-5 w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-6 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#A0784A' }}
+          className="btn-on-ink mt-6 w-full sm:w-auto min-h-[48px] inline-flex items-center justify-center px-6 rounded-lg text-sm font-semibold"
         >
           Get my analysis
         </button>
@@ -959,7 +969,7 @@ export default function ProjectDetail({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-brand-bg min-h-screen">
+    <div className="theme-os bg-brand-bg min-h-screen">
 
       {/* Scoped to this page: the site nav (64px) and the tab bar (52px) are
           both sticky, so anchors would otherwise land under them. */}
@@ -984,7 +994,7 @@ export default function ProjectDetail({
       {!isAuth && (
         <>
           {/* Tab bar */}
-          <div ref={pubTabRef} className="sticky top-16 z-20 bg-white border-b border-brand-border">
+          <div ref={pubTabRef} className="sticky top-16 z-20 bg-brand-raise border-b border-brand-border">
             <div className="max-w-6xl mx-auto px-6 sm:px-10 flex items-center">
               {([
                 { key: 'overview', label: 'Overview' },
@@ -1028,8 +1038,7 @@ export default function ProjectDetail({
                   </div>
                   <button
                     onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg text-white transition-colors whitespace-nowrap"
-                    style={{ backgroundColor: '#A0784A' }}
+                    className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
                   >
                     Get independent advice →
                   </button>
@@ -1050,7 +1059,7 @@ export default function ProjectDetail({
           {pubTab === 'brochure' && (
             <div className="max-w-6xl mx-auto px-6 sm:px-10 py-12">
               <div className="max-w-lg">
-                <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Download brochure</p>
+                <p className="text-sm font-medium text-brand-muted mb-4">Download brochure</p>
                 <p className="text-sm text-brand-muted mb-6">Leave your details and we&apos;ll send you the full brochure, floor plans and payment schedule.</p>
                 <BrochureForm projectSlug={project.slug} projectName={project.name} />
               </div>
@@ -1064,7 +1073,7 @@ export default function ProjectDetail({
       {isAuth && (
         <>
           {/* Two-tab bar + scroll nav for overview */}
-          <div ref={scrollNavRef} className="sticky top-16 z-20 bg-white border-b border-brand-border">
+          <div ref={scrollNavRef} className="sticky top-16 z-20 bg-brand-raise border-b border-brand-border">
             {/* Tab row */}
             <div className={`max-w-6xl mx-auto px-6 sm:px-10 flex items-center ${authTab === 'overview' ? 'border-b border-brand-border' : ''}`}>
               {([
@@ -1081,7 +1090,7 @@ export default function ProjectDetail({
                   }}
                   className={`px-5 py-3.5 text-xs font-semibold border-b-2 transition-colors ${
                     authTab === key
-                      ? 'border-brand-bronze text-brand-bronze'
+                      ? 'border-brand-accent text-brand-accent'
                       : 'border-transparent text-brand-hint hover:text-brand-muted'
                   }`}
                 >
@@ -1113,8 +1122,7 @@ export default function ProjectDetail({
                   </div>
                   <button
                     onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-                    className="flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg text-white transition-colors whitespace-nowrap"
-                    style={{ backgroundColor: '#A0784A' }}
+                    className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
                   >
                     Get independent advice →
                   </button>
@@ -1140,7 +1148,7 @@ export default function ProjectDetail({
               {/* Documents */}
               {hasDocs && (
                 <section>
-                  <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-4">Documents</p>
+                  <p className="text-sm font-medium text-brand-muted mb-4">Documents</p>
                   {documents.length > 1 && (
                     <div className="flex gap-1 mb-4 border-b border-brand-border">
                       {documents.map((doc, i) => (
@@ -1149,7 +1157,7 @@ export default function ProjectDetail({
                           onClick={() => setActiveDocTab(i)}
                           className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px ${
                             activeDocTab === i
-                              ? 'border-brand-bronze text-brand-bronze'
+                              ? 'border-brand-accent text-brand-accent'
                               : 'border-transparent text-brand-hint hover:text-brand-muted'
                           }`}
                         >
@@ -1172,7 +1180,7 @@ export default function ProjectDetail({
                       href={documents[activeDocTab]?.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-brand-bronze hover:underline flex items-center gap-1"
+                      className="text-xs text-brand-accent hover:underline flex items-center gap-1"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -1189,10 +1197,10 @@ export default function ProjectDetail({
 
       {/* ── Lead gen footer (hidden on the brochure tab) ───────────────────── */}
       {(isAuth ? authTab : pubTab) !== 'brochure' && (
-        <section id="lead-gen-form" className="border-t border-brand-border bg-white">
+        <section id="lead-gen-form" className="border-t border-brand-border bg-brand-raise">
           <div className="px-6 sm:px-10 py-16 sm:py-20">
             <div style={{ maxWidth: 600, margin: '0 auto' }}>
-              <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3 text-center">Independent advice</p>
+              <p className="text-sm font-medium text-brand-muted mb-3 text-center">Independent advice</p>
               <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">Get an honest view on {project.name}</h2>
               <p className="text-sm text-brand-muted mb-8 text-center">Independent analysis, no developer affiliation. No cost to you.</p>
               <LeadGenForm projectName={project.name} />

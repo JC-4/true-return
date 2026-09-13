@@ -98,17 +98,16 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
     return `AED ${Math.round(n / 1000)}k`
   }
 
-  const selectCls = 'w-full px-3 py-2 text-sm rounded-lg border border-brand-border bg-white text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-bronze focus:border-brand-bronze'
-  const labelCls = 'block text-xs uppercase tracking-widest text-brand-hint mb-1.5'
+  const selectCls = 'w-full px-3 py-2 text-sm rounded-lg border border-brand-border bg-brand-raise text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-text focus:border-brand-text'
+  const labelCls = "block text-xs font-medium text-brand-muted mb-1.5"
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="theme-os min-h-screen bg-brand-bg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
 
         {/* Header */}
         <div className="mb-12">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-2">Projects</p>
-          <h1 className="text-2xl font-medium text-brand-text">Dubai property projects</h1>
+          <h1 className="text-2xl font-medium text-brand-text">UAE property projects</h1>
           <p className="text-sm text-brand-muted mt-1 leading-relaxed">
             Curated off-plan and ready developments — independently assessed.
           </p>
@@ -119,9 +118,9 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
           <aside className="lg:w-52 flex-shrink-0">
             <div className="sticky top-20 space-y-5">
               <div className="flex items-center justify-between">
-                <p className="text-xs uppercase tracking-widest text-brand-hint font-medium">Filters</p>
+                <p className="text-sm font-medium text-brand-text">Filters</p>
                 {hasFilters && (
-                  <button onClick={clearFilters} className="text-xs text-brand-bronze hover:underline">
+                  <button onClick={clearFilters} className="text-xs text-brand-muted underline underline-offset-4 hover:text-brand-text transition-colors">
                     Clear all
                   </button>
                 )}
@@ -192,7 +191,7 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <p className="text-sm text-brand-muted mb-3">No projects match these filters.</p>
-                <button onClick={clearFilters} className="text-sm text-brand-bronze hover:underline">
+                <button onClick={clearFilters} className="text-sm text-brand-muted underline underline-offset-4 hover:text-brand-text transition-colors">
                   Clear filters
                 </button>
               </div>

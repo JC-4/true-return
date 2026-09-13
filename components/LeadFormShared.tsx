@@ -28,10 +28,10 @@ export const TIMELINE_OPTIONS = [
 ]
 
 export const inputCls = (error: boolean) =>
-  `w-full border rounded-lg px-3 py-2.5 text-sm text-brand-text bg-white focus:outline-none focus:ring-1 placeholder:text-brand-hint transition-colors ${
+  `w-full border rounded-lg px-3 py-2.5 text-sm text-brand-text bg-brand-raise focus:outline-none focus:ring-1 placeholder:text-brand-hint transition-colors ${
     error
-      ? 'border-red-400 focus:ring-red-400 focus:border-red-400'
-      : 'border-brand-border focus:ring-brand-bronze focus:border-brand-bronze'
+      ? 'border-brand-neg focus:ring-brand-neg focus:border-brand-neg'
+      : 'border-brand-border focus:ring-brand-text focus:border-brand-text'
   }`
 
 /** Secondary route to the same conversation, sat beside a submit button.

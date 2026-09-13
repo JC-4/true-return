@@ -2,52 +2,180 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOUR SYSTEM
+
+   Two themes share one set of semantic token names (`--c-*`). Components only
+   ever read the semantic names, so the same component renders correctly in
+   either theme depending on the subtree it sits in.
+
+   - `:root`      → legacy cream/bronze. Kept for the routes not yet rebranded:
+                    /admin, /deals, /compare, /calculators and /s/[token].
+   - `.theme-os`  → Offplan Source. Applied at the top of each public route.
+
+   No component file should contain a colour literal. The only literals live in
+   the two blocks below.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --brand-black:   #18181b;
-  --brand-white:   #ffffff;
-  --brand-accent:  #10b981;
+  /* ── Offplan Source palette ───────────────────────────────────────────────
+     The four brand values, available everywhere so `.theme-os` can mix from
+     them. Every Offplan Source colour is one of these four or a mix of them. */
+  --ink:   #131A26;  /* dark ground */
+  --paper: #F2F0EB;  /* light ground */
+  --tl:    #DFE3E8;  /* type on ink */
+  --td:    #1A2230;  /* type on paper */
 
-  --brand-bg:           #FAFAF8;
-  --brand-surface:      #F4F3F0;
-  --brand-border:       #E5E3DC;
-  --brand-text:         #1C1B18;
-  --brand-muted:        #6B6860;
-  --brand-hint:         #9E9B93;
-  --brand-bronze:       #A0784A;
-  --brand-bronze-light: #F2EAE0;
-  --brand-bronze-mid:   #C49A6C;
+  /* The same four as RGB triplets, for utilities that take an alpha modifier
+     (`bg-brand-ink/60`). color-mix() results can't carry <alpha-value>, so
+     only these four are alpha-capable. */
+  --ink-rgb:   19 26 38;
+  --paper-rgb: 242 240 235;
+  --tl-rgb:    223 227 232;
+  --td-rgb:    26 34 48;
 
-  /* Semantic colour tokens — map to brand primitives above */
-  --color-text-primary:           var(--brand-text);       /* #1C1B18 — main body text */
-  --color-text-secondary:         var(--brand-muted);      /* #6B6860 — muted/supporting text */
-  --color-background-primary:     var(--brand-bg);         /* #FAFAF8 — main page background */
-  --color-background-secondary:   var(--brand-surface);    /* #F4F3F0 — subtle off-white surface */
-  --color-border-primary:         var(--brand-border);     /* #E5E3DC — standard borders */
-  --color-border-tertiary:        #EDECE8;                 /* lighter than brand-border — subtle/ghost borders */
-  --color-accent:                 var(--brand-bronze);     /* #A0784A — gold/amber brand colour */
+  /* ── Status ───────────────────────────────────────────────────────────────
+     Colour is reserved for meaning: a negative return, a failed field, a
+     caveat. Chrome is monochrome. Each has an on-ink variant, because the same
+     token has to stay legible on both grounds. */
+  --pos:      #2E6A4F;
+  --pos-ink:  #83BFA1;
+  --neg:      #A34239;
+  --neg-ink:  #E89B93;
+  --warn:     #7D5F28;
+  --warn-ink: #D8B76B;
 
-  /* Border radius */
+  /* ── Semantic tokens — LEGACY theme (cream/bronze) ────────────────────── */
+  --c-ground:        #FAFAF8;
+  --c-surface:       #F4F3F0;
+  --c-raise:         #FDFCF9;
+  --c-border:        #E5E3DC;
+  --c-border-subtle: #EDECE8;
+  --c-text:          #1C1B18;
+  --c-muted:         #5C5852;
+  --c-hint:          #9B9589;
+  --c-hint-faint:    #E5E3DE;
+
+  --c-accent:        #A0784A;
+  --c-accent-hover:  #8E6B42;
+  --c-accent-soft:   #F2EAE0;
+  --c-accent-mid:    #C9A96E;
+  --c-on-accent:     #FFFFFF;
+
+  /* Dark surfaces inside an otherwise light page (hero, insight panel). */
+  --c-inverse:       #1C1B18;
+  --c-inverse-deep:  #0E0E0C;
+  --c-on-inverse:    #FFFFFF;
+  --c-on-inverse-muted: rgb(255 255 255 / 0.55);
+  --c-on-inverse-hint:  rgb(255 255 255 / 0.35);
+  --c-inverse-line:  #2E2D2A;
+  --c-inverse-raise: #1A1A1A;
+
+  /* Form controls. Separate from --c-accent: the legacy slider thumb is black,
+     not bronze, and must stay that way on /calculators and /deals. */
+  --c-control:       #18181b;
+  --c-control-hover: #F4F3F0;
+  --c-control-ring:  #FFFFFF;
+
+  --c-pos:      #059669;
+  --c-pos-soft: #ECFDF5;
+  --c-neg:      #EF4444;
+  --c-neg-soft: #FEF2F2;
+  --c-warn:     #8B6914;
+  --c-warn-soft:#FFFBEB;
+
+  /* Payment-plan scale, darkest (paid first) to lightest. */
+  --c-plan-1: #3D2008;
+  --c-plan-2: #8B5E2A;
+  --c-plan-3: #C9A96E;
+  --c-plan-4: #E8D5B0;
+
   --border-radius-lg: 8px;
-
-  /* RGB triplets for Tailwind color utilities */
-  --brand-bg-rgb:           250 250 248;
-  --brand-surface-rgb:      244 243 240;
-  --brand-border-rgb:       229 227 220;
-  --brand-text-rgb:         28 27 24;
-  --brand-muted-rgb:        107 104 96;
-  --brand-hint-rgb:         158 155 147;
-  --brand-bronze-rgb:       160 120 74;
-  --brand-bronze-light-rgb: 242 234 224;
-  --brand-bronze-mid-rgb:   196 154 108;
 }
 
-/* Slider styling */
+/* ── Semantic tokens — OFFPLAN SOURCE theme ─────────────────────────────────
+   Everything here is --ink, --paper, --tl, --td or a mix of them. */
+.theme-os {
+  --c-ground:        var(--paper);
+  --c-surface:       color-mix(in srgb, var(--td) 5%,  var(--paper));
+  --c-raise:         var(--paper);
+  --c-border:        color-mix(in srgb, var(--td) 14%, var(--paper));
+  --c-border-subtle: color-mix(in srgb, var(--td) 7%,  var(--paper));
+  --c-text:          var(--td);
+  /* Mix ratios are set by contrast, not by eye: 70% clears 4.5:1 on --paper for
+     body copy; --c-hint stays deliberately tertiary at 3.3:1, used only for
+     small meta text that repeats something already stated nearby. */
+  --c-muted:         color-mix(in srgb, var(--td) 70%, var(--paper));
+  --c-hint:          color-mix(in srgb, var(--td) 52%, var(--paper));
+  --c-hint-faint:    color-mix(in srgb, var(--td) 18%, var(--paper));
+
+  /* Buttons on light: --td ground, --paper text. */
+  --c-accent:        var(--td);
+  --c-accent-hover:  color-mix(in srgb, var(--td) 70%, var(--ink));
+  --c-accent-soft:   color-mix(in srgb, var(--td) 8%,  var(--paper));
+  --c-accent-mid:    color-mix(in srgb, var(--td) 45%, var(--paper));
+  --c-on-accent:     var(--paper);
+
+  --c-inverse:       var(--ink);
+  --c-inverse-deep:  var(--ink);
+  --c-on-inverse:    var(--tl);
+  --c-on-inverse-muted: color-mix(in srgb, var(--tl) 62%, var(--ink));
+  --c-on-inverse-hint:  color-mix(in srgb, var(--tl) 40%, var(--ink));
+  --c-inverse-line:  color-mix(in srgb, var(--tl) 16%, var(--ink));
+  --c-inverse-raise: color-mix(in srgb, var(--tl) 7%,  var(--ink));
+
+  --c-control:       var(--td);
+  --c-control-hover: color-mix(in srgb, var(--td) 70%, var(--ink));
+  --c-control-ring:  var(--paper);
+
+  --c-pos:      var(--pos);
+  --c-pos-soft: color-mix(in srgb, var(--pos) 12%, var(--paper));
+  --c-neg:      var(--neg);
+  --c-neg-soft: color-mix(in srgb, var(--neg) 10%, var(--paper));
+  --c-warn:     var(--warn);
+  --c-warn-soft:color-mix(in srgb, var(--warn) 12%, var(--paper));
+
+  /* Monochrome payment-plan scale: --td stepped down towards --paper, so the
+     earlier (larger) instalments read heavier. */
+  --c-plan-1: var(--td);
+  --c-plan-2: color-mix(in srgb, var(--td) 62%, var(--paper));
+  --c-plan-3: color-mix(in srgb, var(--td) 34%, var(--paper));
+  --c-plan-4: color-mix(in srgb, var(--td) 16%, var(--paper));
+}
+
+/* On an ink ground the status colours have to flip to their light variants. */
+.theme-os .on-ink {
+  --c-pos:  var(--pos-ink);
+  --c-neg:  var(--neg-ink);
+  --c-warn: var(--warn-ink);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────
+   Two grounds, two treatments. On light: --td ground, --paper text. On ink:
+   --tl ground, --ink text. */
+.btn-primary {
+  background-color: var(--c-accent);
+  color: var(--c-on-accent);
+  transition: background-color 0.15s ease;
+}
+.btn-primary:hover { background-color: var(--c-accent-hover); }
+
+.btn-on-ink {
+  background-color: var(--c-on-inverse);
+  color: var(--c-inverse);
+  transition: background-color 0.15s ease;
+}
+.btn-on-ink:hover {
+  background-color: color-mix(in srgb, var(--c-on-inverse) 82%, var(--c-inverse));
+}
+
+/* ── Range slider ─────────────────────────────────────────────────────────── */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 4px;
-  background: var(--brand-border);
+  background: var(--c-border);
   border-radius: 2px;
   outline: none;
   cursor: pointer;
@@ -58,39 +186,34 @@ input[type='range']::-webkit-slider-thumb {
   appearance: none;
   width: 20px;
   height: 20px;
-  background: var(--brand-black);
+  background: var(--c-control);
   border-radius: 50%;
   cursor: pointer;
-  border: 2px solid var(--brand-white);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  border: 2px solid var(--c-control-ring);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
   transition: background 0.15s;
 }
 
 input[type='range']::-webkit-slider-thumb:hover {
-  background: var(--brand-surface);
+  background: var(--c-control-hover);
 }
 
 input[type='range']::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  background: var(--brand-black);
+  background: var(--c-control);
   border-radius: 50%;
   cursor: pointer;
-  border: 2px solid var(--brand-white);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  border: 2px solid var(--c-control-ring);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
 }
 
 /* Prose table styles (used in ReactMarkdown chat output) */
 .prose table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
-.prose th, .prose td { border: 1px solid #e4e4e7; padding: 8px 12px; text-align: left; }
-.prose th { background: #f4f4f5; font-weight: 500; color: #18181b; }
-.prose td { color: #3f3f46; }
+.prose th, .prose td { border: 1px solid var(--c-border); padding: 8px 12px; text-align: left; }
+.prose th { background: var(--c-surface); font-weight: 500; color: var(--c-text); }
+.prose td { color: var(--c-muted); }
 
 /* Toggle switch */
-.toggle-track {
-  transition: background-color 0.2s ease;
-}
-
-.toggle-thumb {
-  transition: transform 0.2s ease;
-}
+.toggle-track { transition: background-color 0.2s ease; }
+.toggle-thumb { transition: transform 0.2s ease; }

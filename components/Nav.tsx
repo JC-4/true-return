@@ -27,7 +27,7 @@ function NavLink({ href, label, pathname, onClick }: { href: string; label: stri
       href={href}
       onClick={onClick}
       className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-        active ? 'text-white bg-[#2E2D2A]' : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+        active ? 'text-brand-on-inverse bg-brand-inverse-raise' : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
       }`}
     >
       {label}
@@ -59,11 +59,11 @@ export default function Nav() {
   const calcActive = pathname.startsWith('/calculators')
 
   return (
-    <nav className="bg-[#1C1B18] border-b border-[#2E2D2A] sticky top-0 z-50">
+    <nav className="theme-os bg-brand-inverse border-b border-brand-inverse-line sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="text-white font-semibold text-lg tracking-tight">
-            TrueReturn
+          <Link href="/" className="text-brand-on-inverse font-semibold text-lg tracking-tight">
+            Offplan Source
           </Link>
 
           {/* Desktop links */}
@@ -80,8 +80,8 @@ export default function Nav() {
                     onClick={() => setDropdownOpen(v => !v)}
                     className={`flex items-center gap-1 px-4 py-2 rounded text-sm font-medium transition-colors ${
                       calcActive
-                        ? 'text-white bg-[#2E2D2A]'
-                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+                        ? 'text-brand-on-inverse bg-brand-inverse-raise'
+                        : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
                     }`}
                   >
                     Calculators
@@ -93,7 +93,7 @@ export default function Nav() {
                     </svg>
                   </button>
                   {dropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-52 bg-[#1C1B18] rounded-lg shadow-lg border border-[#2E2D2A] py-1 z-50">
+                    <div className="absolute top-full left-0 mt-1 w-52 bg-brand-inverse rounded-lg shadow-lg border border-brand-inverse-line py-1 z-50">
                       {calculatorLinks.map(({ href, label }) => (
                         <Link
                           key={href}
@@ -101,8 +101,8 @@ export default function Nav() {
                           onClick={() => setDropdownOpen(false)}
                           className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
                             pathname === href
-                              ? 'text-white bg-[#2E2D2A]'
-                              : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+                              ? 'text-brand-on-inverse bg-brand-inverse-raise'
+                              : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
                           }`}
                         >
                           {label}
@@ -118,7 +118,7 @@ export default function Nav() {
 
                 <button
                   onClick={() => signOut({ callbackUrl: '/', redirect: true })}
-                  className="ml-2 px-3 py-2 rounded text-sm font-medium text-[#9B9589] hover:text-white hover:bg-[#2E2D2A] transition-colors"
+                  className="ml-2 px-3 py-2 rounded text-sm font-medium text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise transition-colors"
                 >
                   Sign out
                 </button>
@@ -128,7 +128,7 @@ export default function Nav() {
             {!isAdmin && (
               <Link
                 href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
-                className="ml-2 px-3 py-2 text-sm text-[#9B9589] hover:text-white transition-colors"
+                className="ml-2 px-3 py-2 text-sm text-brand-on-inverse-muted hover:text-brand-on-inverse transition-colors"
               >
                 Sign in
               </Link>
@@ -137,7 +137,7 @@ export default function Nav() {
 
           {/* Mobile hamburger */}
           <button
-            className="sm:hidden text-[#9B9589] hover:text-white p-2"
+            className="sm:hidden text-brand-on-inverse-muted hover:text-brand-on-inverse p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -153,7 +153,7 @@ export default function Nav() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="sm:hidden border-t border-[#2E2D2A] py-2 space-y-0.5">
+          <div className="sm:hidden border-t border-brand-inverse-line py-2 space-y-0.5">
             {publicLinks.map(({ href, label }) => (
               <Link
                 key={href}
@@ -161,8 +161,8 @@ export default function Nav() {
                 onClick={() => setMobileOpen(false)}
                 className={`block px-4 py-2 text-sm font-medium rounded ${
                   pathname.startsWith(href)
-                    ? 'text-white bg-[#2E2D2A]'
-                    : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+                    ? 'text-brand-on-inverse bg-brand-inverse-raise'
+                    : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
                 }`}
               >
                 {label}
@@ -170,8 +170,8 @@ export default function Nav() {
             ))}
 
             {isAdmin && (
-              <div className="border-t border-[#2E2D2A] pt-2 mt-1 space-y-0.5">
-                <p className="px-4 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-[#9B9589]">
+              <div className="border-t border-brand-inverse-line pt-2 mt-1 space-y-0.5">
+                <p className="px-4 pb-1 text-xs font-medium text-brand-on-inverse-hint">
                   Calculators
                 </p>
                 {calculatorLinks.map(({ href, label }) => (
@@ -181,8 +181,8 @@ export default function Nav() {
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-2 text-sm font-medium rounded ${
                       pathname === href
-                        ? 'text-white bg-[#2E2D2A]'
-                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+                        ? 'text-brand-on-inverse bg-brand-inverse-raise'
+                        : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
                     }`}
                   >
                     {label}
@@ -195,8 +195,8 @@ export default function Nav() {
                     onClick={() => setMobileOpen(false)}
                     className={`block px-4 py-2 text-sm font-medium rounded ${
                       pathname.startsWith(href)
-                        ? 'text-white bg-[#2E2D2A]'
-                        : 'text-[#9B9589] hover:text-white hover:bg-[#2E2D2A]'
+                        ? 'text-brand-on-inverse bg-brand-inverse-raise'
+                        : 'text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise'
                     }`}
                   >
                     {label}
@@ -204,7 +204,7 @@ export default function Nav() {
                 ))}
                 <button
                   onClick={() => { setMobileOpen(false); signOut({ callbackUrl: '/', redirect: true }) }}
-                  className="w-full text-left px-4 py-2 text-sm font-medium text-[#9B9589] hover:text-white hover:bg-[#2E2D2A] rounded"
+                  className="w-full text-left px-4 py-2 text-sm font-medium text-brand-on-inverse-muted hover:text-brand-on-inverse hover:bg-brand-inverse-raise rounded"
                 >
                   Sign out
                 </button>
@@ -212,11 +212,11 @@ export default function Nav() {
             )}
 
             {!isAdmin && (
-              <div className="border-t border-[#2E2D2A] mt-1 pt-2">
+              <div className="border-t border-brand-inverse-line mt-1 pt-2">
                 <Link
                   href={`/login?callbackUrl=${encodeURIComponent(pathname)}`}
                   onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-2 text-sm text-[#9B9589] hover:text-white rounded"
+                  className="block px-4 py-2 text-sm text-brand-on-inverse-muted hover:text-brand-on-inverse rounded"
                 >
                   Sign in
                 </Link>

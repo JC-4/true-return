@@ -7,7 +7,7 @@ import type { Metadata } from 'next'
 
 type StoredDeal = { id: string; name: string; params: Record<string, unknown> }
 
-export const metadata: Metadata = { title: 'Edit Deal — TrueReturn' }
+export const metadata: Metadata = { title: 'Edit Deal — Offplan Source' }
 
 export default async function EditDealPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)

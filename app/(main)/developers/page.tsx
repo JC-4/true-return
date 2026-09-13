@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import type { DeveloperWithCount } from '@/lib/types'
 
 export const metadata: Metadata = {
-  title: 'Developers — TrueReturn',
+  title: 'Developers — Offplan Source',
   description: 'UAE property developers: track record, portfolio and current projects.',
 }
 
@@ -32,11 +32,10 @@ export default async function DevelopersPage() {
   const developers = await getDevelopers()
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="theme-os min-h-screen bg-brand-bg">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
 
         <div className="mb-10">
-          <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-2">Developers</p>
           <h1 className="text-2xl font-semibold text-brand-text">Developer analysis</h1>
           <p className="text-sm text-brand-muted mt-1 leading-relaxed">
             Track record, portfolio and current projects.
@@ -53,14 +52,14 @@ export default async function DevelopersPage() {
               <Link
                 key={dev.id}
                 href={`/developers/${dev.slug}`}
-                className="group bg-white border border-brand-border rounded-xl p-6 hover:shadow-md transition-shadow"
+                className="group bg-brand-raise border border-brand-border rounded-xl p-6 hover:border-brand-text transition-colors"
               >
                 <div className="flex items-start gap-4 mb-4">
                   {/* Same rule as the developer page header: white behind a real
                       logo, tint behind the initial fallback. */}
                   <div
                     className={`rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                      dev.logo_url ? 'w-24 h-12 bg-white' : 'w-12 h-12 bg-brand-surface'
+                      dev.logo_url ? "w-24 h-12 bg-brand-raise" : "w-12 h-12 bg-brand-surface"
                     }`}
                   >
                     {dev.logo_url ? (
@@ -70,7 +69,7 @@ export default async function DevelopersPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-sm font-semibold text-brand-text group-hover:text-brand-bronze transition-colors truncate">
+                    <h2 className="text-sm font-semibold text-brand-text group-hover:text-brand-text transition-colors truncate">
                       {dev.name}
                     </h2>
                   </div>

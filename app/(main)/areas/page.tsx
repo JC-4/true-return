@@ -15,7 +15,7 @@ export default function AreasPage() {
         <div className="mb-12">
           <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-3">Area guides</p>
           {/* PLACEHOLDER: Update section heading */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Dubai neighbourhood guides</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">UAE neighbourhood guides</h1>
           {/* PLACEHOLDER: Update intro copy */}
           <p className="text-gray-600 text-base max-w-xl">
             Submarket-level analysis for investors: yield expectations, stock quality, rental demand drivers, and what to avoid.

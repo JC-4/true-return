@@ -22,7 +22,7 @@ export default async function ShortlistLayout({ children, params }: {
         <header className="bg-[#1C1B18] border-b border-[#2E2D2A]">
           <div className="max-w-6xl mx-auto px-5 sm:px-10">
             <div className="flex items-center h-11 sm:h-12">
-              <span className="text-white font-semibold text-sm sm:text-base tracking-tight">TrueReturn</span>
+              <span className="text-white font-semibold text-sm sm:text-base tracking-tight">Offplan Source</span>
             </div>
           </div>
         </header>

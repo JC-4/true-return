@@ -110,7 +110,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!dev) return {}
   const summary = dev.description ?? dev.section_1_body
   return {
-    title: `${dev.name} — TrueReturn`,
+    title: `${dev.name} — Offplan Source`,
     description: summary?.slice(0, 160) ?? undefined,
   }
 }
@@ -127,7 +127,7 @@ export default async function DeveloperPage({ params }: Props) {
   const overflowNames = dev.delivered.slice(DELIVERED_CARD_LIMIT).map(d => d.name)
 
   return (
-    <div className="min-h-screen bg-brand-bg">
+    <div className="theme-os min-h-screen bg-brand-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
 
         <Link
@@ -142,7 +142,7 @@ export default async function DeveloperPage({ params }: Props) {
 
         {/* 1. Header — identity left, at a glance right. Single column on
                mobile with the left column first, by DOM order. */}
-        <div className="bg-white border border-brand-border rounded-xl p-6 sm:p-8 mb-10">
+        <div className="bg-brand-raise border border-brand-border rounded-xl p-6 sm:p-8 mb-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
             <div className="min-w-0">
@@ -153,7 +153,7 @@ export default async function DeveloperPage({ params }: Props) {
                     letter reads as an empty bar. */}
                 <div
                   className={`rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden ${
-                    dev.logo_url ? 'w-[130px] h-16 bg-white' : 'w-20 h-20 bg-brand-surface'
+                    dev.logo_url ? 'w-[130px] h-16 bg-brand-raise' : 'w-20 h-20 bg-brand-surface'
                   }`}
                 >
                   {dev.logo_url ? (
@@ -165,7 +165,7 @@ export default async function DeveloperPage({ params }: Props) {
                 <AdminEditLink resource="developers" slug={dev.slug} label="Edit developer" />
               </div>
 
-              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-1">Developer analysis</p>
+              <p className="text-xs font-medium text-brand-muted mb-1">Developer analysis</p>
               <h1 className="text-xl font-semibold text-brand-text">{dev.name}</h1>
               {reviewed && (
                 <p className="text-xs text-brand-hint mt-2">
@@ -179,7 +179,7 @@ export default async function DeveloperPage({ params }: Props) {
 
             {glance.length > 0 && (
               <div className="bg-brand-surface border border-brand-border rounded-xl p-5 sm:p-6">
-                <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-3">At a glance</p>
+                <p className="text-xs font-medium text-brand-muted mb-3">At a glance</p>
                 <table className="w-full text-sm">
                   <tbody>
                     {glance.map((row, i) => (
@@ -206,7 +206,7 @@ export default async function DeveloperPage({ params }: Props) {
 
         {/* 3. Under construction — read live from projects */}
         <section className="mb-12">
-          <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-5">Under construction</p>
+          <p className="text-xs font-medium text-brand-muted mb-5">Under construction</p>
           {dev.projects.length === 0 ? (
             <p className="text-sm text-brand-hint py-8">No projects listed yet.</p>
           ) : (
@@ -221,12 +221,12 @@ export default async function DeveloperPage({ params }: Props) {
         {/* 4. Delivered — not links, these buildings have no project page */}
         {dev.delivered.length > 0 && (
           <section className="mb-12">
-            <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-5">Delivered</p>
+            <p className="text-xs font-medium text-brand-muted mb-5">Delivered</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {deliveredCards.map(d => (
                 <div
                   key={d.id}
-                  className="bg-white border border-brand-border rounded-xl overflow-hidden"
+                  className="bg-brand-raise border border-brand-border rounded-xl overflow-hidden"
                 >
                   <div className="relative aspect-[4/3] bg-brand-surface overflow-hidden">
                     {d.image_url ? (
@@ -265,7 +265,7 @@ export default async function DeveloperPage({ params }: Props) {
         {dev.section_1_body && (
           <section className="mb-12">
             {dev.section_1_heading && (
-              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">
+              <p className="text-xs font-medium text-brand-muted mb-4">
                 {dev.section_1_heading}
               </p>
             )}
@@ -277,7 +277,7 @@ export default async function DeveloperPage({ params }: Props) {
                 <img
                   src={dev.section_1_image_url}
                   alt={imageAlt(dev.name, dev.section_1_heading)}
-                  className="w-full rounded-xl border border-brand-border bg-white"
+                  className="w-full rounded-xl border border-brand-border bg-brand-raise"
                 />
               </div>
             ) : (
@@ -294,7 +294,7 @@ export default async function DeveloperPage({ params }: Props) {
         {dev.section_2_body && (
           <section className="mb-12">
             {dev.section_2_heading && (
-              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-4">
+              <p className="text-xs font-medium text-brand-muted mb-4">
                 {dev.section_2_heading}
               </p>
             )}
@@ -303,7 +303,7 @@ export default async function DeveloperPage({ params }: Props) {
                 <img
                   src={dev.section_2_image_url}
                   alt={imageAlt(dev.name, dev.section_2_heading)}
-                  className="w-full rounded-xl border border-brand-border bg-white"
+                  className="w-full rounded-xl border border-brand-border bg-brand-raise"
                 />
                 <figcaption className="text-sm text-brand-muted leading-relaxed whitespace-pre-line">
                   {dev.section_2_body}
@@ -319,10 +319,10 @@ export default async function DeveloperPage({ params }: Props) {
 
         {/* 7. Lead gen — always rendered. LeadGenForm is a client component
                taking public strings only, so it doesn't affect static rendering. */}
-        <section id="lead-gen-form" className="bg-white border border-brand-border rounded-xl">
+        <section id="lead-gen-form" className="bg-brand-raise border border-brand-border rounded-xl">
           <div className="px-6 sm:px-10 py-16 sm:py-20">
             <div style={{ maxWidth: 600, margin: '0 auto' }}>
-              <p className="text-[10px] uppercase tracking-widest text-brand-hint mb-3 text-center">
+              <p className="text-xs font-medium text-brand-muted mb-3 text-center">
                 Independent advice
               </p>
               <h2 className="text-2xl font-semibold text-brand-text mb-2 text-center">

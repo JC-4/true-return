@@ -17,8 +17,6 @@ interface Props {
   source?: string
 }
 
-const BRONZE = '#A0784A'
-
 /**
  * Captures the lead, then hands off to /thank-you.
  *
@@ -129,10 +127,10 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
       {/* Still two steps; the second one is on the next page. */}
       <div className="flex items-center gap-2">
         <div style={{ display: 'flex', gap: 4 }}>
-          <div style={{ ...pillBase, backgroundColor: BRONZE }} />
-          <div style={{ ...pillBase, backgroundColor: 'var(--brand-border)' }} />
+          <div style={{ ...pillBase, backgroundColor: 'var(--c-accent)' }} />
+          <div style={{ ...pillBase, backgroundColor: 'var(--c-border)' }} />
         </div>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-brand-muted">
+        <span className="text-xs font-medium text-brand-muted">
           Step 1 of 2
         </span>
       </div>
@@ -144,7 +142,7 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
 
       <div>
         <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Name <span className="text-red-400">*</span>
+          Name <span className="text-brand-neg">*</span>
         </label>
         <input
           type="text"
@@ -153,12 +151,12 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           placeholder="Your full name"
           className={inputCls(!!errors.name)}
         />
-        {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+        {errors.name && <p className="mt-1 text-xs text-brand-neg">{errors.name}</p>}
       </div>
 
       <div>
         <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Email <span className="text-red-400">*</span>
+          Email <span className="text-brand-neg">*</span>
         </label>
         <input
           type="email"
@@ -167,12 +165,12 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           placeholder="you@example.com"
           className={inputCls(!!errors.email)}
         />
-        {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+        {errors.email && <p className="mt-1 text-xs text-brand-neg">{errors.email}</p>}
       </div>
 
       <div>
         <label className="block text-xs font-medium text-brand-muted mb-1.5">
-          Phone / WhatsApp <span className="text-red-400">*</span>
+          Phone / WhatsApp <span className="text-brand-neg">*</span>
         </label>
         <input
           type="text"
@@ -187,14 +185,14 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
           placeholder="+971 50 000 0000"
           className={inputCls(!!errors.phone)}
         />
-        {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+        {errors.phone && <p className="mt-1 text-xs text-brand-neg">{errors.phone}</p>}
       </div>
 
       <div className="flex items-center gap-4">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
+          className="flex-1 min-h-[48px] btn-primary text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
         >
           {loading ? 'Please wait…' : 'Continue →'}
         </button>
@@ -202,9 +200,9 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
       </div>
 
       {sendError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-700">{sendError}</p>
-          <p className="text-xs text-red-600 mt-1">
+        <div className="rounded-lg border border-brand-neg bg-brand-neg-soft p-4">
+          <p className="text-sm font-semibold text-brand-neg">{sendError}</p>
+          <p className="text-xs text-brand-neg mt-1">
             Your details are still filled in — press the button again, or use the WhatsApp link beside it.
           </p>
         </div>

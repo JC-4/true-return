@@ -5,7 +5,7 @@ import ThankYouClient from './ThankYouClient'
  *  sense immediately after submitting the form, and an indexed thank-you page
  *  is a classic source of phantom conversions. */
 export const metadata: Metadata = {
-  title: 'Thank you — TrueReturn',
+  title: 'Thank you — Offplan Source',
   robots: { index: false, follow: false },
 }
 

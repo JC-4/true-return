@@ -399,7 +399,7 @@ export default function ReturnAnalysisPanel({
     return `${b} Bed`
   }
 
-  const SPILL_ON  = 'px-3.5 py-1.5 rounded-full text-[11px] font-medium transition-colors border flex flex-col items-center leading-none border-brand-bronze text-white'
+  const SPILL_ON  = 'px-3.5 py-1.5 rounded-full text-[11px] font-medium transition-colors border flex flex-col items-center leading-none border-brand-accent text-brand-on-accent'
   const SPILL_OFF = 'px-3.5 py-1.5 rounded-full text-[11px] font-medium transition-colors border flex flex-col items-center leading-none bg-brand-surface border-brand-border text-brand-muted hover:text-brand-text'
 
   // Lowest price per bedroom group, for display in each group pill
@@ -425,13 +425,13 @@ export default function ReturnAnalysisPanel({
   const secondaryNavSections = [
     { id: 'inputs',        label: 'Inputs' },
     { id: 'scenarios',     label: 'Scenarios',     locked: !showFullAnalysis },
-    { id: 'financing',     label: 'Financing',     locked: !showFullAnalysis, color: '#C9A96E' },
+    { id: 'financing',     label: 'Financing',     locked: !showFullAnalysis, color: 'var(--c-accent-mid)' },
     { id: 'exit-analysis', label: 'Exit analysis', locked: !showFullAnalysis },
   ]
 
   // ── Shared Return Analysis content blocks ───────────────────────────────────
   const financingHeader = (
-    <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-5">Financing</p>
+    <p className="text-sm font-medium text-brand-muted mb-5">Financing</p>
   )
 
   const paymentPlanSubSection = yearGroups.length > 0 ? (
@@ -439,7 +439,7 @@ export default function ReturnAnalysisPanel({
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-medium text-brand-muted">Payment plan</p>
         <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${
-          project.payment_plan_confirmed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          project.payment_plan_confirmed ? 'bg-brand-pos-soft text-brand-pos' : 'bg-brand-warn-soft text-brand-warn'
         }`}>
           {project.payment_plan_confirmed ? 'Confirmed' : 'Indicative'}
         </span>
@@ -455,20 +455,20 @@ export default function ReturnAnalysisPanel({
                 <div className="flex items-center rounded-full border border-brand-border overflow-hidden" style={{ fontSize: 10, alignSelf: 'flex-start' }}>
                   <button
                     onClick={() => setFinancing('cash')}
-                    className={`px-2.5 py-0.5 font-medium transition-colors ${financing === 'cash' ? 'text-white' : 'text-brand-muted'}`}
-                    style={financing === 'cash' ? { backgroundColor: '#1C1B18' } : {}}
+                    className={`px-2.5 py-0.5 font-medium transition-colors ${financing === 'cash' ? 'text-brand-on-accent' : 'text-brand-muted'}`}
+                    style={financing === 'cash' ? { backgroundColor: 'var(--c-inverse)' } : {}}
                   >Cash</button>
                   <button
                     onClick={() => setFinancing('mortgage')}
-                    className={`px-2.5 py-0.5 font-medium border-l border-brand-border transition-colors ${financing === 'mortgage' ? 'text-white' : 'text-brand-muted'}`}
-                    style={financing === 'mortgage' ? { backgroundColor: '#1C1B18' } : {}}
+                    className={`px-2.5 py-0.5 font-medium border-l border-brand-border transition-colors ${financing === 'mortgage' ? 'text-brand-on-accent' : 'text-brand-muted'}`}
+                    style={financing === 'mortgage' ? { backgroundColor: 'var(--c-inverse)' } : {}}
                   >Mortgage</button>
                 </div>
               )}
             </div>
             <div className="text-right">
               <span className={`text-sm font-semibold ${g.isHandover ? '' : 'text-brand-text'}`}
-                style={g.isHandover ? { color: '#A0784A' } : {}}>
+                style={g.isHandover ? { color: 'var(--c-accent)' } : {}}>
                 {g.pct}%
               </span>
               {basePrice > 0 && (
@@ -495,7 +495,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={20} max={80} step={5} value={ltvPct}
             onChange={e => setLtvPct(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">20%</span>
             <span className="text-xs text-brand-hint">80%</span>
@@ -512,7 +512,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={2} max={10} step={0.25} value={mortgageRate}
             onChange={e => setMortgageRate(parseFloat(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">2%</span>
             <span className="text-xs text-brand-hint">10%</span>
@@ -520,22 +520,22 @@ export default function ReturnAnalysisPanel({
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: 'var(--c-surface)' }}>
             <p className="text-[10px] text-brand-hint mb-1">Loan amount</p>
             <p className="text-sm font-semibold text-brand-text">{fmtA(loanAmount)}</p>
           </div>
-          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: 'var(--c-surface)' }}>
             <p className="text-[10px] text-brand-hint mb-1">Monthly payment</p>
             <p className="text-sm font-semibold text-brand-text">{fmtA(monthlyPayment)}</p>
           </div>
-          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: 'var(--c-surface)' }}>
             <p className="text-[10px] text-brand-hint mb-1">Annual mortgage cost</p>
             <p className="text-sm font-semibold text-brand-text">{fmtA(annualMortgageCost)}</p>
           </div>
         </div>
 
         {basePrice > 0 && (
-          <div className="rounded-lg p-3.5" style={{ backgroundColor: '#F4F3F0' }}>
+          <div className="rounded-lg p-3.5" style={{ backgroundColor: 'var(--c-surface)' }}>
             <p className="text-xs font-medium text-brand-muted mb-3">Net monthly cash flow (post-handover)</p>
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs">
@@ -552,7 +552,7 @@ export default function ReturnAnalysisPanel({
               </div>
               <div className="border-t border-brand-border pt-1.5 flex justify-between text-xs font-semibold">
                 <span className="text-brand-text">Net monthly</span>
-                <span style={{ color: netMonthly >= 0 ? '#059669' : '#EF4444' }}>
+                <span style={{ color: netMonthly >= 0 ? 'var(--c-pos)' : 'var(--c-neg)' }}>
                   {netMonthly >= 0 ? '+' : ''}{fmtA(Math.abs(netMonthly))}
                 </span>
               </div>
@@ -569,61 +569,61 @@ export default function ReturnAnalysisPanel({
 
   const breakEvenSection = (
     <div className="border-t border-brand-border pt-5">
-      <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--color-text-primary)' }}>Key return metrics</p>
-      <p className="text-[11px] mb-4" style={{ color: 'var(--color-text-secondary)' }}>Based on current assumptions and total cash invested to handover</p>
+      <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--c-text)' }}>Key return metrics</p>
+      <p className="text-[11px] mb-4" style={{ color: 'var(--c-muted)' }}>Based on current assumptions and total cash invested to handover</p>
       <div className="flex gap-3 overflow-x-auto pb-1">
 
         {/* Gross yield */}
-        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--c-surface)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Gross yield</p>
+            <p style={{ fontSize: 11, color: 'var(--c-muted)' }}>Gross yield</p>
             <Tooltip text="Rent at handover as a percentage of purchase price." />
           </div>
-          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--c-text)' }}>
             {grossYield !== null ? `${grossYield.toFixed(1)}%` : '—'}
           </p>
         </div>
 
         {/* Net yield */}
-        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[120px]" style={{ backgroundColor: 'var(--c-surface)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Net yield</p>
+            <p style={{ fontSize: 11, color: 'var(--c-muted)' }}>Net yield</p>
             <Tooltip text="Rent at handover minus service charge, as a percentage of purchase price." />
           </div>
-          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--c-text)' }}>
             {netYield !== null ? `${netYield.toFixed(1)}%` : '—'}
           </p>
         </div>
 
         {/* Cash-on-cash return */}
-        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--c-surface)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Cash-on-cash return</p>
+            <p style={{ fontSize: 11, color: 'var(--c-muted)' }}>Cash-on-cash return</p>
             <Tooltip text="Net annual income as a percentage of cash invested before handover." />
           </div>
-          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--c-text)' }}>
             {cashOnCash !== null ? `${cashOnCash.toFixed(1)}%` : '—'}
           </p>
         </div>
 
         {/* Annual cash flow */}
-        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--c-surface)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Annual cash flow</p>
+            <p style={{ fontSize: 11, color: 'var(--c-muted)' }}>Annual cash flow</p>
             <Tooltip text={mortgageOn ? 'Rent at handover, less service charge and annual mortgage cost.' : 'Rent at handover, less service charge.'} />
           </div>
-          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--c-text)' }}>
             {(() => { const v = Math.round(netIncome - (mortgageOn ? annualMortgageCost : 0)); return `AED ${v.toLocaleString()}` })()}
           </p>
         </div>
 
         {/* Min. rent at handover */}
-        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--color-background-secondary)', padding: '8px 12px' }}>
+        <div className="rounded-lg flex-shrink-0 flex-1 min-w-[140px]" style={{ backgroundColor: 'var(--c-surface)', padding: '8px 12px' }}>
           <div className="flex items-center gap-1 mb-1">
-            <p style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Min. rent at handover</p>
+            <p style={{ fontSize: 11, color: 'var(--c-muted)' }}>Min. rent at handover</p>
             <Tooltip text="Minimum rent at handover needed to cover service charge (and mortgage if applicable)." />
           </div>
-          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--color-text-primary)' }}>
+          <p className="font-semibold" style={{ fontSize: 15, color: 'var(--c-text)' }}>
             {minRent > 0 ? `AED ${Math.round(minRent).toLocaleString()}` : '—'}
           </p>
         </div>
@@ -636,32 +636,32 @@ export default function ReturnAnalysisPanel({
     <>
       {basePrice > 0 && handoverValue > 0 && (
         <div>
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Gain on paper at handover</p>
+          <p className="text-sm font-medium text-brand-muted mb-3">Gain on paper at handover</p>
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-xl border border-brand-border p-5">
+            <div className="bg-brand-raise rounded-xl border border-brand-border p-5">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-xs text-brand-muted">Gain on paper</span>
                 <Tooltip text="Estimated value at handover minus your purchase price. Not realised until you sell." />
               </div>
-              <p className={`text-lg font-bold ${gainOnPaper >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${gainOnPaper >= 0 ? 'text-brand-pos' : 'text-brand-neg'}`}>
                 {gainOnPaper >= 0 ? '+' : ''}{fmtA(gainOnPaper)}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-brand-border p-5">
+            <div className="bg-brand-raise rounded-xl border border-brand-border p-5">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-xs text-brand-muted">Return on equity</span>
                 <Tooltip text="Gain as a % of cash paid before handover." />
               </div>
-              <p className={`text-lg font-bold ${(returnOnEquity ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${(returnOnEquity ?? 0) >= 0 ? 'text-brand-pos' : 'text-brand-neg'}`}>
                 {returnOnEquity !== null ? `${returnOnEquity >= 0 ? '+' : ''}${fmtP(returnOnEquity)}` : '—'}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-brand-border p-5">
+            <div className="bg-brand-raise rounded-xl border border-brand-border p-5">
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="text-xs text-brand-muted">IRR to handover</span>
                 <Tooltip text="Annualised return from purchase to handover, accounting for the staggered payment plan." />
               </div>
-              <p className={`text-lg font-bold ${(handoverIRR ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${(handoverIRR ?? 0) >= 0 ? 'text-brand-pos' : 'text-brand-neg'}`}>
                 {handoverIRR !== null ? `${handoverIRR >= 0 ? '+' : ''}${fmtP(handoverIRR)}` : '—'}
               </p>
             </div>
@@ -670,7 +670,7 @@ export default function ReturnAnalysisPanel({
       )}
 
       <div>
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Exit scenarios</p>
+        <p className="text-sm font-medium text-brand-muted mb-3">Exit scenarios</p>
         <div
           ref={exitScrollRef}
           style={{
@@ -687,14 +687,14 @@ export default function ReturnAnalysisPanel({
             return (
               <div
                 key={s.holdYrs}
-                className={`rounded-xl border p-5 transition-all ${isActive ? '' : 'bg-white border-brand-border'}`}
-                style={isActive ? { borderColor: '#A0784A', backgroundColor: '#FDFCF9', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}
+                className={`rounded-xl border p-5 transition-all ${isActive ? '' : 'bg-brand-raise border-brand-border'}`}
+                style={isActive ? { borderColor: 'var(--c-accent)', backgroundColor: 'var(--c-raise)', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}
               >
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-brand-text">{s.label}</p>
                   {isActive && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: '#A0784A' }}>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-brand-on-accent"
+                      style={{ backgroundColor: 'var(--c-accent)' }}>
                       Selected
                     </span>
                   )}
@@ -706,13 +706,13 @@ export default function ReturnAnalysisPanel({
                   </div>
                   <div>
                     <p className="text-[10px] text-brand-hint mb-0.5">Total return</p>
-                    <p className={`text-sm font-semibold ${s.totalReturn >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <p className={`text-sm font-semibold ${s.totalReturn >= 0 ? 'text-brand-pos' : 'text-brand-neg'}`}>
                       {s.totalReturn >= 0 ? '+' : ''}{fmtA(s.totalReturn)}
                     </p>
                   </div>
                   <div>
                     <p className="text-[10px] text-brand-hint mb-0.5">IRR</p>
-                    <p className={`text-sm font-bold ${(s.irr ?? 0) >= 8 ? 'text-emerald-600' : (s.irr ?? 0) >= 0 ? 'text-brand-text' : 'text-red-500'}`}>
+                    <p className={`text-sm font-bold ${(s.irr ?? 0) >= 8 ? 'text-brand-pos' : (s.irr ?? 0) >= 0 ? 'text-brand-text' : 'text-brand-neg'}`}>
                       {s.irr !== null ? fmtP(s.irr) : '—'}
                     </p>
                   </div>
@@ -726,9 +726,9 @@ export default function ReturnAnalysisPanel({
   )
 
   const lockCTA = (
-    <div className="rounded-2xl border border-brand-border bg-white p-8 flex flex-col items-center text-center gap-5">
+    <div className="rounded-2xl border border-brand-border bg-brand-raise p-8 flex flex-col items-center text-center gap-5">
       <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: '#F4F3F0' }}>
+        style={{ backgroundColor: 'var(--c-surface)' }}>
         <svg className="w-6 h-6 text-brand-hint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -742,8 +742,8 @@ export default function ReturnAnalysisPanel({
       </div>
       <Link
         href="/contact"
-        className="inline-flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-lg transition-colors"
-        style={{ backgroundColor: '#A0784A' }}
+        className="inline-flex items-center gap-2 text-sm font-medium text-brand-on-accent px-5 py-2.5 rounded-lg transition-colors"
+        style={{ backgroundColor: 'var(--c-accent)' }}
       >
         Enquire for access →
       </Link>
@@ -757,7 +757,7 @@ export default function ReturnAnalysisPanel({
 
       {/* ── 1. Unit selection ─────────────────────────────────────────────── */}
       <div id="unit-selection">
-        <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Select unit</p>
+        <p className="text-sm font-medium text-brand-muted mb-3">Select unit</p>
         <div className="flex flex-wrap gap-2 mb-2">
           {bedroomGroups.map(b => {
             const active = selectedBedrooms === b
@@ -768,20 +768,20 @@ export default function ReturnAnalysisPanel({
                 key={String(b)}
                 onClick={() => setSelectedBedrooms(b)}
                 style={active
-                  ? { borderRadius: 'var(--border-radius-lg)', border: '1.5px solid #1a1a1a', padding: '12px 16px', background: 'var(--color-background-secondary)', transition: 'border-color 0.15s, background 0.15s' }
-                  : { borderRadius: 'var(--border-radius-lg)', border: '0.5px solid #E5E3DE', padding: '12px 16px', background: 'white', transition: 'border-color 0.15s, background 0.15s' }}
+                  ? { borderRadius: 'var(--border-radius-lg)', border: '1.5px solid var(--c-text)', padding: '12px 16px', background: 'var(--c-surface)', transition: 'border-color 0.15s, background 0.15s' }
+                  : { borderRadius: 'var(--border-radius-lg)', border: '0.5px solid var(--c-border)', padding: '12px 16px', background: 'var(--c-raise)', transition: 'border-color 0.15s, background 0.15s' }}
                 className="flex flex-col items-start text-left"
               >
-                <span style={{ fontSize: 13, fontWeight: 500, color: active ? '#1a1a1a' : '#3D3D3D', lineHeight: 1.2 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: active ? 'var(--c-text)' : 'var(--c-muted)', lineHeight: 1.2 }}>
                   {bedroomLabel(b)}
                 </span>
                 {price != null && (
-                  <span style={{ fontSize: 13, color: '#8B6914', marginTop: 3, lineHeight: 1.2 }}>
+                  <span style={{ fontSize: 13, color: 'var(--c-warn)', marginTop: 3, lineHeight: 1.2 }}>
                     From AED {price.toLocaleString()}
                   </span>
                 )}
                 {sqft != null && (
-                  <span style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2, lineHeight: 1.2 }}>
+                  <span style={{ fontSize: 11, color: 'var(--c-hint)', marginTop: 2, lineHeight: 1.2 }}>
                     {sqft.toLocaleString()} sqft
                   </span>
                 )}
@@ -793,11 +793,11 @@ export default function ReturnAnalysisPanel({
           <div className="flex flex-wrap gap-1.5">
             {unitsInGroup.map(ut => {
               const active = selectedUnitId === ut.id
-              const muted = active ? 'text-white/60' : 'text-brand-hint'
+              const muted = active ? 'text-brand-paper/70' : 'text-brand-hint'
               return (
                 <button key={ut.id} onClick={() => setSelectedUnitId(ut.id)}
                   className={active ? SPILL_ON : SPILL_OFF}
-                  style={active ? { backgroundColor: '#8B6914' } : {}}>
+                  style={active ? { backgroundColor: 'var(--c-warn)' } : {}}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{ut.typology ?? ut.type}</span>
                   <span className={`font-normal mt-0.5 ${muted}`} style={{ fontSize: 12 }}>
                     From {fmtA(ut.price_from)}
@@ -815,9 +815,9 @@ export default function ReturnAnalysisPanel({
       </div>
 
       {/* ── 2. Inputs ─────────────────────────────────────────────────────── */}
-      <div id="inputs" className="bg-white rounded-xl border border-brand-border p-5 space-y-6">
+      <div id="inputs" className="bg-brand-raise rounded-xl border border-brand-border p-5 space-y-6">
         <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-brand-muted"
-          style={{ backgroundColor: '#F4F3F0' }}>
+          style={{ backgroundColor: 'var(--c-surface)' }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -836,7 +836,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={priceBounds.min} max={priceBounds.max} step={priceBounds.step} value={price}
             onChange={e => handlePriceChange(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">AED {priceBounds.min.toLocaleString()}</span>
             <span className="text-xs text-brand-hint">AED {priceBounds.max.toLocaleString()}</span>
@@ -851,7 +851,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={rentBounds.min} max={rentBounds.max} step={rentBounds.step} value={rent}
             onChange={e => setRent(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">AED {rentBounds.min.toLocaleString()}</span>
             <span className="text-xs text-brand-hint">AED {rentBounds.max.toLocaleString()}</span>
@@ -866,7 +866,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={hvBounds.min} max={hvBounds.max} step={hvBounds.step} value={handoverValue}
             onChange={e => setHandoverValue(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">AED {hvBounds.min.toLocaleString()}</span>
             <span className="text-xs text-brand-hint">AED {hvBounds.max.toLocaleString()}</span>
@@ -881,7 +881,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={0} max={15} step={0.5} value={growth}
             onChange={e => setGrowth(parseFloat(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">0%</span>
             <span className="text-xs text-brand-hint">15%</span>
@@ -898,7 +898,7 @@ export default function ReturnAnalysisPanel({
           </div>
           <input type="range" min={0} max={15} step={1} value={holdPeriod}
             onChange={e => setHoldPeriod(parseInt(e.target.value))}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: '#A0784A' }} />
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ accentColor: 'var(--c-accent)' }} />
           <div className="flex justify-between mt-1">
             <span className="text-xs text-brand-hint">0 yrs = sell at handover</span>
             <span className="text-xs text-brand-hint">15 yrs</span>
@@ -911,7 +911,7 @@ export default function ReturnAnalysisPanel({
 
         {/* ── 4. Scenarios ──────────────────────────────────────────────── */}
         <div id="scenarios">
-          <p className="text-xs uppercase tracking-widest text-brand-hint font-medium mb-3">Scenarios</p>
+          <p className="text-sm font-medium text-brand-muted mb-3">Scenarios</p>
           <div
             ref={scenarioScrollRef}
             style={{
@@ -929,13 +929,13 @@ export default function ReturnAnalysisPanel({
               { label: 'Optimistic',   metrics: optimistic,   highlighted: false },
             ] as const).map(({ label, metrics: m, highlighted }) => (
               <div key={label}
-                className={`bg-white rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
-                style={highlighted ? { borderColor: '#A0784A', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}>
+                className={`bg-brand-raise rounded-xl border p-5 ${highlighted ? '' : 'border-brand-border'}`}
+                style={highlighted ? { borderColor: 'var(--c-accent)', flex: '1 0 260px', scrollSnapAlign: 'center' } : { flex: '1 0 260px', scrollSnapAlign: 'center' }}>
                 <div className={`flex items-center justify-between mb-4 ${!showFullAnalysis ? 'blur-sm select-none' : ''}`}>
                   <p className="text-xs font-semibold text-brand-muted">{label}</p>
                   {highlighted && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: '#A0784A' }}>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-brand-on-accent"
+                      style={{ backgroundColor: 'var(--c-accent)' }}>
                       Base case
                     </span>
                   )}
@@ -990,7 +990,7 @@ export default function ReturnAnalysisPanel({
         {showFullAnalysis ? (
           <>
             {/* ── 4. Financing ─────────────────────────────────────────── */}
-            <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
+            <div id="financing" className="bg-brand-raise rounded-xl border border-brand-border p-5">
               {financingHeader}
               {paymentPlanSubSection}
               {mortgageModellingSection}
@@ -1008,7 +1008,7 @@ export default function ReturnAnalysisPanel({
             <div className="border-t border-brand-border" />
 
             {/* ── 4. Financing — payment plan (visible) ────────────────── */}
-            <div id="financing" className="bg-white rounded-xl border border-brand-border p-5">
+            <div id="financing" className="bg-brand-raise rounded-xl border border-brand-border p-5">
               {financingHeader}
               {paymentPlanSubSection}
             </div>
@@ -1021,7 +1021,7 @@ export default function ReturnAnalysisPanel({
 
             {/* ── Locked content: mortgage modelling + break-even + exit analysis ── */}
             <div className="blur-sm pointer-events-none select-none space-y-8">
-              <div className="bg-white rounded-xl border border-brand-border p-5">
+              <div className="bg-brand-raise rounded-xl border border-brand-border p-5">
                 {mortgageModellingSection}
                 {breakEvenSection}
               </div>

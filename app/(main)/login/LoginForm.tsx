@@ -39,7 +39,7 @@ function LoginFormInner() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="text-[#18181b] font-semibold text-lg tracking-tight">
-            TrueReturn
+            Offplan Source
           </Link>
           <p className="text-[#71717a] text-sm mt-2">Sign in to continue</p>
         </div>

@@ -30,7 +30,7 @@ export default function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/projects/${project.slug}`}
-      className="group block bg-white border border-brand-border rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
+      className="group block bg-brand-raise border border-brand-border rounded-xl overflow-hidden hover:border-brand-text transition-colors"
     >
       {/* Image */}
       <div className="relative aspect-video bg-brand-surface overflow-hidden">
@@ -49,7 +49,7 @@ export default function ProjectCard({ project }: { project: Project }) {
           </div>
         )}
         {project.status && (
-          <span className="absolute top-3 left-3 bg-brand-bronze text-white text-xs px-2 py-0.5 rounded-full">
+          <span className="absolute top-3 left-3 bg-brand-accent text-brand-on-accent text-xs px-2 py-0.5 rounded-full">
             {statusLabel(project.status)}
           </span>
         )}
@@ -57,17 +57,17 @@ export default function ProjectCard({ project }: { project: Project }) {
 
       {/* Body */}
       <div className="p-4">
-        <p className="text-xs text-brand-hint uppercase tracking-wide">
+        <p className="text-xs text-brand-hint">
           {project.developer?.name ?? '—'}
         </p>
-        <h3 className="text-base font-medium text-brand-text mt-0.5 group-hover:text-brand-bronze transition-colors">
+        <h3 className="text-base font-medium text-brand-text mt-0.5 group-hover:text-brand-text transition-colors">
           {project.name}
         </h3>
         <p className="text-xs text-brand-muted mt-1">
           {fmtLocation(project)}
         </p>
         <div className="flex items-end justify-between mt-3 pt-3 border-t border-brand-border">
-          <p className="text-sm font-medium text-brand-bronze">
+          <p className="text-sm font-medium text-brand-text">
             {minPrice == null ? '—' : maxPrice != null && maxPrice !== minPrice ? (
               `AED ${fmtPriceValue(minPrice)} – ${fmtPriceValue(maxPrice)}`
             ) : (

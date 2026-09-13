@@ -19,7 +19,7 @@ import type { Project, UnitType, ShortlistEntry } from '@/lib/types'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Investment shortlist — TrueReturn',
+  title: 'Investment shortlist — Offplan Source',
   robots: { index: false, follow: false },
 }
 

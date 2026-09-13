@@ -83,7 +83,7 @@ export default function LeadQualifyForm({ lead, onDone }: {
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium text-brand-muted mb-1.5">
-            Budget <span className="text-red-400">*</span>
+            Budget <span className="text-brand-neg">*</span>
           </label>
           <select
             value={budget}
@@ -93,12 +93,12 @@ export default function LeadQualifyForm({ lead, onDone }: {
             <option value="">Select a range</option>
             {BUDGET_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
-          {errors.budget && <p className="mt-1 text-xs text-red-500">{errors.budget}</p>}
+          {errors.budget && <p className="mt-1 text-xs text-brand-neg">{errors.budget}</p>}
         </div>
 
         <div>
           <label className="block text-xs font-medium text-brand-muted mb-1.5">
-            Purchase timeline <span className="text-red-400">*</span>
+            Purchase timeline <span className="text-brand-neg">*</span>
           </label>
           <select
             value={timeline}
@@ -108,7 +108,7 @@ export default function LeadQualifyForm({ lead, onDone }: {
             <option value="">Select a timeline</option>
             {TIMELINE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
-          {errors.timeline && <p className="mt-1 text-xs text-red-500">{errors.timeline}</p>}
+          {errors.timeline && <p className="mt-1 text-xs text-brand-neg">{errors.timeline}</p>}
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export default function LeadQualifyForm({ lead, onDone }: {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 min-h-[48px] bg-brand-bronze hover:bg-brand-bronze/90 text-white text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
+          className="flex-1 min-h-[48px] btn-primary text-sm font-medium px-5 rounded-lg transition-colors disabled:opacity-60"
         >
           {loading ? 'Sending…' : 'Send these details'}
         </button>
@@ -141,9 +141,9 @@ export default function LeadQualifyForm({ lead, onDone }: {
       </div>
 
       {sendError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-700">{sendError}</p>
-          <p className="text-xs text-red-600 mt-1">
+        <div className="rounded-lg border border-brand-neg bg-brand-neg-soft p-4">
+          <p className="text-sm font-semibold text-brand-neg">{sendError}</p>
+          <p className="text-xs text-brand-neg mt-1">
             Your enquiry itself did land — this only adds detail to it. Press the
             button again, or use the WhatsApp link beside it.
           </p>

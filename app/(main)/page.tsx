@@ -18,26 +18,23 @@ export default async function Home() {
   const featured = await getFeaturedProjects()
 
   return (
-    <div>
+    <div className="theme-os">
 
       {/* ── Section 1: Hero ────────────────────────────────────────────────── */}
-      <section style={{ backgroundColor: '#0E0E0C' }}>
+      <section className="bg-brand-inverse-deep">
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-28 sm:py-36">
-          <p className="text-xs uppercase tracking-widest font-medium mb-5"
-            style={{ color: 'var(--color-text-secondary)' }}>
-            Dubai off-plan property
+          <p className="text-sm font-medium mb-5 text-brand-on-inverse-hint">
+            UAE off-plan property
           </p>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold leading-tight mb-6 text-white"
-            style={{ maxWidth: 720 }}>
-            Independent analysis on Dubai&apos;s off-plan market.
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold leading-tight mb-6 text-brand-on-inverse max-w-[720px]">
+            Independent analysis on the UAE&apos;s off-plan market.
           </h1>
-          <p className="text-base sm:text-lg leading-relaxed mb-10"
-            style={{ color: 'rgba(255,255,255,0.55)', maxWidth: 560 }}>
-            Real numbers on every project. IRR, yield, financing - before you commit.
+          <p className="text-base sm:text-lg leading-relaxed mb-10 text-brand-on-inverse-muted max-w-[560px]">
+            Real numbers on every project. IRR, yield, financing — before you commit.
           </p>
           <Link
             href="/projects"
-            className="inline-flex items-center bg-brand-bronze hover:bg-brand-bronze/90 text-white font-medium px-6 py-3 rounded-lg text-sm transition-colors"
+            className="btn-on-ink inline-flex items-center font-medium px-6 py-3 rounded-lg text-sm"
           >
             Browse projects →
           </Link>
@@ -45,18 +42,18 @@ export default async function Home() {
       </section>
 
       {/* ── Section 2: How it works ────────────────────────────────────────── */}
-      <section style={{ backgroundColor: 'var(--color-background-secondary)' }}>
+      <section className="bg-brand-surface">
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-20">
-          <p className="text-xs uppercase tracking-widest font-medium mb-12"
-            style={{ color: 'var(--color-text-secondary)' }}>
+          <h2 className="text-sm font-medium mb-12 text-brand-muted">
             How it works
-          </p>
-          <div className="grid sm:grid-cols-3 gap-8">
+          </h2>
+          {/* A genuine sequence, so the steps stay numbered. */}
+          <ol className="grid sm:grid-cols-3 gap-8">
             {[
               {
                 n: '1',
                 title: 'Browse projects',
-                body: 'Explore independently analysed off-plan developments across Dubai.',
+                body: 'Explore independently analysed off-plan developments across the UAE.',
               },
               {
                 n: '2',
@@ -66,34 +63,33 @@ export default async function Home() {
               {
                 n: '3',
                 title: 'Get independent advice',
-                body: "Speak to an agent who works for you, not the developer.",
+                body: 'Speak to an agent who works for you, not the developer.',
               },
             ].map(({ n, title, body }) => (
-              <div key={n} className="border-t pt-6" style={{ borderColor: 'var(--color-border-primary)' }}>
-                <p className="text-2xl font-medium mb-3" style={{ color: 'var(--color-text-secondary)' }}>{n}</p>
-                <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>{title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{body}</p>
-              </div>
+              <li key={n} className="border-t border-brand-border pt-6">
+                <p className="text-2xl font-medium mb-3 text-brand-hint">{n}</p>
+                <h3 className="text-base font-semibold mb-2 text-brand-text">{title}</h3>
+                <p className="text-sm leading-relaxed text-brand-muted">{body}</p>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
       {/* ── Section 3: Featured projects ───────────────────────────────────── */}
       {featured.length > 0 && (
-        <section className="bg-white" style={{ borderTop: '1px solid var(--color-border-primary)' }}>
+        <section className="bg-brand-bg border-t border-brand-border">
           <div className="max-w-6xl mx-auto px-6 sm:px-10 py-20">
             <div className="flex items-end justify-between mb-8">
               <div>
-                <p className="text-xs uppercase tracking-widest font-medium mb-2"
-                  style={{ color: 'var(--color-text-secondary)' }}>
-                  Featured projects
-                </p>
-                <h2 className="text-xl font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                <h2 className="text-xl font-medium text-brand-text">
                   Latest developments
                 </h2>
+                <p className="text-sm text-brand-muted mt-1">
+                  The three most recently analysed projects.
+                </p>
               </div>
-              <Link href="/projects" className="text-sm font-medium text-brand-bronze hover:text-brand-bronze/80 transition-colors">
+              <Link href="/projects" className="text-sm font-medium text-brand-text underline underline-offset-4 decoration-brand-border hover:decoration-brand-text transition-colors">
                 View all →
               </Link>
             </div>
@@ -105,19 +101,18 @@ export default async function Home() {
       )}
 
       {/* ── Section 4: What you get ────────────────────────────────────────── */}
-      <section style={{ backgroundColor: '#0E0E0C', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <section className="bg-brand-inverse-deep border-t border-brand-inverse-line">
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-20">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 leading-snug text-white">
+            <h2 className="text-2xl sm:text-3xl font-semibold mb-4 leading-snug text-brand-on-inverse">
               The full picture, not the brochure.
             </h2>
-            <p className="text-sm leading-relaxed mb-8"
-              style={{ color: 'rgba(255,255,255,0.55)', maxWidth: 480 }}>
+            <p className="text-sm leading-relaxed mb-8 text-brand-on-inverse-muted max-w-[480px]">
               Most buyers only see what the developer shows them. Registered clients see everything.
             </p>
             <Link
               href="/contact"
-              className="inline-flex items-center bg-brand-bronze hover:bg-brand-bronze/90 text-white font-medium px-6 py-3 rounded-lg text-sm transition-colors"
+              className="btn-on-ink inline-flex items-center font-medium px-6 py-3 rounded-lg text-sm"
             >
               Get independent advice →
             </Link>

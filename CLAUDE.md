@@ -52,9 +52,10 @@ Developer logos are transparent PNGs, so whatever sits behind them shows
 through. **The tile background matches whatever surface it sits on** — there is
 no single correct colour:
 
-- Inside a white card (developer page header, `/developers` index cards, the
-  `/admin/developers` list) → `bg-white`.
-- Directly on the cream page background (the developer block under "About this
+- Inside a card (developer page header, `/developers` index cards) →
+  `bg-brand-raise`, the same token the card itself uses. On `/admin/developers`,
+  which is not themed, that is still literal `bg-white`.
+- Directly on the page background (the developer block under "About this
   project" on the project page) → **no background at all**.
 
 Write the two branches separately rather than one element with a conditional
@@ -64,6 +65,26 @@ transparent logo on black in the first place.
 The initial-letter fallback is a different thing and keeps its own tinted chip,
 square and at its own size. Only the logo branch follows the surface rule.
 Logo tiles are wide (roughly 2:1) so wide logos aren't squeezed into a square.
+
+## Colour
+
+Colours go through the semantic `--c-*` tokens in `app/globals.css`, surfaced as
+Tailwind `brand-*` utilities. There are two themes under one set of token names:
+
+- `:root` holds the **legacy** cream/bronze values, still used by `/admin`,
+  `/deals`, `/compare`, `/calculators` and `/s/[token]`.
+- `.theme-os` holds the **Offplan Source** palette, and is applied at the root of
+  each rebranded public route and on the shared nav.
+
+A shared component (`ReturnAnalysisPanel`, `ProjectCard`, `LeadGenForm`) renders
+in whichever theme its subtree sits in, so **never reintroduce a colour literal
+in a component** — it would pin that component to one theme.
+
+Only `brand-ink`, `brand-paper`, `brand-tl` and `brand-td` accept an alpha
+modifier (`bg-brand-ink/70`); they are backed by RGB triplets. Every other token
+is a `color-mix()` result, which cannot carry `<alpha-value>` — an opacity
+modifier on one fails **silently**. Use the dedicated token instead
+(`bg-brand-accent-hover`, `bg-brand-pos-soft`).
 
 ## Admin gating
 

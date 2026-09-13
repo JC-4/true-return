@@ -4,8 +4,8 @@ import ProjectsClient from './ProjectsClient'
 import type { Project } from '@/lib/types'
 
 export const metadata: Metadata = {
-  title: 'Projects — TrueReturn',
-  description: 'Browse Dubai off-plan and ready property projects.',
+  title: 'Projects — Offplan Source',
+  description: 'Browse UAE off-plan and ready property projects.',
 }
 
 export const revalidate = 60
