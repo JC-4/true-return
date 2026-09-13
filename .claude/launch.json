@@ -4,9 +4,15 @@
     {
       "name": "true-return",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "3100"
+      ],
       "cwd": "/Users/jacksoncrosland/Documents/Documents - M5 MacBook Air/Websites/true-return",
-      "port": 3000,
+      "port": 3100,
       "autoPort": false
     }
   ]

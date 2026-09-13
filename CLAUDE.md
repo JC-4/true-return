@@ -8,6 +8,36 @@ Single maintainer, no review step, and Vercel deploys from `main`. Work left on
 a branch silently does not go live, which is worse than the risk branching
 guards against. This overrides any default preference for feature branches.
 
+## Local development
+
+**Port 3000 is Jackson's dev server.** Never start a server on it and never
+kill a process on it, whatever the process looks like. An orphaned
+`next-server` on 3000 is not yours to clean up. Previews go on **3100**.
+
+The launch config that actually runs is the one in the **parent** directory,
+`Websites/.claude/launch.json`, not `true-return/.claude/launch.json`. Both
+exist and both define a config named `true-return`, and the parent wins. Editing
+the repo-level one changes nothing, silently: the preview starts on whatever the
+parent says. Keep the two in step, and when a port change appears not to take,
+check which file you edited.
+
+The port is set by passing `-- -p 3100` through to the `dev` script rather than
+by the `port` field, which only tells the tool what to expect. `npm run dev` on
+its own stays on 3000 for Jackson.
+
+Note that `NEXTAUTH_URL` in `.env.local` is `http://localhost:3000`. Sign-in on
+a 3100 preview will therefore redirect to 3000, so the authenticated layout
+cannot be exercised on a preview without changing that variable, which would
+break the 3000 server it belongs to. Verify authenticated views another way.
+
+**Never run `npm run build` while a dev server is running.** The build
+overwrites `.next`, and the running dev server then fails on every request with
+`Cannot find module './NNNN.js'` (or `./vendor-chunks/*.js`). It looks like a
+broken import and it is not. The build has pulled the chunks out from under
+the running server. Recovery: stop the server, `rm -rf .next`, start it again.
+
+Stop the preview before building, and start it again afterwards.
+
 ## Database
 
 Schema lives only in the hosted Supabase project — there is **no migrations
