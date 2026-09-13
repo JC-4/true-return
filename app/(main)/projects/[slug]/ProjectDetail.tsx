@@ -421,6 +421,27 @@ export default function ProjectDetail({
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
+  // The payment plan bars fill once, when the block first comes into view.
+  // 'pending' renders them collapsed; the observer flips it to 'shown' and
+  // disconnects, so scrolling back up does not replay it.
+  const planBarsRef = useRef<HTMLDivElement | null>(null)
+  const [planBars, setPlanBars] = useState<'pending' | 'shown'>('pending')
+  useEffect(() => {
+    const el = planBarsRef.current
+    if (!el || planBars === 'shown') return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPlanBars('shown')
+          io.disconnect()
+        }
+      },
+      { threshold: 0.25 }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [planBars])
+
   // Documents tab state
   const [activeDocTab, setActiveDocTab] = useState(0)
 
@@ -770,7 +791,11 @@ export default function ProjectDetail({
               </div>
             )}
 
-            <div style={{ background: 'var(--c-surface)', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}>
+            <div
+              ref={planBarsRef}
+              data-plan-bars={planBars}
+              style={{ background: 'var(--c-surface)', borderRadius: 16, overflow: 'hidden', marginBottom: 10 }}
+            >
               {/* One row per actual segment — the merged view hid the
                   instalment schedule, and the bar makes the shape readable. */}
               <div>
@@ -795,12 +820,19 @@ export default function ProjectDetail({
                           {seg.percent}%
                         </p>
                         <div style={{ height: 4, borderRadius: 2, background: 'rgb(var(--td-rgb) / 0.10)', overflow: 'hidden' }}>
-                          <div style={{
-                            width: `${Math.max(0, Math.min(100, seg.percent))}%`,
-                            height: '100%',
-                            borderRadius: 2,
-                            background: PLAN_COLORS[type] ?? 'var(--c-accent-mid)',
-                          }} />
+                          {/* Width is already the final value, so the row
+                              never reflows; the fill is a scaleX off a left
+                              origin. transition-delay staggers the rows. */}
+                          <div
+                            className="plan-bar-fill"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, seg.percent))}%`,
+                              height: '100%',
+                              borderRadius: 2,
+                              background: PLAN_COLORS[type] ?? 'var(--c-accent-mid)',
+                              transitionDelay: `${i * 80}ms`,
+                            }}
+                          />
                         </div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -975,13 +1007,13 @@ export default function ProjectDetail({
        *  does not stretch the full width of a desktop frame. */}
       <div className="relative px-6 sm:px-10 pt-6 pb-6 sm:pb-12 md:pb-[var(--pill-nav-clearance)] max-w-6xl mx-auto w-full">
         <div className="max-w-[640px]">
-          <h1 className="font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
+          <h1 className="hero-rise hero-rise-1 font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
             {project.name}
           </h1>
           {project.developer?.name && (
-            <p className="text-sm text-brand-tl/[0.72] mt-3">by {project.developer.name}</p>
+            <p className="hero-rise hero-rise-2 text-sm text-brand-tl/[0.72] mt-3">by {project.developer.name}</p>
           )}
-          <p className="text-sm text-brand-tl/[0.72] mt-1">
+          <p className="hero-rise hero-rise-3 text-sm text-brand-tl/[0.72] mt-1">
             {fmtLocation(project)}
           </p>
 
@@ -989,7 +1021,7 @@ export default function ProjectDetail({
               project missing its handover or plan closes up instead of leaving
               a gap; with nothing known the row and its rules do not render. */}
           {heroStats.length > 0 && (
-            <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3 border-y border-brand-tl/20 py-4">
+            <dl className="hero-rise hero-rise-4 mt-5 flex flex-wrap gap-x-10 gap-y-3 border-y border-brand-tl/20 py-4">
               {heroStats.map(stat => (
                 <div key={stat.key}>
                   <dt className="text-xs text-brand-tl/[0.72]">{stat.label}</dt>
@@ -1001,7 +1033,7 @@ export default function ProjectDetail({
 
           <button
             onClick={() => document.getElementById('lead-gen-form')?.scrollIntoView({ behavior: 'smooth' })}
-            className="btn-on-ink mt-6 w-full sm:max-w-xs min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
+            className="hero-rise hero-rise-5 btn-on-ink mt-6 w-full sm:max-w-xs min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
           >
             {ctaLabel(project.status)}
           </button>
