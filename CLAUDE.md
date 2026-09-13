@@ -14,16 +14,26 @@ guards against. This overrides any default preference for feature branches.
 kill a process on it, whatever the process looks like. An orphaned
 `next-server` on 3000 is not yours to clean up. Previews go on **3100**.
 
-The launch config that actually runs is the one in the **parent** directory,
-`Websites/.claude/launch.json`, not `true-return/.claude/launch.json`. Both
-exist and both define a config named `true-return`, and the parent wins. Editing
-the repo-level one changes nothing, silently: the preview starts on whatever the
-parent says. Keep the two in step, and when a port change appears not to take,
-check which file you edited.
+**The launch config lives outside this repo**, at
+`Websites/.claude/launch.json` in the parent directory. There is deliberately
+no `.claude/launch.json` here: when both existed the parent won, so edits to the
+repo-level file did nothing and gave no sign of it. A clone of this repo has no
+launch config at all and one has to be created in the parent.
 
-The port is set by passing `-- -p 3100` through to the `dev` script rather than
-by the `port` field, which only tells the tool what to expect. `npm run dev` on
-its own stays on 3000 for Jackson.
+The port comes from passing `-- -p 3100` through to the `dev` script, not from
+the config's `port` field, which only tells the tool what to expect. `npm run
+dev` on its own stays on 3000 for Jackson. The parent config currently reads:
+
+```json
+{
+  "name": "true-return",
+  "runtimeExecutable": "npm",
+  "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
+  "cwd": "…/Websites/true-return",
+  "port": 3100,
+  "autoPort": false
+}
+```
 
 Note that `NEXTAUTH_URL` in `.env.local` is `http://localhost:3000`. Sign-in on
 a 3100 preview will therefore redirect to 3000, so the authenticated layout
