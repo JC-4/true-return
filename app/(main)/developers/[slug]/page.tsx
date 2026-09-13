@@ -329,7 +329,7 @@ export default async function DeveloperPage({ params }: Props) {
                 Thinking about buying from {dev.name}?
               </h2>
               <p className="text-sm text-brand-muted mb-8 text-center">
-                I will tell you which of their buildings are worth the money and which are not. No cost to you.
+                We will tell you which of their buildings are worth the money and which are not. No cost to you.
               </p>
               <LeadGenForm
                 projectName={dev.name}

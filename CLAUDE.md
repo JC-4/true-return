@@ -65,13 +65,17 @@ in `lib/format.ts`, the admin edit `<select>`, and the `/projects` filter
 `<select>`. An unmapped status falls through to its raw slug in the UI rather
 than erroring, so a drift here is silent.
 
-Status also drives the hero CTA, via `CTA_LABELS` in `ProjectDetail.tsx`:
+Status also drives the hero CTA, via `HERO_CTA` in `ProjectDetail.tsx`:
 `launching_soon` reads "Register your interest", `limited_availability` and
 `off_plan` both read "Get prices and availability", and **null reads "Enquire
 about this project"** — deliberately vaguer, because a project with no status
 is the one we are least able to promise prices for. A new status value needs a
 decision there too, not just a label; an unmapped one falls through to the null
 wording rather than erroring, so a drift here is silent in the same way.
+
+Each entry carries a **`variant` next to its `label`**, and they are one object
+on purpose: the button makes a promise and the lead form has to make the same
+one, so they must not be separately editable. See **The lead form's voice**.
 
 ## Rendering
 
@@ -165,6 +169,33 @@ brochure CTA section and the client-facing analysis view:
 
 `noUnusedLocals` is off and there is no eslintrc, so none of this fails a
 build while it waits.
+
+## The lead form's voice
+
+`LeadGenForm` renders in five places and its subcopy is chosen by a `variant`
+prop, because the button that opened it has already promised the reader
+something. A fixed line ("we'll send you the analysis") under a button that
+said "Get prices and availability" promises two different things. The variant
+is threaded from the trigger alongside `source`, and `source` is still for
+conversion tracking only — don't overload one for the other.
+
+`analysis` is the default and the inline, non-modal copies of the form (project
+footer, developer page, `/contact`) all take it. The **"Get unit
+recommendation" trigger also takes it**, which is the one remaining mismatch:
+that button offers a unit recommendation and the form answers with "the
+analysis". It needs its own line when someone writes one.
+
+**The dialog has no heading of its own.** It is named by the form's "Interested
+in …?" `h3` through `headingId`, which `LeadFormDialog` sets to
+`lead-dialog-title` to match its own `aria-labelledby`. Only the dialog's copy
+of the form passes it: the inline form renders on the same page at the same
+time, and a duplicated id would point the dialog's accessible name at whichever
+heading came first in the document. Don't give `LeadGenForm` a hardcoded id.
+
+**The site speaks as "we".** First person singular is correct in exactly two
+places and nowhere else: `/s/[token]` and its conclusion page, which are one
+named person's commentary to one client, and the WhatsApp prefill strings in
+`LeadFormShared.tsx`, which are the visitor speaking, not the site.
 
 ## Images
 

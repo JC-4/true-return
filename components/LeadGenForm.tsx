@@ -10,11 +10,35 @@ import {
   type PendingLead,
 } from '@/components/LeadFormShared'
 
+/** What the form promises to send back. The button that opened the form has
+ *  already made a promise to the reader; this keeps the form making the same
+ *  one, instead of offering "the analysis" under a button that offered prices. */
+export type LeadFormVariant =
+  | 'prices'
+  | 'prices-on-release'
+  | 'follow-up'
+  | 'honest-read'
+  | 'analysis'
+
+const SUBCOPY: Record<LeadFormVariant, string> = {
+  prices:              "Share your details and we'll send current prices and what's available.",
+  'prices-on-release': "Share your details and we'll send prices and availability as soon as they're released.",
+  'follow-up':         "Share your details and we'll come back to you on this one.",
+  'honest-read':       "Share your details and we'll come back with an honest read on this project.",
+  analysis:            "Share your details and we'll send you the analysis.",
+}
+
 interface Props {
   projectName: string
   isProjectPage?: boolean
   /** Where the form was submitted from. Passed straight through to /api/leads. */
   source?: string
+  variant?: LeadFormVariant
+  /** Set only when the form is inside the lead dialog, which names itself from
+   *  this heading. The inline copy of the form leaves it unset: both render on
+   *  the project page at once, and a duplicated id would point the dialog's
+   *  `aria-labelledby` at whichever came first in the document. */
+  headingId?: string
 }
 
 /**
@@ -25,7 +49,7 @@ interface Props {
  * qualifying questions that used to render here in place now live on
  * /thank-you, which is also where the conversion fires.
  */
-export default function LeadGenForm({ projectName, isProjectPage = true, source = 'Footer form' }: Props) {
+export default function LeadGenForm({ projectName, isProjectPage = true, source = 'Footer form', variant = 'analysis', headingId }: Props) {
   const router = useRouter()
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
@@ -136,8 +160,8 @@ export default function LeadGenForm({ projectName, isProjectPage = true, source 
       </div>
 
       <div>
-        <h3 className="text-base font-semibold text-brand-text">Interested in {projectName}?</h3>
-        <p className="text-sm text-brand-muted mt-0.5">Share your details and we&apos;ll send you the analysis.</p>
+        <h3 id={headingId} className="text-base font-semibold text-brand-text">Interested in {projectName}?</h3>
+        <p className="text-sm text-brand-muted mt-0.5">{SUBCOPY[variant]}</p>
       </div>
 
       <div>

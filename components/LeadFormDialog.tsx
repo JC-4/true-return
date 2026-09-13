@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import LeadGenForm from '@/components/LeadGenForm'
+import LeadGenForm, { type LeadFormVariant } from '@/components/LeadGenForm'
 
 /**
  * The second container for LeadGenForm. The form itself is unchanged and
@@ -21,6 +21,7 @@ export default function LeadFormDialog({
   projectName,
   isProjectPage = true,
   source,
+  variant,
 }: {
   open: boolean
   onClose: () => void
@@ -29,6 +30,9 @@ export default function LeadFormDialog({
   /** Distinguishes this conversion from the inline form's, both on the lead
    *  record and in the conversion event fired on /thank-you. */
   source: string
+  /** What the trigger promised, so the form can promise the same thing. Set by
+   *  the button that opened the dialog, alongside `source`. */
+  variant?: LeadFormVariant
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -111,10 +115,12 @@ export default function LeadFormDialog({
       onClick={handleBackdropClick}
     >
       <div className="lead-dialog-panel bg-brand-bg">
-        <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
-          <h2 id="lead-dialog-title" className="text-base font-semibold text-brand-text">
-            Get independent advice
-          </h2>
+        {/* The dialog is named by the form's own "Interested in …?" heading
+            rather than a second one of its own: two headings 40px apart in a
+            box this size read as an editing artefact. The row survives because
+            the close button still needs somewhere to sit, pushed right on its
+            own. */}
+        <div className="flex items-start justify-end gap-4 px-6 pt-6 pb-2">
           <button
             ref={closeRef}
             type="button"
@@ -133,6 +139,8 @@ export default function LeadFormDialog({
             projectName={projectName}
             isProjectPage={isProjectPage}
             source={source}
+            variant={variant}
+            headingId="lead-dialog-title"
           />
         </div>
       </div>

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import type { Project, PaymentSegment, ProjectInsight } from '@/lib/types'
 import type { PlanRow } from '@/lib/calculations'
 import type { InitialValues } from '@/lib/hooks/useCalculator'
-import LeadGenForm from '@/components/LeadGenForm'
+import LeadGenForm, { type LeadFormVariant } from '@/components/LeadGenForm'
 import LeadFormDialog from '@/components/LeadFormDialog'
 import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
@@ -37,17 +37,26 @@ function fmtHandover(iso: string | null) {
  *  status set is the case we know least about, so it gets the general wording
  *  rather than an offer of prices we may not hold yet.
  *
+ *  The label and the form's subcopy are one entry rather than two maps: the
+ *  button makes a promise and the form has to make the same one, so they are
+ *  the kind of pair that goes wrong the moment it can be edited separately.
+ *
  *  Mirrors the `projects_status_check` constraint alongside `STATUS_LABELS` in
  *  `lib/format.ts`. An unmapped status falls through to the null wording, which
  *  is safe but vaguer than a new status probably deserves. */
-const CTA_LABELS: Record<string, string> = {
-  launching_soon:       'Register your interest',
-  limited_availability: 'Get prices and availability',
-  off_plan:             'Get prices and availability',
+const HERO_CTA: Record<string, { label: string; variant: LeadFormVariant }> = {
+  launching_soon:       { label: 'Register your interest',      variant: 'prices-on-release' },
+  limited_availability: { label: 'Get prices and availability', variant: 'prices' },
+  off_plan:             { label: 'Get prices and availability', variant: 'prices' },
 }
 
-function ctaLabel(s: string | null) {
-  return (s && CTA_LABELS[s]) || 'Enquire about this project'
+const HERO_CTA_FALLBACK: { label: string; variant: LeadFormVariant } = {
+  label: 'Enquire about this project',
+  variant: 'follow-up',
+}
+
+function heroCta(s: string | null) {
+  return (s && HERO_CTA[s]) || HERO_CTA_FALLBACK
 }
 
 /** Sits at the bottom of the hero, under the CTA. Decorative — the travelling
@@ -436,7 +445,9 @@ export default function ProjectDetail({
 
   // Holds the source of whichever CTA opened the dialog, so a conversion can
   // be traced back to the button rather than just to "a modal". null = shut.
-  const [leadDialogSource, setLeadDialogSource] = useState<string | null>(null)
+  /** Null when closed. Non-null carries both what to record against the
+   *  conversion and what the trigger promised the reader. */
+  const [leadDialog, setLeadDialog] = useState<{ source: string; variant: LeadFormVariant } | null>(null)
 
   // The payment plan bars fill once, when the block first comes into view.
   // 'pending' renders them collapsed; the observer flips it to 'shown' and
@@ -887,7 +898,7 @@ export default function ProjectDetail({
       >
         <p className="text-sm" style={{ color: 'var(--c-on-inverse)' }}>Not sure which unit is right for your budget and goals?</p>
         <button
-          onClick={() => setLeadDialogSource('Unit help modal')}
+          onClick={() => setLeadDialog({ source: 'Unit help modal', variant: 'analysis' })}
           className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
           style={{ border: '0.5px solid rgb(var(--tl-rgb) / 0.55)', color: 'var(--c-on-inverse)', backgroundColor: 'transparent' }}
         >
@@ -1054,10 +1065,10 @@ export default function ProjectDetail({
           )}
 
           <button
-            onClick={() => setLeadDialogSource('Hero modal')}
+            onClick={() => setLeadDialog({ source: 'Hero modal', variant: heroCta(project.status).variant })}
             className="hero-rise hero-rise-5 btn-on-ink mt-6 w-full sm:max-w-xs min-h-[48px] inline-flex items-center justify-center px-6 rounded-[3px] text-sm font-semibold"
           >
-            {ctaLabel(project.status)}
+            {heroCta(project.status).label}
           </button>
         </div>
       </div>
@@ -1117,7 +1128,7 @@ export default function ProjectDetail({
               <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer&apos;s agent. No cost to you.</p>
             </div>
             <button
-              onClick={() => setLeadDialogSource('Overview CTA modal')}
+              onClick={() => setLeadDialog({ source: 'Overview CTA modal', variant: 'honest-read' })}
               className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
             >
               Get independent advice →
@@ -1179,7 +1190,7 @@ export default function ProjectDetail({
                     <p className="text-xs text-brand-muted mt-1">Honest advice from a buyer's agent. No cost to you.</p>
                   </div>
                   <button
-                    onClick={() => setLeadDialogSource('Overview CTA modal')}
+                    onClick={() => setLeadDialog({ source: 'Overview CTA modal', variant: 'honest-read' })}
                     className="btn-primary flex-shrink-0 text-sm font-medium px-5 py-2.5 rounded-lg whitespace-nowrap"
                   >
                     Get independent advice →
@@ -1268,10 +1279,11 @@ export default function ProjectDetail({
       )}
 
       <LeadFormDialog
-        open={leadDialogSource !== null}
-        onClose={() => setLeadDialogSource(null)}
+        open={leadDialog !== null}
+        onClose={() => setLeadDialog(null)}
         projectName={project.name}
-        source={leadDialogSource ?? 'Hero modal'}
+        source={leadDialog?.source ?? 'Hero modal'}
+        variant={leadDialog?.variant ?? 'analysis'}
       />
 
       {lightboxIndex !== null && (
