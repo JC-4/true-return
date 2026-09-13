@@ -18,6 +18,7 @@ export type LeadFormVariant =
   | 'prices-on-release'
   | 'follow-up'
   | 'honest-read'
+  | 'unit-fit'
   | 'analysis'
 
 const SUBCOPY: Record<LeadFormVariant, string> = {
@@ -25,6 +26,7 @@ const SUBCOPY: Record<LeadFormVariant, string> = {
   'prices-on-release': "Share your details and we'll send prices and availability as soon as they're released.",
   'follow-up':         "Share your details and we'll come back to you on this one.",
   'honest-read':       "Share your details and we'll come back with an honest read on this project.",
+  'unit-fit':          "Share your details and we'll suggest the units that fit.",
   analysis:            "Share your details and we'll send you the analysis.",
 }
 

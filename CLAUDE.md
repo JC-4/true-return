@@ -180,10 +180,9 @@ is threaded from the trigger alongside `source`, and `source` is still for
 conversion tracking only — don't overload one for the other.
 
 `analysis` is the default and the inline, non-modal copies of the form (project
-footer, developer page, `/contact`) all take it. The **"Get unit
-recommendation" trigger also takes it**, which is the one remaining mismatch:
-that button offers a unit recommendation and the form answers with "the
-analysis". It needs its own line when someone writes one.
+footer, developer page, `/contact`) all take it. Every modal trigger names its
+own variant, so adding a new one means writing its line too rather than letting
+it fall back to "the analysis".
 
 **The dialog has no heading of its own.** It is named by the form's "Interested
 in …?" `h3` through `headingId`, which `LeadFormDialog` sets to

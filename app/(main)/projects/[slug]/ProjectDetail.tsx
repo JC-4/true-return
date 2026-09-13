@@ -898,7 +898,7 @@ export default function ProjectDetail({
       >
         <p className="text-sm" style={{ color: 'var(--c-on-inverse)' }}>Not sure which unit is right for your budget and goals?</p>
         <button
-          onClick={() => setLeadDialog({ source: 'Unit help modal', variant: 'analysis' })}
+          onClick={() => setLeadDialog({ source: 'Unit help modal', variant: 'unit-fit' })}
           className="flex-shrink-0 text-sm font-medium px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
           style={{ border: '0.5px solid rgb(var(--tl-rgb) / 0.55)', color: 'var(--c-on-inverse)', backgroundColor: 'transparent' }}
         >
