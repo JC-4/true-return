@@ -3,11 +3,18 @@ import { useState, useEffect, useRef } from 'react'
 
 // ─── Secondary pill nav ───────────────────────────────────────────────────────
 
-export function SecondaryPillNav({ sections, desktopOnly = false }: {
+export function SecondaryPillNav({ sections, desktopOnly = false, revealed = true }: {
   sections: { id: string; label: string; locked?: boolean; color?: string }[]
   /** Hide below md. Opt-in per call site: /projects/[slug] suppresses it on a
    *  phone, everywhere else keeps it. Defaults to showing at every width. */
   desktopOnly?: boolean
+  /** Hold it back until the caller says otherwise — /projects/[slug] keeps it
+   *  out of the way until the hero has been scrolled past. Defaults to shown,
+   *  so the shortlist route and the returns panel are unaffected.
+   *
+   *  Hidden rather than unmounted: the section observer below has to keep
+   *  running so the right pill is already active when it does appear. */
+  revealed?: boolean
 }) {
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -49,8 +56,17 @@ export function SecondaryPillNav({ sections, desktopOnly = false }: {
 
   return (
     <div
-      className={`${desktopOnly ? 'hidden md:block ' : ''}fixed z-50`}
-      style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)' }}
+      className={`${desktopOnly ? 'hidden md:block ' : ''}fixed z-50 transition-opacity duration-300`}
+      style={{
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        opacity: revealed ? 1 : 0,
+        // visibility, not just opacity: keeps it out of the tab order and the
+        // accessibility tree while it is held back.
+        visibility: revealed ? 'visible' : 'hidden',
+        pointerEvents: revealed ? undefined : 'none',
+      }}
     >
       <div
         ref={containerRef}

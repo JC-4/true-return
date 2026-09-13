@@ -10,6 +10,7 @@ import ReturnAnalysisPanel from '@/components/ReturnAnalysisPanel'
 import GallerySlider, { Lightbox } from '@/components/GallerySlider'
 import BrochureTab from '@/components/BrochureTab'
 import AdminEditLink from '@/components/AdminEditLink'
+import { SecondaryPillNav } from '@/components/SharedUI'
 import { adaptPaymentPlan, formatHandoverDate, classifyPlanSeg, paymentPlanSummary } from '@/lib/payment-plan'
 import { pickShowcaseUnit } from '@/lib/units'
 import { fmtLocation, statusLabel } from '@/lib/format'
@@ -420,6 +421,22 @@ export default function ProjectDetail({
 
   const scrollNavRef = useRef<HTMLDivElement | null>(null)
 
+  // The pill nav is held back until the hero is off screen: the hero is a full
+  // viewport with its own CTA, and a second navigation layer floating over it
+  // competes with that.
+  const heroRef = useRef<HTMLDivElement | null>(null)
+  const [pastHero, setPastHero] = useState(false)
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setPastHero(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   // Documents tab state
   const [activeDocTab, setActiveDocTab] = useState(0)
 
@@ -531,6 +548,14 @@ export default function ProjectDetail({
     const match = html.match(/src="([^"]+)"/)
     return match ? match[1] : null
   })()
+
+  const overviewNavSections = [
+    { id: 'about', label: 'About' },
+    { id: 'units', label: 'Unit Types' },
+    ...(plans.length > 0 ? [{ id: 'payment-plan', label: 'Payment plan' }] : []),
+    ...(images.length > 1 ? [{ id: 'gallery', label: 'Gallery' }] : []),
+    ...((connectivity.length > 0 || mapEmbedSrc) ? [{ id: 'location', label: 'Location' }] : []),
+  ]
 
   // ─── Shared section content ────────────────────────────────────────────────
 
@@ -921,6 +946,7 @@ export default function ProjectDetail({
 
   const heroEl = (
     <div
+      ref={heroRef}
       className="relative overflow-hidden flex flex-col justify-end w-full min-h-[calc(100dvh-64px)]"
       style={{ backgroundColor: 'var(--c-inverse)' }}
     >
@@ -935,12 +961,16 @@ export default function ProjectDetail({
           frame than a single-line title needed. */}
       <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/95 via-brand-ink/70 to-brand-ink/10 pointer-events-none" />
 
-      {/* Status badge */}
+      {/* Status badge. Carries the same container and gutter as the identity
+          block below, so the two share a left edge once the content container
+          starts centring on a wide viewport. */}
       {project.status && (
-        <div className="absolute top-4 left-6 sm:top-6 sm:left-10">
-          <span className="bg-brand-tl/15 text-brand-tl border border-brand-tl/25 backdrop-blur-sm text-xs font-medium px-3 py-1 rounded-[3px]">
-            {statusLabel(project.status)}
-          </span>
+        <div className="absolute top-4 sm:top-6 inset-x-0">
+          <div className="max-w-6xl mx-auto px-6 sm:px-10">
+            <span className="inline-block bg-brand-tl/15 text-brand-tl border border-brand-tl/25 backdrop-blur-sm text-xs font-medium px-3 py-1 rounded-[3px]">
+              {statusLabel(project.status)}
+            </span>
+          </div>
         </div>
       )}
 
@@ -1018,9 +1048,13 @@ export default function ProjectDetail({
       {/* ── PUBLIC LAYOUT ── */}
       {/* Overview is the only public view, so there is no tab bar — a bar with
        *  one item is just a heading. Return analysis and the brochure form sit
-       *  behind the authenticated layout below. */}
+       *  behind the authenticated layout below.
+       *
+       *  md:pb-28 reserves the pill nav's footprint so the last section can
+       *  always scroll clear of it instead of ending underneath it. */}
       {!isAuth && (
-        <div className="max-w-6xl mx-auto px-6 sm:px-10">
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 md:pb-28">
+          <SecondaryPillNav sections={overviewNavSections} desktopOnly revealed={pastHero} />
           {aboutSection}
           {unitsAndPlanSection}
 
@@ -1081,7 +1115,8 @@ export default function ProjectDetail({
           {/* Overview tab */}
           {authTab === 'overview' && (
             <>
-              <div className="max-w-6xl mx-auto px-6 sm:px-10">
+              <div className="max-w-6xl mx-auto px-6 sm:px-10 md:pb-28">
+                <SecondaryPillNav sections={overviewNavSections} desktopOnly revealed={pastHero} />
                 {aboutSection}
                 {unitsAndPlanSection}
 
