@@ -36,6 +36,41 @@ function ctaLabel(s: string | null) {
   return s === 'launching_soon' ? 'Register your interest' : 'Get prices and availability'
 }
 
+/** Sits at the bottom of the hero, under the CTA. Decorative — the travelling
+ *  hairline says "there is more below" to a sighted reader and nothing to
+ *  anyone else, so it is hidden from the accessibility tree rather than given
+ *  a label nobody needs.
+ *
+ *  Retires for good at 10% of a viewport scrolled: once the reader has started
+ *  the cue has done its job, and bringing it back on the way up would be a
+ *  distraction over body copy. */
+function ScrollCue() {
+  const [retired, setRetired] = useState(false)
+
+  useEffect(() => {
+    if (retired) return
+    function onScroll() {
+      if (window.scrollY > window.innerHeight * 0.1) setRetired(true)
+    }
+    // Run once on mount too: a restored scroll position or a hash link means
+    // the reader can arrive already past the threshold.
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [retired])
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`relative flex justify-center pb-5 pointer-events-none transition-opacity duration-500 ${
+        retired ? 'opacity-0' : 'opacity-100'
+      }`}
+    >
+      <span className="scroll-cue" />
+    </div>
+  )
+}
+
 function segmentBg(color: PaymentSegment['color']) {
   if (color === 'bronze') return 'var(--c-accent)'
   if (color === 'bronze-mid') return 'var(--c-accent-mid)'
@@ -947,6 +982,10 @@ export default function ProjectDetail({
           </button>
         </div>
       </div>
+
+      {/* In flow after the identity block rather than absolutely positioned, so
+          it can never land on top of the CTA on a short viewport. */}
+      <ScrollCue />
     </div>
   )
 

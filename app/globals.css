@@ -169,6 +169,42 @@
   background-color: color-mix(in srgb, var(--c-on-inverse) 82%, var(--c-inverse));
 }
 
+/* ── Hero scroll cue ───────────────────────────────────────────────────────
+   The project hero fills the viewport, so nothing below it is visible until
+   the reader scrolls. A hairline track with a brighter fill travelling down
+   it: the direction is the entire message, which is why there is no arrow and
+   nothing bounces. */
+.scroll-cue {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 32px;
+  background: rgb(var(--tl-rgb) / 0.4);
+  overflow: hidden;
+}
+
+.scroll-cue::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 40%;
+  background: var(--tl);
+  animation: scroll-cue-travel 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes scroll-cue-travel {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(250%); }
+}
+
+/* Static when motion is not wanted: the track stays, the travelling fill goes
+   rather than freezing part-way down it. */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue::after { display: none; }
+}
+
 /* ── Range slider ─────────────────────────────────────────────────────────── */
 input[type='range'] {
   -webkit-appearance: none;
