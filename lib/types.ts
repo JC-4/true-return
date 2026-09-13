@@ -89,6 +89,14 @@ export type FaqItem = {
   a: string
 }
 
+/** One point in the About section. `label` is the short bold line and `detail`
+ *  the sentence under it. Rows written before the column became a pair have a
+ *  null label and render as the detail alone. */
+export type ProjectHighlight = {
+  label?: string | null
+  detail: string
+}
+
 export type Project = {
   id: string
   slug: string
@@ -115,7 +123,10 @@ export type Project = {
   payment_plan_confirmed?: boolean | null
   map_embed_html?: string | null
   about_image_url?: string | null
-  highlights?: string[] | null
+  /** jsonb in Supabase. `label` is null on rows written before the column
+   *  became a pair, and the About section renders the detail on its own in
+   *  that case rather than an empty bold line. */
+  highlights?: ProjectHighlight[] | null
   tagline?: string | null
   about_image_position?: string | null
 }

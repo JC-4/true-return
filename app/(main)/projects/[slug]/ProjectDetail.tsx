@@ -545,10 +545,12 @@ export default function ProjectDetail({
 
   const aboutSection = (
     <section id="about" className="py-16">
+      {/* Copy first in the DOM, so a phone reads the words before the picture.
+          On desktop the grid puts it back on the left. */}
       <div className="grid md:grid-cols-2 gap-8 items-stretch">
 
-        {/* Left: image with stats overlay */}
-        <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--c-inverse)', height: '100%', minHeight: '480px' }}>
+        {/* Image: after the copy on a phone, right-hand column on desktop. */}
+        <div className="relative rounded-2xl overflow-hidden order-2 md:order-2" style={{ backgroundColor: 'var(--c-inverse)', height: '100%', minHeight: '480px' }}>
           {(project.about_image_url ?? images[0]) && (
             <img
               src={project.about_image_url ?? images[0]}
@@ -571,8 +573,8 @@ export default function ProjectDetail({
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgb(var(--ink-rgb) / 0.88) 0%, rgb(var(--ink-rgb) / 0.05) 55%)' }} />
         </div>
 
-        {/* Right: description + developer */}
-        <div className="flex flex-col justify-center py-2">
+        {/* Copy + developer. First on a phone, left-hand column on desktop. */}
+        <div className="flex flex-col justify-center py-2 order-1 md:order-1">
           {/* Grouping wrapper. Inert under justify-center, which packs the
               children together and centres them as one block — but it is what
               keeps the tagline and highlights from being spread apart if this
@@ -582,20 +584,30 @@ export default function ProjectDetail({
             {project.tagline && (
               <h2 className="text-xl font-semibold text-brand-text leading-snug mb-4">{project.tagline}</h2>
             )}
-            {/* Plain list: the facts are already parallel, so a rule between
-                them separates the items without a tick implying each one is a
-                benefit being ticked off. */}
+            {/* Label and detail, separated by space rather than rules: the
+                bold line already starts each point, so a rule on top of that
+                is a second separator doing the same job. Rows predating the
+                pair have no label and render as the detail alone, rather than
+                an empty bold line above it. */}
             {project.highlights && project.highlights.length > 0 && (
-              <ul className="mb-6 border-t border-brand-border">
+              <dl className="mb-6 space-y-5">
                 {project.highlights.map((h, i) => (
-                  <li
-                    key={i}
-                    className="text-sm text-brand-muted leading-relaxed py-3 border-b border-brand-border"
-                  >
-                    {h}
-                  </li>
+                  <div key={i}>
+                    {h.label && (
+                      <dt className="text-sm font-semibold text-brand-text leading-snug">
+                        {h.label}
+                      </dt>
+                    )}
+                    {/* brand-td, not brand-text: only the four palette tokens
+                        are alpha-capable, and an opacity modifier on the
+                        others fails silently. Inside .theme-os they resolve
+                        to the same colour. */}
+                    <dd className="text-sm text-brand-td/[0.72] leading-relaxed">
+                      {h.detail}
+                    </dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
             )}
           </div>
 

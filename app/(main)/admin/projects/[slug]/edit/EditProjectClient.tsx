@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import imageCompression from 'browser-image-compression'
-import type { Project, PaymentSegment } from '@/lib/types'
+import type { Project, PaymentSegment, ProjectHighlight } from '@/lib/types'
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 
@@ -492,7 +492,7 @@ export default function EditProjectClient({ project }: { project: Project }) {
   const [name, setName] = useState(project.name)
   const [description, setDescription] = useState(project.description ?? '')
   const [tagline, setTagline] = useState(project.tagline ?? '')
-  const [highlights, setHighlights] = useState<string[]>(project.highlights ?? [])
+  const [highlights, setHighlights] = useState<ProjectHighlight[]>(project.highlights ?? [])
   const [status, setStatus] = useState(project.status ?? '')
   const [handoverDate, setHandoverDate] = useState(project.handover_date ?? '')
   const [startingPrice, setStartingPrice] = useState(project.starting_price?.toString() ?? '')
@@ -666,8 +666,8 @@ export default function EditProjectClient({ project }: { project: Project }) {
 
   // ── Highlights repeater ───────────────────────────────────────────────────
 
-  function updateHighlight(i: number, value: string) {
-    setHighlights(rows => rows.map((r, idx) => (idx === i ? value : r)))
+  function updateHighlight(i: number, field: 'label' | 'detail', value: string) {
+    setHighlights(rows => rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
   }
 
   function moveHighlight(i: number, dir: 'up' | 'down') {
@@ -699,7 +699,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
       description: description.trim() || null,
       tagline: tagline.trim() || null,
       // Drop blank rows rather than writing empty strings into the array.
-      highlights: highlights.map(h => h.trim()).filter(Boolean),
+      highlights: highlights
+        .map(h => ({ label: (h.label ?? '').trim() || null, detail: (h.detail ?? '').trim() }))
+        .filter(h => h.detail),
       status: status || null,
       handover_date: handoverDate || null,
       starting_price: startingPrice ? parseFloat(startingPrice) : null,
@@ -786,26 +788,42 @@ export default function EditProjectClient({ project }: { project: Project }) {
               ) : (
                 <div className="space-y-2">
                   {highlights.map((h, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <MoveButtons index={i} total={highlights.length} onMove={dir => moveHighlight(i, dir)} />
-                      <input
-                        type="text"
-                        value={h}
-                        onChange={e => updateHighlight(i, e.target.value)}
-                        placeholder="Canal and Burj Khalifa views"
-                        className={inputCls}
-                      />
-                      <RemoveButton
-                        label={`Remove highlight ${i + 1}`}
-                        onClick={() => setHighlights(rows => rows.filter((_, idx) => idx !== i))}
-                      />
+                    <div key={i} className="flex items-start gap-2">
+                      <div className="pt-1.5">
+                        <MoveButtons index={i} total={highlights.length} onMove={dir => moveHighlight(i, dir)} />
+                      </div>
+                      {/* Label above detail, matching how the pair reads on the
+                          project page. Older highlights have an empty label and
+                          stay editable: fill it in and the bold line appears. */}
+                      <div className="flex-1 space-y-1.5">
+                        <input
+                          type="text"
+                          value={h.label ?? ''}
+                          onChange={e => updateHighlight(i, 'label', e.target.value)}
+                          placeholder="Label (optional), e.g. Canal views"
+                          className={inputCls}
+                        />
+                        <input
+                          type="text"
+                          value={h.detail ?? ''}
+                          onChange={e => updateHighlight(i, 'detail', e.target.value)}
+                          placeholder="Detail, e.g. Most residences look over the canal to the Burj Khalifa."
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="pt-1.5">
+                        <RemoveButton
+                          label={`Remove highlight ${i + 1}`}
+                          onClick={() => setHighlights(rows => rows.filter((_, idx) => idx !== i))}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
               <button
                 type="button"
-                onClick={() => setHighlights(rows => [...rows, ''])}
+                onClick={() => setHighlights(rows => [...rows, { label: '', detail: '' }])}
                 className="mt-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#18181b] transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -814,7 +832,9 @@ export default function EditProjectClient({ project }: { project: Project }) {
                 Add highlight
               </button>
               <p className="mt-1.5 text-xs text-gray-400">
-                The ticked list under the tagline, in this order.
+                The points under the tagline in the About section, in this
+                order. The label is the bold line and the detail the sentence
+                beneath it; leave the label blank to show the detail on its own.
               </p>
             </div>
 
