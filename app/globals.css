@@ -214,19 +214,19 @@
    The hero image is deliberately not animated: it is the LCP candidate, and an
    element at opacity 0 does not count as painted for LCP.
 
-   Timing: 60ms between elements, 340ms each, so the last one settles at 580ms.
+   Timing: 100ms between elements, 520ms each, so the last one settles at 920ms.
    `both` holds the start state through the delay and the end state after. */
 @keyframes hero-rise {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
 
-.hero-rise   { animation: hero-rise 340ms cubic-bezier(0.2, 0, 0.2, 1) both; }
+.hero-rise   { animation: hero-rise 520ms cubic-bezier(0.2, 0, 0.2, 1) both; }
 .hero-rise-1 { animation-delay: 0ms; }
-.hero-rise-2 { animation-delay: 60ms; }
-.hero-rise-3 { animation-delay: 120ms; }
-.hero-rise-4 { animation-delay: 180ms; }
-.hero-rise-5 { animation-delay: 240ms; }
+.hero-rise-2 { animation-delay: 100ms; }
+.hero-rise-3 { animation-delay: 200ms; }
+.hero-rise-4 { animation-delay: 300ms; }
+.hero-rise-5 { animation-delay: 400ms; }
 
 /* ── Payment plan bars ─────────────────────────────────────────────────────
    scaleX from a left origin, never width: the bar's width is already its final

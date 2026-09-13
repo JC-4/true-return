@@ -3,6 +3,10 @@ import { useState, useEffect, useRef } from 'react'
 
 // ─── Secondary pill nav ───────────────────────────────────────────────────────
 
+/** The slider's untransformed width. Arbitrary: scaleX is measured against it,
+ *  so it only has to be non-zero and stable. */
+const SLIDER_BASE_WIDTH = 100
+
 export function SecondaryPillNav({ sections, desktopOnly = false, revealed = true }: {
   sections: { id: string; label: string; locked?: boolean; color?: string }[]
   /** Hide below md. Opt-in per call site: /projects/[slug] suppresses it on a
@@ -18,7 +22,12 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
   const [activeId, setActiveId] = useState(sections[0]?.id ?? '')
   const containerRef = useRef<HTMLDivElement>(null)
   const pillRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const [slider, setSlider] = useState({ left: 0, width: 0 })
+  /* The slider is a fixed-width box moved and stretched with transform only.
+   * `left` and `width` are layout properties: animating them registers a
+   * layout shift on every frame even though the element is absolutely
+   * positioned and moves nothing else. transform is exempt from that
+   * accounting, so this produces none. */
+  const [slider, setSlider] = useState({ x: 0, scaleX: 0, radiusX: 0, radiusY: 0 })
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -42,7 +51,20 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
     if (btn && container) {
       const containerRect = container.getBoundingClientRect()
       const btnRect = btn.getBoundingClientRect()
-      setSlider({ left: btnRect.left - containerRect.left, width: btnRect.width })
+      const halfHeight = btnRect.height / 2
+      const scaleX = btnRect.width / SLIDER_BASE_WIDTH
+      setSlider({
+        // clientLeft is the container's left border. An absolutely positioned
+        // child resolves against the padding box, so measuring from the border
+        // box would sit the slider a border-width to the right of its pill.
+        x: btnRect.left - (containerRect.left + container.clientLeft),
+        scaleX,
+        // scaleX would squash the capsule's end caps into ellipses. Dividing
+        // the horizontal radius by the same factor cancels that out, so the
+        // ends stay circular at every pill width.
+        radiusX: scaleX > 0 ? halfHeight / scaleX : halfHeight,
+        radiusY: halfHeight,
+      })
     }
   }, [activeId, sections])
 
@@ -101,13 +123,14 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
         style={{ borderRadius: '9999px', boxShadow: '0 8px 24px rgb(var(--ink-rgb) / 0.16)' }}
       >
         <div
-          className="absolute top-1 bottom-1"
+          className="absolute top-1 bottom-1 left-0"
           style={{
             backgroundColor: 'var(--c-accent)',
-            borderRadius: '9999px',
-            left: slider.left,
-            width: slider.width,
-            transition: 'left 0.4s cubic-bezier(0.4, 0.2, 0.2, 1), width 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)',
+            width: SLIDER_BASE_WIDTH,
+            borderRadius: `${slider.radiusX}px / ${slider.radiusY}px`,
+            transformOrigin: 'left center',
+            transform: `translateX(${slider.x}px) scaleX(${slider.scaleX})`,
+            transition: 'transform 0.4s cubic-bezier(0.4, 0.2, 0.2, 1), border-radius 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)',
           }}
         />
         {sections.map(({ id, label, locked, color }) => (
