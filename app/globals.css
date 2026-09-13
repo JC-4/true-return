@@ -169,6 +169,28 @@
   background-color: color-mix(in srgb, var(--c-on-inverse) 82%, var(--c-inverse));
 }
 
+/* ── Pill nav footprint ────────────────────────────────────────────────────
+   The pill nav is fixed to the bottom of the viewport, and at md and up it
+   shares that space with the project hero's CTA. Both sides read the same
+   three values so the reservation cannot drift away from the thing it is
+   reserving for:
+
+     SecondaryPillNav  positions itself at --pill-nav-offset, and publishes its
+                       own measured height back into --pill-nav-height.
+     The project hero  pads its bottom by --pill-nav-clearance at md and up.
+
+   --pill-nav-height is a fallback only. SecondaryPillNav overwrites it on
+   mount and on resize with the height it actually renders at, so changing the
+   pill's padding or type size moves the hero's padding with it. */
+:root {
+  --pill-nav-offset: 24px;
+  --pill-nav-gap: 24px;
+  --pill-nav-height: 42px;
+  --pill-nav-clearance: calc(
+    var(--pill-nav-offset) + var(--pill-nav-height) + var(--pill-nav-gap)
+  );
+}
+
 /* ── Hero scroll cue ───────────────────────────────────────────────────────
    The project hero fills the viewport, so nothing below it is visible until
    the reader scrolls. A hairline track with a brighter fill travelling down

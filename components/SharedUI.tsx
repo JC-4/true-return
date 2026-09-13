@@ -46,6 +46,29 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
     }
   }, [activeId, sections])
 
+  // Publish the height this nav actually renders at, so anything reserving
+  // room for it (the project hero's bottom padding) tracks the real thing
+  // rather than a number copied from it. Skipped while the nav is display:none
+  // below md, where the measurement would be 0 and nothing is reserving.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const publish = () => {
+      const h = el.getBoundingClientRect().height
+      if (h > 0) {
+        document.documentElement.style.setProperty('--pill-nav-height', `${h}px`)
+      }
+    }
+    publish()
+    const ro = new ResizeObserver(publish)
+    ro.observe(el)
+    window.addEventListener('resize', publish)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', publish)
+    }
+  }, [])
+
   function handleClick(id: string) {
     setActiveId(id)
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -57,7 +80,7 @@ export function SecondaryPillNav({ sections, desktopOnly = false, revealed = tru
     <div
       className={`${desktopOnly ? 'hidden md:block ' : ''}fixed z-50 transition-opacity duration-300`}
       style={{
-        bottom: '24px',
+        bottom: 'var(--pill-nav-offset)',
         left: '50%',
         transform: 'translateX(-50%)',
         opacity: revealed ? 1 : 0,

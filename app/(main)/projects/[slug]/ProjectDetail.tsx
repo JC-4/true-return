@@ -961,7 +961,7 @@ export default function ProjectDetail({
        *  The outer div holds the page's content gutter; the inner one caps the
        *  block at a readable measure and keeps it left-aligned, so the copy
        *  does not stretch the full width of a desktop frame. */}
-      <div className="relative px-6 sm:px-10 pt-6 pb-6 sm:pb-12 max-w-6xl mx-auto w-full">
+      <div className="relative px-6 sm:px-10 pt-6 pb-6 sm:pb-12 md:pb-[var(--pill-nav-clearance)] max-w-6xl mx-auto w-full">
         <div className="max-w-[640px]">
           <h1 className="font-semibold text-[42px] sm:text-5xl md:text-6xl text-brand-tl tracking-[-0.035em] leading-[0.98]">
             {project.name}
