@@ -55,12 +55,20 @@ directory in this repo**. Schema changes are applied directly against Supabase
 and are not represented in git, so a checkout does not describe the schema it
 expects. Check the live schema before assuming a column exists.
 
-`projects.status` is a CHECK constraint, currently `off_plan`,
-`launching_soon`, `limited_availability`, `sold_out`, `under_construction`,
-`ready`. It is mirrored in three places that must be changed together:
-`STATUS_LABELS` in `lib/format.ts`, the admin edit `<select>`, and the
-`/projects` filter `<select>`. An unmapped status falls through to its raw
-slug in the UI rather than erroring, so a drift here is silent.
+`projects.status` is a CHECK constraint: `launching_soon`,
+`limited_availability`, `off_plan`, or **null**. Null is the default and the
+correct value when the state is unknown — it renders no badge at all, on both
+the project hero and ProjectCard.
+
+It is mirrored in three places that must be changed together: `STATUS_LABELS`
+in `lib/format.ts`, the admin edit `<select>`, and the `/projects` filter
+`<select>`. An unmapped status falls through to its raw slug in the UI rather
+than erroring, so a drift here is silent.
+
+Status also drives the hero CTA: `ctaLabel` in `ProjectDetail.tsx` returns
+"Register your interest" for `launching_soon` and "Get prices and availability"
+for everything else including null. A new status value needs a decision there
+too, not just a label.
 
 ## Rendering
 

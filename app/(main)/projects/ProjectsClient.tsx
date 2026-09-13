@@ -146,12 +146,9 @@ export default function ProjectsClient({ projects }: { projects: Project[] }) {
                 <label className={labelCls}>Status</label>
                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={selectCls}>
                   <option value="">All statuses</option>
-                  <option value="off_plan">Off plan</option>
                   <option value="launching_soon">Launching soon</option>
                   <option value="limited_availability">Limited availability</option>
-                  <option value="sold_out">Sold out</option>
-                  <option value="under_construction">Under construction</option>
-                  <option value="ready">Ready</option>
+                  <option value="off_plan">Off plan</option>
                 </select>
               </div>
 

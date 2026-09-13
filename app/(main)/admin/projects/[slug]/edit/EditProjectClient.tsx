@@ -870,13 +870,10 @@ export default function EditProjectClient({ project }: { project: Project }) {
                   onChange={e => setStatus(e.target.value)}
                   className={inputCls}
                 >
-                  <option value="">— select —</option>
-                  <option value="off_plan">Off plan</option>
+                  <option value="">— none (no badge) —</option>
                   <option value="launching_soon">Launching soon</option>
                   <option value="limited_availability">Limited availability</option>
-                  <option value="sold_out">Sold out</option>
-                  <option value="under_construction">Under construction</option>
-                  <option value="ready">Ready</option>
+                  <option value="off_plan">Off plan</option>
                 </select>
               </div>
               <Field
